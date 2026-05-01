@@ -2,21 +2,31 @@
   "name": "false-leaders-backend",
   "version": "1.0.0",
   "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc --skipLibCheck",
     "start": "node dist/index.js",
-    "build": "tsc --skipLibCheck"
+    "migrate": "tsx src/db/migrate.ts"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
-    "fastify": "^4.28.1",
     "@fastify/cors": "^9.0.1",
     "@fastify/jwt": "^8.0.1",
     "@fastify/rate-limit": "^9.0.0",
     "bcrypt": "^5.1.1",
     "dotenv": "^16.4.5",
+    "fastify": "^4.28.1",
+    "leaflet": "^1.9.4",
     "pg": "^8.11.3",
     "redis": "^4.6.13",
     "resend": "^3.2.0"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.6",
+    "tsx": "^4.7.1",
+    "typescript": "^5.4.5"
   }
 }

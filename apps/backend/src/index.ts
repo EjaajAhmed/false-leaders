@@ -2,7 +2,6 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
 import dotenv from 'dotenv'
-
 import { politiciansRoutes } from './routes/politicians'
 import { commentsRoutes } from './routes/comments'
 import { votesRoutes } from './routes/votes'
@@ -12,8 +11,8 @@ import { graftsRoutes } from './routes/grafts'
 import { bookmarksRoutes } from './routes/bookmarks'
 import { controversiesRoutes } from './routes/controversies'
 import { notificationsRoutes } from './routes/notifications'
-
-
+import { fundingRoutes } from './routes/funding'
+import { influenceRoutes } from './routes/influence'
 
 dotenv.config()
 
@@ -38,16 +37,6 @@ server.register(cors, {
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
 })
 
-server.addHook('onRequest', async (request, reply) => {
-  if (request.method === 'OPTIONS') {
-    reply.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:5173')
-    reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
-    reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    reply.header('Access-Control-Allow-Credentials', 'true')
-    reply.status(204).send()
-  }
-})
-
 server.register(jwt, {
   secret: process.env.JWT_SECRET || 'changeme'
 })
@@ -69,16 +58,15 @@ server.register(graftsRoutes, { prefix: '/grafts' })
 server.register(bookmarksRoutes, { prefix: '/bookmarks' })
 server.register(controversiesRoutes, { prefix: '/controversies' })
 server.register(notificationsRoutes, { prefix: '/notifications' })
+server.register(fundingRoutes, { prefix: '/funding' })
+server.register(influenceRoutes, { prefix: '/influence' })
 
 server.get('/health', async () => ({ status: 'ok' }))
 
 const start = async () => {
   try {
-    await server.listen({ 
-      port: Number(process.env.PORT) || 8080, 
-      host: '0.0.0.0' 
-    })
-    console.log('Server running on http://localhost:3000')
+    await server.listen({ port: Number(process.env.PORT) || 8080, host: '0.0.0.0' })
+    console.log(`Server running on port ${process.env.PORT || 8080}`)
   } catch (err) {
     server.log.error(err)
     process.exit(1)

@@ -2,17 +2,12 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-COPY apps/backend/package*.json ./apps/backend/
+COPY apps/backend/package*.json ./
 
-RUN npm install --workspace=apps/backend
+RUN npm install
 
-COPY apps/backend ./apps/backend
-
-WORKDIR /app/apps/backend
-
-RUN npx tsc --skipLibCheck || true
+COPY apps/backend/src ./src
 
 EXPOSE 8080
 
-CMD ["node", "dist/index.js"]
+CMD ["npx", "tsx", "src/index.ts"]

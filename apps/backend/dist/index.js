@@ -6,7 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const fastify_1 = __importDefault(require("fastify"));
 const cors_1 = __importDefault(require("@fastify/cors"));
 const jwt_1 = __importDefault(require("@fastify/jwt"));
-const dotenv_1 = __importDefault(require("dotenv"));
 const politicians_1 = require("./routes/politicians");
 const comments_1 = require("./routes/comments");
 const votes_1 = require("./routes/votes");
@@ -18,7 +17,6 @@ const controversies_1 = require("./routes/controversies");
 const notifications_1 = require("./routes/notifications");
 const funding_1 = require("./routes/funding");
 const influence_1 = require("./routes/influence");
-dotenv_1.default.config();
 const server = (0, fastify_1.default)({ logger: true });
 server.register(cors_1.default, {
     origin: (origin, cb) => {

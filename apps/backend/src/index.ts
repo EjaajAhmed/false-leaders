@@ -1,7 +1,6 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
-import dotenv from 'dotenv'
 import { politiciansRoutes } from './routes/politicians'
 import { commentsRoutes } from './routes/comments'
 import { votesRoutes } from './routes/votes'
@@ -14,7 +13,6 @@ import { notificationsRoutes } from './routes/notifications'
 import { fundingRoutes } from './routes/funding'
 import { influenceRoutes } from './routes/influence'
 
-dotenv.config()
 
 const server = Fastify({ logger: true })
 

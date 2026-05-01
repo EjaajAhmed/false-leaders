@@ -4,3 +4,4 @@ dist/
 apps/backend/.env
 apps/frontend/.env
 *.log
+

@@ -16,21 +16,28 @@ const grafts_1 = require("./routes/grafts");
 const bookmarks_1 = require("./routes/bookmarks");
 const controversies_1 = require("./routes/controversies");
 const notifications_1 = require("./routes/notifications");
+const funding_1 = require("./routes/funding");
+const influence_1 = require("./routes/influence");
 dotenv_1.default.config();
 const server = (0, fastify_1.default)({ logger: true });
 server.register(cors_1.default, {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: (origin, cb) => {
+        const allowed = [
+            'https://falseleaders.com',
+            'https://www.falseleaders.com',
+            'https://9ec69f1c.false-leaders.pages.dev',
+            'https://false-leaders.pages.dev',
+            'http://localhost:5173'
+        ];
+        if (!origin || allowed.includes(origin)) {
+            cb(null, true);
+        }
+        else {
+            cb(new Error('Not allowed by CORS'), false);
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
-});
-server.addHook('onRequest', async (request, reply) => {
-    if (request.method === 'OPTIONS') {
-        reply.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:5173');
-        reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-        reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-        reply.header('Access-Control-Allow-Credentials', 'true');
-        reply.status(204).send();
-    }
 });
 server.register(jwt_1.default, {
     secret: process.env.JWT_SECRET || 'changeme'
@@ -52,14 +59,13 @@ server.register(grafts_1.graftsRoutes, { prefix: '/grafts' });
 server.register(bookmarks_1.bookmarksRoutes, { prefix: '/bookmarks' });
 server.register(controversies_1.controversiesRoutes, { prefix: '/controversies' });
 server.register(notifications_1.notificationsRoutes, { prefix: '/notifications' });
+server.register(funding_1.fundingRoutes, { prefix: '/funding' });
+server.register(influence_1.influenceRoutes, { prefix: '/influence' });
 server.get('/health', async () => ({ status: 'ok' }));
 const start = async () => {
     try {
-        await server.listen({
-            port: Number(process.env.PORT) || 8080,
-            host: '0.0.0.0'
-        });
-        console.log('Server running on http://localhost:3000');
+        await server.listen({ port: Number(process.env.PORT) || 8080, host: '0.0.0.0' });
+        console.log(`Server running on port ${process.env.PORT || 8080}`);
     }
     catch (err) {
         server.log.error(err);

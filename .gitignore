@@ -5,3 +5,4 @@ apps/backend/.env
 apps/frontend/.env
 *.log
 
+apps/backend/node_modules

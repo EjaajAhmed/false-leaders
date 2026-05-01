@@ -1,0 +1,4 @@
+.elasticbeanstalk
+*.ts
+!dist/**
+.env

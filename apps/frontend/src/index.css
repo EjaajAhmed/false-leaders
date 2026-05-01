@@ -1,0 +1,70 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --cream: #f5f0e8;
+  --cream-dark: #ede8df;
+  --gold: #c9a84c;
+  --dark: #1a1a1a;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body: 'Source Serif 4', Georgia, serif;
+}
+
+html, body, #root {
+  min-height: 100vh;
+  background-color: var(--cream);
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--dark);
+  background-color: var(--cream);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  letter-spacing: 0.03em;
+  font-weight: 400;
+}
+
+p, a, button, input, textarea, select, label, span {
+  font-family: var(--font-body);
+}
+
+/* Cards and borders look better on cream */
+input, textarea, select {
+  background: white;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--cream);
+}
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+/* Login/register pages override back to dark */
+.auth-page {
+  background: #0d0d0d;
+}
+
+/* Make white cards slightly warm */
+[style*="background: white"],
+[style*="background: #fff"],
+[style*="background-color: white"] {
+  background-color: #fff !important;
+}
+
+/* Inline border colors */
+[style*="border: 1px solid #eee"] {
+  border-color: #e0dbd2 !important;
+}

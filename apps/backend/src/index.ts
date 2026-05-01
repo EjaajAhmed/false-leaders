@@ -20,7 +20,20 @@ dotenv.config()
 const server = Fastify({ logger: true })
 
 server.register(cors, {
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, cb) => {
+    const allowed = [
+      'https://falseleaders.com',
+      'https://www.falseleaders.com',
+      'https://9ec69f1c.false-leaders.pages.dev',
+      'https://false-leaders.pages.dev',
+      'http://localhost:5173'
+    ]
+    if (!origin || allowed.includes(origin)) {
+      cb(null, true)
+    } else {
+      cb(new Error('Not allowed by CORS'), false)
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
 })

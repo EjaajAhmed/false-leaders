@@ -61,7 +61,10 @@ server.get('/health', async () => ({ status: 'ok' }))
 
 const start = async () => {
   try {
-    await server.listen({ port: Number(process.env.PORT) || 3000, host: '0.0.0.0' })
+    await server.listen({ 
+      port: Number(process.env.PORT) || 8080, 
+      host: '0.0.0.0' 
+    })
     console.log('Server running on http://localhost:3000')
   } catch (err) {
     server.log.error(err)

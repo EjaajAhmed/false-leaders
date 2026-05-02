@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.authRoutes = authRoutes;
 const client_1 = require("../db/client");
 const bcrypt_1 = __importDefault(require("bcrypt"));
+const email_1 = require("../services/email");
 async function authRoutes(server) {
     server.post('/register', async (request, reply) => {
         const { email, username, password } = request.body;
@@ -16,8 +17,9 @@ async function authRoutes(server) {
             const token = server.jwt.sign({
                 id: rows[0].id,
                 username: rows[0].username,
-                is_admin: rows[0].is_admin
+                is_admin: false
             });
+            await (0, email_1.sendWelcomeEmail)(email, username);
             return reply.status(201).send({ user: rows[0], token });
         }
         catch (err) {
@@ -63,5 +65,23 @@ async function authRoutes(server) {
             }
             throw err;
         }
+    });
+    server.get('/me', { onRequest: [server.authenticate] }, async (request) => {
+        const user = request.user;
+        const { rows } = await client_1.db.query(`SELECT id, email, username, is_admin, email_notifications,
+       notif_comment_replies, notif_politician_updates, notif_app_news
+       FROM users WHERE id = $1`, [user.id]);
+        return rows[0];
+    });
+    server.patch('/notif-prefs', { onRequest: [server.authenticate] }, async (request) => {
+        const user = request.user;
+        const { email_notifications, notif_comment_replies, notif_politician_updates, notif_app_news } = request.body;
+        const { rows } = await client_1.db.query(`UPDATE users SET
+        email_notifications = COALESCE($1, email_notifications),
+        notif_comment_replies = COALESCE($2, notif_comment_replies),
+        notif_politician_updates = COALESCE($3, notif_politician_updates),
+        notif_app_news = COALESCE($4, notif_app_news)
+       WHERE id = $5 RETURNING email_notifications, notif_comment_replies, notif_politician_updates, notif_app_news`, [email_notifications ?? null, notif_comment_replies ?? null, notif_politician_updates ?? null, notif_app_news ?? null, user.id]);
+        return rows[0];
     });
 }

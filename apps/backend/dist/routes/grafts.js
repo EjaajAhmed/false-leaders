@@ -14,14 +14,15 @@ async function graftsRoutes(server) {
        ORDER BY g.created_at DESC`, [user.id]);
         return rows;
     });
-    server.post('/', auth, async (request, reply) => {
+    const verified = { onRequest: [server.requireVerified] };
+    server.post('/', verified, async (request, reply) => {
         const user = request.user;
         const { name, description } = request.body;
         const { rows } = await client_1.db.query(`INSERT INTO grafts (user_id, name, description)
        VALUES ($1, $2, $3) RETURNING *`, [user.id, name, description]);
         return reply.status(201).send(rows[0]);
     });
-    server.delete('/:id', auth, async (request, reply) => {
+    server.delete('/:id', verified, async (request, reply) => {
         const user = request.user;
         const { id } = request.params;
         await client_1.db.query('DELETE FROM grafts WHERE id = $1 AND user_id = $2', [id, user.id]);

@@ -11,7 +11,8 @@ async function commentsRoutes(server) {
        ORDER BY c.created_at DESC`, [politicianId]);
         return rows;
     });
-    server.post('/', { onRequest: [server.authenticate] }, async (request, reply) => {
+    const verified = { onRequest: [server.requireVerified] };
+    server.post('/', verified, async (request, reply) => {
         const { politician_id, body } = request.body;
         const user = request.user;
         const { rows } = await client_1.db.query(`INSERT INTO comments (politician_id, user_id, body)
@@ -30,7 +31,7 @@ async function commentsRoutes(server) {
         }
         return reply.status(201).send(rows[0]);
     });
-    server.delete('/:id', { onRequest: [server.authenticate] }, async (request, reply) => {
+    server.delete('/:id', { onRequest: [server.verified] }, async (request, reply) => {
         const { id } = request.params;
         const user = request.user;
         await client_1.db.query('DELETE FROM comments WHERE id = $1 AND user_id = $2', [id, user.id]);

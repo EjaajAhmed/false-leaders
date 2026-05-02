@@ -17,6 +17,8 @@ export default function PoliticianProfile() {
   const graftPickerRef = useRef<HTMLDivElement>(null)
   const [activeTab, setActiveTab] = useState<'controversies' | 'comments' | 'funding' | 'influence'>('controversies')
 
+  const isVerified = !!user?.email_verified
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (graftPickerRef.current && !graftPickerRef.current.contains(e.target as Node)) {
@@ -28,10 +30,10 @@ export default function PoliticianProfile() {
   }, [showGraftPicker])
 
   const { data: politician, isLoading } = useQuery({ queryKey: ['politician', id], queryFn: () => getPolitician(id!) })
-  const { data: comments } = useQuery({ queryKey: ['comments', id], queryFn: () => getComments(id!), enabled: !!user })
+  const { data: comments } = useQuery({ queryKey: ['comments', id], queryFn: () => getComments(id!), enabled: isVerified })
   const { data: votes } = useQuery({ queryKey: ['votes', id], queryFn: () => getVotes(id!) })
-  const { data: bookmarkStatus, refetch: refetchBookmark } = useQuery({ queryKey: ['bookmark', id], queryFn: () => checkBookmark(id!), enabled: !!user })
-  const { data: grafts } = useQuery({ queryKey: ['grafts'], queryFn: getGrafts, enabled: !!user })
+  const { data: bookmarkStatus, refetch: refetchBookmark } = useQuery({ queryKey: ['bookmark', id], queryFn: () => checkBookmark(id!), enabled: isVerified })
+  const { data: grafts } = useQuery({ queryKey: ['grafts'], queryFn: getGrafts, enabled: isVerified })
 
   const commentMutation = useMutation({
     mutationFn: postComment,
@@ -58,6 +60,13 @@ export default function PoliticianProfile() {
     onSuccess: () => refetchBookmark()
   })
 
+  const resendVerification = () => {
+    fetch(`${import.meta.env.VITE_API_URL}/auth/resend-verification`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    }).then(() => alert('Verification email sent!'))
+  }
+
   if (isLoading) return <p style={{ padding: '2rem' }}>Loading...</p>
   if (!politician) return <p style={{ padding: '2rem' }}>Politician not found.</p>
 
@@ -70,8 +79,8 @@ export default function PoliticianProfile() {
       {/* Profile card */}
       <div style={{ padding: '1.5rem', border: '1px solid #eee', borderRadius: '12px', marginBottom: '2rem', position: 'relative' }}>
 
-        {/* Bookmark button */}
-        {user && (
+        {/* Bookmark button — verified only */}
+        {isVerified && (
           <div ref={graftPickerRef} style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
             <button
               onClick={() => setShowGraftPicker(!showGraftPicker)}
@@ -149,20 +158,21 @@ export default function PoliticianProfile() {
         <div style={{ display: 'flex', gap: '0.5rem', margin: '1.25rem 0 0' }}>
           <button
             onClick={() => voteMutation.mutate({ politician_id: id!, type: 'up' })}
-            disabled={!user}
-            style={{ padding: '0.4rem 1rem', borderRadius: '20px', border: '1px solid #ccc', background: 'white', cursor: user ? 'pointer' : 'not-allowed' }}
+            disabled={!isVerified}
+            style={{ padding: '0.4rem 1rem', borderRadius: '20px', border: '1px solid #ccc', background: 'white', cursor: isVerified ? 'pointer' : 'not-allowed' }}
           >
             Up {votes?.upvotes || 0}
           </button>
           <button
             onClick={() => voteMutation.mutate({ politician_id: id!, type: 'down' })}
-            disabled={!user}
-            style={{ padding: '0.4rem 1rem', borderRadius: '20px', border: '1px solid #ccc', background: 'white', cursor: user ? 'pointer' : 'not-allowed' }}
+            disabled={!isVerified}
+            style={{ padding: '0.4rem 1rem', borderRadius: '20px', border: '1px solid #ccc', background: 'white', cursor: isVerified ? 'pointer' : 'not-allowed' }}
           >
             Down {votes?.downvotes || 0}
           </button>
         </div>
         {!user && <p style={{ fontSize: '0.75rem', color: '#aaa', margin: '0.5rem 0 0' }}>Login to vote or save</p>}
+        {user && !isVerified && <p style={{ fontSize: '0.75rem', color: '#e74c3c', margin: '0.5rem 0 0' }}>Verify your email to vote and comment</p>}
 
         {politician.bio && <p style={{ marginTop: '1rem', lineHeight: '1.6' }}>{politician.bio}</p>}
       </div>
@@ -201,7 +211,26 @@ export default function PoliticianProfile() {
       {activeTab === 'influence' && <InfluenceTab politicianId={id!} />}
 
       {activeTab === 'comments' && (
-        user ? (
+        !user ? (
+          <div style={{ padding: '1.5rem', border: '1px solid #eee', borderRadius: '10px', textAlign: 'center' }}>
+            <p style={{ margin: '0 0 0.75rem', color: '#888' }}>Create an account to view and leave comments.</p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+              <a href="/login" style={{ padding: '0.5rem 1.25rem', border: '1px solid #ddd', borderRadius: '8px', textDecoration: 'none', color: '#111', fontSize: '0.9rem' }}>Login</a>
+              <a href="/register" style={{ padding: '0.5rem 1.25rem', background: '#1a1a1a', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '0.9rem' }}>Create account</a>
+            </div>
+          </div>
+        ) : !isVerified ? (
+          <div style={{ padding: '1.5rem', border: '1px solid #f0c070', borderRadius: '10px', textAlign: 'center', background: '#fffdf5' }}>
+            <p style={{ margin: '0 0 0.5rem', fontWeight: 500, fontFamily: 'var(--font-display)', fontSize: '1.2rem' }}>Verify your email to participate</p>
+            <p style={{ margin: '0 0 1rem', color: '#888', fontSize: '0.9rem' }}>Check your inbox for a verification link.</p>
+            <button
+              onClick={resendVerification}
+              style={{ padding: '0.5rem 1.25rem', background: '#1a1a1a', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem' }}
+            >
+              Resend verification email
+            </button>
+          </div>
+        ) : (
           <div>
             <h2 style={{ marginBottom: '1rem' }}>
               Comments {comments?.length > 0 && `(${comments.length})`}
@@ -237,14 +266,6 @@ export default function PoliticianProfile() {
                   )}
                 </div>
               ))}
-            </div>
-          </div>
-        ) : (
-          <div style={{ padding: '1.5rem', border: '1px solid #eee', borderRadius: '10px', textAlign: 'center' }}>
-            <p style={{ margin: '0 0 0.75rem', color: '#888' }}>Create an account to view and leave comments.</p>
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-              <a href="/login" style={{ padding: '0.5rem 1.25rem', border: '1px solid #ddd', borderRadius: '8px', textDecoration: 'none', color: '#111', fontSize: '0.9rem' }}>Login</a>
-              <a href="/register" style={{ padding: '0.5rem 1.25rem', background: '#1a1a1a', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '0.9rem' }}>Create account</a>
             </div>
           </div>
         )

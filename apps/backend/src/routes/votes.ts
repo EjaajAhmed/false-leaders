@@ -1,8 +1,11 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 
+
+
 export async function votesRoutes(server: FastifyInstance) {
-  server.post('/', { onRequest: [(server as any).authenticate] }, async (request, reply) => {
+  const verified = { onRequest: [(server as any).requireVerified] }
+  server.post('/', verified, async (request, reply) => {
     const { politician_id, type } = request.body as any
     const user = (request as any).user
 

@@ -16,7 +16,8 @@ async function bookmarksRoutes(server) {
        ORDER BY b.created_at DESC`, [user.id]);
         return rows;
     });
-    server.post('/', auth, async (request, reply) => {
+    const verified = { onRequest: [server.requireVerified] };
+    server.post('/', verified, async (request, reply) => {
         const user = request.user;
         const { politician_id, graft_id } = request.body;
         try {
@@ -30,14 +31,14 @@ async function bookmarksRoutes(server) {
             throw err;
         }
     });
-    server.patch('/:id/move', auth, async (request) => {
+    server.patch('/:id/move', verified, async (request) => {
         const user = request.user;
         const { id } = request.params;
         const { graft_id } = request.body;
         const { rows } = await client_1.db.query(`UPDATE bookmarks SET graft_id = $1 WHERE id = $2 AND user_id = $3 RETURNING *`, [graft_id || null, id, user.id]);
         return rows[0];
     });
-    server.delete('/:id', auth, async (request) => {
+    server.delete('/:id', verified, async (request) => {
         const user = request.user;
         const { id } = request.params;
         await client_1.db.query('DELETE FROM bookmarks WHERE id = $1 AND user_id = $2', [id, user.id]);

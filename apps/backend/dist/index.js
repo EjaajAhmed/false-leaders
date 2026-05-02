@@ -40,9 +40,12 @@ server.register(cors_1.default, {
 server.register(jwt_1.default, {
     secret: process.env.JWT_SECRET || 'changeme'
 });
-server.decorate('authenticate', async function (request, reply) {
+server.decorate('requireVerified', async function (request, reply) {
     try {
         await request.jwtVerify();
+        if (!request.user.email_verified) {
+            return reply.status(403).send({ error: 'Please verify your email to continue.' });
+        }
     }
     catch (err) {
         reply.status(401).send({ error: 'Unauthorized' });

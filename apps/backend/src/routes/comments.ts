@@ -14,7 +14,9 @@ export async function commentsRoutes(server: FastifyInstance) {
     return rows
   })
 
-  server.post('/', { onRequest: [(server as any).authenticate] }, async (request, reply) => {
+  const verified = { onRequest: [(server as any).requireVerified] }
+
+  server.post('/', verified, async (request, reply) => {
     const { politician_id, body } = request.body as any
     const user = (request as any).user
 
@@ -51,7 +53,7 @@ export async function commentsRoutes(server: FastifyInstance) {
     return reply.status(201).send(rows[0])
   })
 
-  server.delete('/:id', { onRequest: [(server as any).authenticate] }, async (request, reply) => {
+  server.delete('/:id', { onRequest: [(server as any).verified] }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const user = (request as any).user
     await db.query('DELETE FROM comments WHERE id = $1 AND user_id = $2', [id, user.id])

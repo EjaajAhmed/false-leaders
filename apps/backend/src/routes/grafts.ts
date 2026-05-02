@@ -18,7 +18,8 @@ export async function graftsRoutes(server: FastifyInstance) {
     return rows
   })
 
-  server.post('/', auth, async (request, reply) => {
+  const verified = { onRequest: [(server as any).requireVerified] }
+  server.post('/', verified, async (request, reply) => {
     const user = (request as any).user
     const { name, description } = request.body as any
     const { rows } = await db.query(
@@ -29,7 +30,7 @@ export async function graftsRoutes(server: FastifyInstance) {
     return reply.status(201).send(rows[0])
   })
 
-  server.delete('/:id', auth, async (request, reply) => {
+  server.delete('/:id', verified, async (request, reply) => {
     const user = (request as any).user
     const { id } = request.params as { id: string }
     await db.query('DELETE FROM grafts WHERE id = $1 AND user_id = $2', [id, user.id])

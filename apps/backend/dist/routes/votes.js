@@ -3,7 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.votesRoutes = votesRoutes;
 const client_1 = require("../db/client");
 async function votesRoutes(server) {
-    server.post('/', { onRequest: [server.authenticate] }, async (request, reply) => {
+    const verified = { onRequest: [server.requireVerified] };
+    server.post('/', verified, async (request, reply) => {
         const { politician_id, type } = request.body;
         const user = request.user;
         try {

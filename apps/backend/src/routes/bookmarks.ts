@@ -20,7 +20,8 @@ export async function bookmarksRoutes(server: FastifyInstance) {
     return rows
   })
 
-  server.post('/', auth, async (request, reply) => {
+  const verified = { onRequest: [(server as any).requireVerified] }
+  server.post('/', verified, async (request, reply) => {
     const user = (request as any).user
     const { politician_id, graft_id } = request.body as any
     try {
@@ -37,7 +38,7 @@ export async function bookmarksRoutes(server: FastifyInstance) {
     }
   })
 
-  server.patch('/:id/move', auth, async (request) => {
+  server.patch('/:id/move', verified, async (request) => {
     const user = (request as any).user
     const { id } = request.params as { id: string }
     const { graft_id } = request.body as any
@@ -48,7 +49,7 @@ export async function bookmarksRoutes(server: FastifyInstance) {
     return rows[0]
   })
 
-  server.delete('/:id', auth, async (request) => {
+  server.delete('/:id', verified, async (request) => {
     const user = (request as any).user
     const { id } = request.params as { id: string }
     await db.query('DELETE FROM bookmarks WHERE id = $1 AND user_id = $2', [id, user.id])

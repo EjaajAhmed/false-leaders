@@ -7,19 +7,23 @@ exports.authRoutes = authRoutes;
 const client_1 = require("../db/client");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const email_1 = require("../services/email");
+const crypto_1 = __importDefault(require("crypto"));
 async function authRoutes(server) {
     server.post('/register', async (request, reply) => {
         const { email, username, password } = request.body;
         const password_hash = await bcrypt_1.default.hash(password, 10);
+        const verification_token = crypto_1.default.randomBytes(32).toString('hex');
+        const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
         try {
-            const { rows } = await client_1.db.query(`INSERT INTO users (email, username, password_hash)
-         VALUES ($1, $2, $3) RETURNING id, email, username, is_admin`, [email, username, password_hash]);
+            const { rows } = await client_1.db.query(`INSERT INTO users (email, username, password_hash, email_verified, verification_token, verification_token_expires)
+         VALUES ($1, $2, $3, false, $4, $5) RETURNING id, email, username, is_admin, email_verified`, [email, username, password_hash, verification_token, expires]);
             const token = server.jwt.sign({
                 id: rows[0].id,
                 username: rows[0].username,
-                is_admin: false
+                is_admin: false,
+                email_verified: false
             });
-            await (0, email_1.sendWelcomeEmail)(email, username);
+            await (0, email_1.sendWelcomeEmail)(email, username, verification_token);
             return reply.status(201).send({ user: rows[0], token });
         }
         catch (err) {
@@ -51,6 +55,27 @@ async function authRoutes(server) {
             },
             token
         };
+    });
+    server.get('/verify/:token', async (request, reply) => {
+        const { token } = request.params;
+        const { rows } = await client_1.db.query(`SELECT * FROM users WHERE verification_token = $1 
+       AND verification_token_expires > NOW()`, [token]);
+        if (rows.length === 0) {
+            return reply.status(400).send({ error: 'Invalid or expired verification link' });
+        }
+        await client_1.db.query(`UPDATE users SET email_verified = true, verification_token = NULL, 
+       verification_token_expires = NULL WHERE id = $1`, [rows[0].id]);
+        // Redirect to frontend with success
+        return reply.redirect(`${process.env.FRONTEND_URL}/verified`);
+    });
+    server.post('/resend-verification', { onRequest: [server.authenticate] }, async (request, reply) => {
+        const user = request.user;
+        const verification_token = crypto_1.default.randomBytes(32).toString('hex');
+        const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        const { rows } = await client_1.db.query(`UPDATE users SET verification_token = $1, verification_token_expires = $2 
+       WHERE id = $3 RETURNING email, username`, [verification_token, expires, user.id]);
+        await (0, email_1.sendWelcomeEmail)(rows[0].email, rows[0].username, verification_token);
+        return { success: true };
     });
     server.patch('/username', { onRequest: [server.authenticate] }, async (request, reply) => {
         const user = request.user;

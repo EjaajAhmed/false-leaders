@@ -16,6 +16,8 @@ import MapPage from './pages/Map'
 import Admin from './pages/Admin'
 import NotificationBell from './components/NotificationBell'
 import { useAuth } from './context/AuthContext'
+import Verified from './pages/Verified'
+
 
 const queryClient = new QueryClient()
 
@@ -50,6 +52,7 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/verified" element={<Verified />} />
         </Routes>
       </div>
     </div>

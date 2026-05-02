@@ -22,12 +22,18 @@ async function sendAppNewsEmail(to, username, subject, message) {
     console.log(`[EMAIL] App news to ${to} (@${username}): ${subject}`);
     console.log(`[EMAIL] Message:`, message);
 }
-async function sendWelcomeEmail(to, username) {
+async function sendWelcomeEmail(to, username, verificationToken) {
+    if (!process.env.RESEND_API_KEY) {
+        console.log(`[EMAIL] Welcome email to ${to} - skipped, no API key`);
+        return;
+    }
+    const verifyUrl = `${process.env.BACKEND_URL || 'https://false-leaders-backend-production.up.railway.app'}/auth/verify/${verificationToken}`;
     try {
+        const resend = new resend_1.Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({
             from: FROM,
             to,
-            subject: 'Welcome to FalseLeaders',
+            subject: 'Verify your FalseLeaders account',
             html: `
           <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 2rem; color: #1a1a1a;">
             <div style="text-align: center; margin-bottom: 2rem;">
@@ -36,16 +42,20 @@ async function sendWelcomeEmail(to, username) {
             </div>
   
             <h2 style="font-size: 1.1rem; margin: 0 0 0.5rem;">Welcome, @${username}</h2>
-            <p style="color: #555; margin: 0 0 1.5rem;">Your account has been created. You can now comment on politicians, vote, save to grafts and track controversies.</p>
+            <p style="color: #555; margin: 0 0 1.5rem;">Please verify your email address to unlock commenting and voting.</p>
   
-            <a href="${APP_URL}"
+            <a href="${verifyUrl}"
                style="display: inline-block; padding: 0.7rem 1.5rem; background: #1a1a1a; color: white; text-decoration: none; border-radius: 8px; font-size: 0.9rem;">
-              Go to FalseLeaders
+              Verify my email
             </a>
+  
+            <p style="color: #aaa; font-size: 0.8rem; margin-top: 1.5rem;">
+              This link expires in 24 hours. If you didn't create an account, ignore this email.
+            </p>
   
             <hr style="border: none; border-top: 1px solid #eee; margin: 2rem 0;" />
             <p style="color: #bbb; font-size: 0.75rem; margin: 0;">
-              You're receiving this because you just created an account.
+              <a href="${APP_URL}/profile" style="color: #c9a84c;">Manage preferences</a>
             </p>
           </div>
         `

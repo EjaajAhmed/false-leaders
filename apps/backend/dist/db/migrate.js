@@ -6,6 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const client_1 = require("./client");
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config({ path: path_1.default.resolve(__dirname, '../.env') });
 async function migrate() {
     const migrationsDir = path_1.default.join(__dirname, 'migrations');
     const files = fs_1.default.readdirSync(migrationsDir).sort();

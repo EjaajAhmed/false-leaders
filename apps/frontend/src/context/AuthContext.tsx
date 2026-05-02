@@ -6,6 +6,7 @@ interface User {
   email: string
   username: string
   is_admin?: boolean
+  email_verified?: boolean
 }
 
 interface AuthContextType {

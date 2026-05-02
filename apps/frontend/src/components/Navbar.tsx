@@ -50,6 +50,18 @@ export default function Navbar() {
         {user?.is_admin && link('/admin', 'Admin')}
       </div>
 
+      {user && !(user as any).email_verified && (
+      <div style={{ margin: '0.5rem 0.75rem', padding: '0.6rem 0.75rem', background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: '6px' }}>
+        <p style={{ margin: '0 0 0.3rem', fontSize: '0.75rem', color: '#c9a84c' }}>Email not verified</p>
+        <button
+        onClick={() => fetch('/auth/resend-verification', { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })}
+        style={{ background: 'none', border: 'none', color: '#c9a84c', cursor: 'pointer', fontSize: '0.75rem', padding: 0, textDecoration: 'underline' }}
+      >
+        Resend verification email
+      </button>
+      </div>
+      )}
+
       <div style={{ borderTop: '1px solid #333', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {user ? (
           <>

@@ -2,28 +2,34 @@ import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 import bcrypt from 'bcrypt'
 import { sendWelcomeEmail } from '../services/email'
+import crypto from 'crypto'
 
 export async function authRoutes(server: FastifyInstance) {
+
+
 
   server.post('/register', async (request, reply) => {
     const { email, username, password } = request.body as any
     const password_hash = await bcrypt.hash(password, 10)
-
+    const verification_token = crypto.randomBytes(32).toString('hex')
+    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+  
     try {
       const { rows } = await db.query(
-        `INSERT INTO users (email, username, password_hash)
-         VALUES ($1, $2, $3) RETURNING id, email, username, is_admin`,
-        [email, username, password_hash]
+        `INSERT INTO users (email, username, password_hash, email_verified, verification_token, verification_token_expires)
+         VALUES ($1, $2, $3, false, $4, $5) RETURNING id, email, username, is_admin, email_verified`,
+        [email, username, password_hash, verification_token, expires]
       )
-
+  
       const token = (server as any).jwt.sign({
         id: rows[0].id,
         username: rows[0].username,
-        is_admin: false
+        is_admin: false,
+        email_verified: false
       })
-
-      await sendWelcomeEmail(email, username)
-
+  
+      await sendWelcomeEmail(email, username, verification_token)
+  
       return reply.status(201).send({ user: rows[0], token })
     } catch (err: any) {
       if (err.code === '23505') {
@@ -60,6 +66,44 @@ export async function authRoutes(server: FastifyInstance) {
       },
       token
     }
+  })
+
+  server.get('/verify/:token', async (request, reply) => {
+    const { token } = request.params as { token: string }
+  
+    const { rows } = await db.query(
+      `SELECT * FROM users WHERE verification_token = $1 
+       AND verification_token_expires > NOW()`,
+      [token]
+    )
+  
+    if (rows.length === 0) {
+      return reply.status(400).send({ error: 'Invalid or expired verification link' })
+    }
+  
+    await db.query(
+      `UPDATE users SET email_verified = true, verification_token = NULL, 
+       verification_token_expires = NULL WHERE id = $1`,
+      [rows[0].id]
+    )
+  
+    // Redirect to frontend with success
+    return reply.redirect(`${process.env.FRONTEND_URL}/verified`)
+  })
+  
+  server.post('/resend-verification', { onRequest: [(server as any).authenticate] }, async (request, reply) => {
+    const user = (request as any).user
+    const verification_token = crypto.randomBytes(32).toString('hex')
+    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000)
+  
+    const { rows } = await db.query(
+      `UPDATE users SET verification_token = $1, verification_token_expires = $2 
+       WHERE id = $3 RETURNING email, username`,
+      [verification_token, expires, user.id]
+    )
+  
+    await sendWelcomeEmail(rows[0].email, rows[0].username, verification_token)
+    return { success: true }
   })
 
   server.patch('/username', { onRequest: [(server as any).authenticate] }, async (request, reply) => {

@@ -14,7 +14,7 @@ async function graftsRoutes(server) {
        ORDER BY g.created_at DESC`, [user.id]);
         return rows;
     });
-    const verified = { onRequest: [server.requireVerified] };
+    const verified = { onRequest: [async (req, rep) => server.requireVerified(req, rep)] };
     server.post('/', verified, async (request, reply) => {
         const user = request.user;
         const { name, description } = request.body;

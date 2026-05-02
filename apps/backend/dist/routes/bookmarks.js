@@ -16,7 +16,7 @@ async function bookmarksRoutes(server) {
        ORDER BY b.created_at DESC`, [user.id]);
         return rows;
     });
-    const verified = { onRequest: [server.requireVerified] };
+    const verified = { onRequest: [async (req, rep) => server.requireVerified(req, rep)] };
     server.post('/', verified, async (request, reply) => {
         const user = request.user;
         const { politician_id, graft_id } = request.body;

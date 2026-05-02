@@ -14,7 +14,7 @@ export async function commentsRoutes(server: FastifyInstance) {
     return rows
   })
 
-  const verified = { onRequest: [(server as any).requireVerified] }
+  const verified = { onRequest: [async (req: any, rep: any) => (server as any).requireVerified(req, rep)] }
 
   server.post('/', verified, async (request, reply) => {
     const { politician_id, body } = request.body as any

@@ -18,7 +18,7 @@ export async function graftsRoutes(server: FastifyInstance) {
     return rows
   })
 
-  const verified = { onRequest: [(server as any).requireVerified] }
+  const verified = { onRequest: [async (req: any, rep: any) => (server as any).requireVerified(req, rep)] }
   server.post('/', verified, async (request, reply) => {
     const user = (request as any).user
     const { name, description } = request.body as any

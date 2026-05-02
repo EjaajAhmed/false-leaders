@@ -11,7 +11,7 @@ async function commentsRoutes(server) {
        ORDER BY c.created_at DESC`, [politicianId]);
         return rows;
     });
-    const verified = { onRequest: [server.requireVerified] };
+    const verified = { onRequest: [async (req, rep) => server.requireVerified(req, rep)] };
     server.post('/', verified, async (request, reply) => {
         const { politician_id, body } = request.body;
         const user = request.user;

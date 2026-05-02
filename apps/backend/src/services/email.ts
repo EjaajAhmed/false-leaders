@@ -1,5 +1,8 @@
-const APP_URL = process.env.FRONTEND_URL || 'http://localhost:5173'
 import { Resend } from 'resend'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
+const FROM = process.env.FROM_EMAIL || 'noreply@falseleaders.com'
+const APP_URL = process.env.FRONTEND_URL || 'https://falseleaders.com'
 
 export async function sendCommentReplyEmail(
   to: string,

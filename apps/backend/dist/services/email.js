@@ -4,7 +4,10 @@ exports.sendCommentReplyEmail = sendCommentReplyEmail;
 exports.sendPoliticianUpdateEmail = sendPoliticianUpdateEmail;
 exports.sendAppNewsEmail = sendAppNewsEmail;
 exports.sendWelcomeEmail = sendWelcomeEmail;
-const APP_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const resend_1 = require("resend");
+const resend = new resend_1.Resend(process.env.RESEND_API_KEY);
+const FROM = process.env.FROM_EMAIL || 'noreply@falseleaders.com';
+const APP_URL = process.env.FRONTEND_URL || 'https://falseleaders.com';
 async function sendCommentReplyEmail(to, username, politicianName, politicianId, recentComments) {
     console.log(`[EMAIL] Comment reply to ${to} (@${username}) re: ${politicianName}`);
     console.log(`[EMAIL] Link: ${APP_URL}/politicians/${politicianId}`);

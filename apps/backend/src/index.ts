@@ -13,7 +13,6 @@ import { notificationsRoutes } from './routes/notifications'
 import { fundingRoutes } from './routes/funding'
 import { influenceRoutes } from './routes/influence'
 
-
 const server = Fastify({ logger: true })
 
 server.register(cors, {
@@ -37,6 +36,14 @@ server.register(cors, {
 
 server.register(jwt, {
   secret: process.env.JWT_SECRET || 'changeme'
+})
+
+server.decorate('authenticate', async function(request: any, reply: any) {
+  try {
+    await request.jwtVerify()
+  } catch (err) {
+    reply.status(401).send({ error: 'Unauthorized' })
+  }
 })
 
 server.decorate('requireVerified', async function(request: any, reply: any) {

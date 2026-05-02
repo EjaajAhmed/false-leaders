@@ -40,6 +40,14 @@ server.register(cors_1.default, {
 server.register(jwt_1.default, {
     secret: process.env.JWT_SECRET || 'changeme'
 });
+server.decorate('authenticate', async function (request, reply) {
+    try {
+        await request.jwtVerify();
+    }
+    catch (err) {
+        reply.status(401).send({ error: 'Unauthorized' });
+    }
+});
 server.decorate('requireVerified', async function (request, reply) {
     try {
         await request.jwtVerify();

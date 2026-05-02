@@ -2,9 +2,19 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.votesRoutes = votesRoutes;
 const client_1 = require("../db/client");
+async function requireVerified(request, reply) {
+    try {
+        await request.jwtVerify();
+        if (!request.user?.email_verified) {
+            return reply.status(403).send({ error: 'Please verify your email to continue.' });
+        }
+    }
+    catch (err) {
+        reply.status(401).send({ error: 'Unauthorized' });
+    }
+}
 async function votesRoutes(server) {
-    const verified = { onRequest: [async (req, rep) => server.requireVerified(req, rep)] };
-    server.post('/', verified, async (request, reply) => {
+    server.post('/', { onRequest: [requireVerified] }, async (request, reply) => {
         const { politician_id, type } = request.body;
         const user = request.user;
         try {

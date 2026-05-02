@@ -1,6 +1,17 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 
+async function requireVerified(request: any, reply: any) {
+  try {
+    await request.jwtVerify()
+    if (!request.user?.email_verified) {
+      return reply.status(403).send({ error: 'Please verify your email to continue.' })
+    }
+  } catch (err) {
+    reply.status(401).send({ error: 'Unauthorized' })
+  }
+}
+
 export async function commentsRoutes(server: FastifyInstance) {
   server.get('/:politicianId', async (request) => {
     const { politicianId } = request.params as { politicianId: string }
@@ -14,9 +25,9 @@ export async function commentsRoutes(server: FastifyInstance) {
     return rows
   })
 
-  const verified = { onRequest: [async (req: any, rep: any) => (server as any).requireVerified(req, rep)] }
 
-  server.post('/', verified, async (request, reply) => {
+
+  server.post('/', { onRequest: [requireVerified] }, async (request, reply) => {
     const { politician_id, body } = request.body as any
     const user = (request as any).user
 

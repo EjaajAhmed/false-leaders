@@ -17,14 +17,14 @@ import Admin from './pages/Admin'
 import NotificationBell from './components/NotificationBell'
 import { useAuth } from './context/AuthContext'
 import Verified from './pages/Verified'
-
+import PendingVerification from './pages/PendingVerification'
 
 const queryClient = new QueryClient()
 
 function App() {
   const { user } = useAuth()
   const location = useLocation()
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/register'
+  const isAuthPage = ['/login', '/register', '/pending-verification', '/verified'].includes(location.pathname)
 
   if (isAuthPage) {
     return (
@@ -53,6 +53,8 @@ function App() {
           <Route path="/map" element={<MapPage />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/verified" element={<Verified />} />
+          <Route path="/pending-verification" element={<PendingVerification email={undefined} />} />
+          <Route path="/verified" element={<Verified />} /> 
         </Routes>
       </div>
     </div>

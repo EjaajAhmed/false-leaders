@@ -13,25 +13,18 @@ export async function authRoutes(server: FastifyInstance) {
     const { email, username, password } = request.body as any
     const password_hash = await bcrypt.hash(password, 10)
     const verification_token = crypto.randomBytes(32).toString('hex')
-    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000)
   
     try {
       const { rows } = await db.query(
         `INSERT INTO users (email, username, password_hash, email_verified, verification_token, verification_token_expires)
-         VALUES ($1, $2, $3, false, $4, $5) RETURNING id, email, username, is_admin, email_verified`,
+         VALUES ($1, $2, $3, false, $4, $5) RETURNING id, email, username`,
         [email, username, password_hash, verification_token, expires]
       )
   
-      const token = (server as any).jwt.sign({
-        id: rows[0].id,
-        username: rows[0].username,
-        is_admin: false,
-        email_verified: false
-      })
-  
       await sendWelcomeEmail(email, username, verification_token)
   
-      return reply.status(201).send({ user: rows[0], token })
+      return reply.status(201).send({ pending: true, email })
     } catch (err: any) {
       if (err.code === '23505') {
         return reply.status(400).send({ error: 'Email or username already taken' })
@@ -81,7 +74,7 @@ export async function authRoutes(server: FastifyInstance) {
     )
   
     if (rows.length === 0) {
-      return reply.status(400).send({ error: 'Invalid or expired verification link' })
+      return reply.redirect(`${process.env.FRONTEND_URL}/verified?error=invalid`)
     }
   
     await db.query(
@@ -90,8 +83,15 @@ export async function authRoutes(server: FastifyInstance) {
       [rows[0].id]
     )
   
-    // Redirect to frontend with success
-    return reply.redirect(`${process.env.FRONTEND_URL}/verified`)
+    const jwtToken = (server as any).jwt.sign({
+      id: rows[0].id,
+      username: rows[0].username,
+      is_admin: rows[0].is_admin,
+      email_verified: true
+    })
+  
+    // Redirect with token in query param
+    return reply.redirect(`${process.env.FRONTEND_URL}/verified?token=${jwtToken}&username=${rows[0].username}`)
   })
   
   server.post('/resend-verification', { onRequest: [authenticate] }, async (request, reply) => {

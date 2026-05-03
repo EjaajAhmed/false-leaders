@@ -14,18 +14,12 @@ async function authRoutes(server) {
         const { email, username, password } = request.body;
         const password_hash = await bcrypt_1.default.hash(password, 10);
         const verification_token = crypto_1.default.randomBytes(32).toString('hex');
-        const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
         try {
             const { rows } = await client_1.db.query(`INSERT INTO users (email, username, password_hash, email_verified, verification_token, verification_token_expires)
-         VALUES ($1, $2, $3, false, $4, $5) RETURNING id, email, username, is_admin, email_verified`, [email, username, password_hash, verification_token, expires]);
-            const token = server.jwt.sign({
-                id: rows[0].id,
-                username: rows[0].username,
-                is_admin: false,
-                email_verified: false
-            });
+         VALUES ($1, $2, $3, false, $4, $5) RETURNING id, email, username`, [email, username, password_hash, verification_token, expires]);
             await (0, email_1.sendWelcomeEmail)(email, username, verification_token);
-            return reply.status(201).send({ user: rows[0], token });
+            return reply.status(201).send({ pending: true, email });
         }
         catch (err) {
             if (err.code === '23505') {
@@ -64,12 +58,18 @@ async function authRoutes(server) {
         const { rows } = await client_1.db.query(`SELECT * FROM users WHERE verification_token = $1 
        AND verification_token_expires > NOW()`, [token]);
         if (rows.length === 0) {
-            return reply.status(400).send({ error: 'Invalid or expired verification link' });
+            return reply.redirect(`${process.env.FRONTEND_URL}/verified?error=invalid`);
         }
         await client_1.db.query(`UPDATE users SET email_verified = true, verification_token = NULL, 
        verification_token_expires = NULL WHERE id = $1`, [rows[0].id]);
-        // Redirect to frontend with success
-        return reply.redirect(`${process.env.FRONTEND_URL}/verified`);
+        const jwtToken = server.jwt.sign({
+            id: rows[0].id,
+            username: rows[0].username,
+            is_admin: rows[0].is_admin,
+            email_verified: true
+        });
+        // Redirect with token in query param
+        return reply.redirect(`${process.env.FRONTEND_URL}/verified?token=${jwtToken}&username=${rows[0].username}`);
     });
     server.post('/resend-verification', { onRequest: [auth_1.authenticate] }, async (request, reply) => {
         const user = request.user;

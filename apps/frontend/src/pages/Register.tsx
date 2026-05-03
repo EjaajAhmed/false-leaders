@@ -29,8 +29,9 @@ export default function Register() {
     setError('')
     try {
       const data = await register({ email, username, password })
-      loginUser(data.user, data.token)
-      navigate('/')
+      if (data.pending) {
+        navigate('/pending-verification', { state: { email } })
+      }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Registration failed')
     } finally {

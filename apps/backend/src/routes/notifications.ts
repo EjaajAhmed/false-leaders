@@ -1,9 +1,10 @@
+import { authenticate } from '../middleware/auth'
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 import { notifyAllUsers } from '../services/notify'
 
 export async function notificationsRoutes(server: FastifyInstance) {
-  const auth = { onRequest: [(server as any).authenticate] }
+  const auth = { onRequest: [authenticate] }
 
   server.get('/', auth, async (request) => {
     const user = (request as any).user

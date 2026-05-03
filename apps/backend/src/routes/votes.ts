@@ -1,24 +1,11 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
-
-async function requireVerified(request: any, reply: any) {
-  try {
-    await request.jwtVerify()
-    if (!request.user?.email_verified) {
-      return reply.status(403).send({ error: 'Please verify your email to continue.' })
-    }
-  } catch (err) {
-    reply.status(401).send({ error: 'Unauthorized' })
-  }
-}
-
-
+import { requireVerified } from '../middleware/auth'
 
 export async function votesRoutes(server: FastifyInstance) {
   server.post('/', { onRequest: [requireVerified] }, async (request, reply) => {
     const { politician_id, type } = request.body as any
     const user = (request as any).user
-
     try {
       const { rows } = await db.query(
         `INSERT INTO votes (politician_id, user_id, type)
@@ -34,7 +21,7 @@ export async function votesRoutes(server: FastifyInstance) {
     }
   })
 
-  server.get('/:politicianId', async (request, reply) => {
+  server.get('/:politicianId', async (request) => {
     const { politicianId } = request.params as { politicianId: string }
     const { rows } = await db.query(
       `SELECT 

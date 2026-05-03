@@ -1,10 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.notificationsRoutes = notificationsRoutes;
+const auth_1 = require("../middleware/auth");
 const client_1 = require("../db/client");
 const notify_1 = require("../services/notify");
 async function notificationsRoutes(server) {
-    const auth = { onRequest: [server.authenticate] };
+    const auth = { onRequest: [auth_1.authenticate] };
     server.get('/', auth, async (request) => {
         const user = request.user;
         const { rows } = await client_1.db.query(`SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50`, [user.id]);

@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authRoutes = authRoutes;
+const auth_1 = require("../middleware/auth");
 const client_1 = require("../db/client");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const email_1 = require("../services/email");
@@ -44,14 +45,16 @@ async function authRoutes(server) {
         const token = server.jwt.sign({
             id: rows[0].id,
             username: rows[0].username,
-            is_admin: rows[0].is_admin
+            is_admin: rows[0].is_admin,
+            email_verified: rows[0].email_verified
         });
         return {
             user: {
                 id: rows[0].id,
                 email: rows[0].email,
                 username: rows[0].username,
-                is_admin: rows[0].is_admin
+                is_admin: rows[0].is_admin,
+                email_verified: rows[0].email_verified
             },
             token
         };
@@ -68,7 +71,7 @@ async function authRoutes(server) {
         // Redirect to frontend with success
         return reply.redirect(`${process.env.FRONTEND_URL}/verified`);
     });
-    server.post('/resend-verification', { onRequest: [server.authenticate] }, async (request, reply) => {
+    server.post('/resend-verification', { onRequest: [auth_1.authenticate] }, async (request, reply) => {
         const user = request.user;
         const verification_token = crypto_1.default.randomBytes(32).toString('hex');
         const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -77,7 +80,7 @@ async function authRoutes(server) {
         await (0, email_1.sendWelcomeEmail)(rows[0].email, rows[0].username, verification_token);
         return { success: true };
     });
-    server.patch('/username', { onRequest: [server.authenticate] }, async (request, reply) => {
+    server.patch('/username', { onRequest: [auth_1.authenticate] }, async (request, reply) => {
         const user = request.user;
         const { username } = request.body;
         try {
@@ -91,14 +94,14 @@ async function authRoutes(server) {
             throw err;
         }
     });
-    server.get('/me', { onRequest: [server.authenticate] }, async (request) => {
+    server.get('/me', { onRequest: [auth_1.authenticate] }, async (request) => {
         const user = request.user;
         const { rows } = await client_1.db.query(`SELECT id, email, username, is_admin, email_notifications,
        notif_comment_replies, notif_politician_updates, notif_app_news
        FROM users WHERE id = $1`, [user.id]);
         return rows[0];
     });
-    server.patch('/notif-prefs', { onRequest: [server.authenticate] }, async (request) => {
+    server.patch('/notif-prefs', { onRequest: [auth_1.authenticate] }, async (request) => {
         const user = request.user;
         const { email_notifications, notif_comment_replies, notif_politician_updates, notif_app_news } = request.body;
         const { rows } = await client_1.db.query(`UPDATE users SET

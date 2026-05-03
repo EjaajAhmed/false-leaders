@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fundingRoutes = fundingRoutes;
+const auth_1 = require("../middleware/auth");
 const client_1 = require("../db/client");
 async function fundingRoutes(server) {
-    const auth = { onRequest: [server.authenticate] };
+    const auth = { onRequest: [auth_1.authenticate] };
     server.get('/:politicianId', async (request) => {
         const { politicianId } = request.params;
         const { rows } = await client_1.db.query(`SELECT * FROM funding_sources WHERE politician_id = $1 ORDER BY amount DESC`, [politicianId]);

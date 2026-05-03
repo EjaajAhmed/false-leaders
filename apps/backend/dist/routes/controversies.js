@@ -1,10 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.controversiesRoutes = controversiesRoutes;
+const auth_1 = require("../middleware/auth");
 const client_1 = require("../db/client");
 const notify_1 = require("../services/notify");
 async function controversiesRoutes(server) {
-    const auth = { onRequest: [server.authenticate] };
+    const auth = { onRequest: [auth_1.authenticate] };
     server.get('/:politicianId', async (request) => {
         const { politicianId } = request.params;
         const { rows } = await client_1.db.query(`SELECT * FROM controversies WHERE politician_id = $1 ORDER BY created_at DESC`, [politicianId]);

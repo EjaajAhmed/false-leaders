@@ -1,9 +1,10 @@
+import { authenticate } from '../middleware/auth'
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 import { notifyPoliticianUpdate } from '../services/notify'
 
 export async function politiciansRoutes(server: FastifyInstance) {
-  const auth = { onRequest: [(server as any).authenticate] }
+  const auth = { onRequest: [authenticate] }
 
   server.get('/', async (request) => {
     const { search, country, party, min_age, max_age, min_truth, max_truth, page, limit } = request.query as any

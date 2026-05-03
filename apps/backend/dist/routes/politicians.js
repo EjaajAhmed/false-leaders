@@ -1,10 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.politiciansRoutes = politiciansRoutes;
+const auth_1 = require("../middleware/auth");
 const client_1 = require("../db/client");
 const notify_1 = require("../services/notify");
 async function politiciansRoutes(server) {
-    const auth = { onRequest: [server.authenticate] };
+    const auth = { onRequest: [auth_1.authenticate] };
     server.get('/', async (request) => {
         const { search, country, party, min_age, max_age, min_truth, max_truth, page, limit } = request.query;
         const pageNum = Number(page) || 1;

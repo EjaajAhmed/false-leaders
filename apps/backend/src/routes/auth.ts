@@ -1,3 +1,4 @@
+import { authenticate, requireVerified } from '../middleware/auth'
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 import bcrypt from 'bcrypt'
@@ -45,24 +46,26 @@ export async function authRoutes(server: FastifyInstance) {
       'SELECT * FROM users WHERE email = $1',
       [email]
     )
-
+  
     if (rows.length === 0) return reply.status(401).send({ error: 'Invalid credentials' })
-
+  
     const valid = await bcrypt.compare(password, rows[0].password_hash)
     if (!valid) return reply.status(401).send({ error: 'Invalid credentials' })
-
+  
     const token = (server as any).jwt.sign({
       id: rows[0].id,
       username: rows[0].username,
-      is_admin: rows[0].is_admin
+      is_admin: rows[0].is_admin,
+      email_verified: rows[0].email_verified
     })
-
+  
     return {
       user: {
         id: rows[0].id,
         email: rows[0].email,
         username: rows[0].username,
-        is_admin: rows[0].is_admin
+        is_admin: rows[0].is_admin,
+        email_verified: rows[0].email_verified
       },
       token
     }
@@ -91,7 +94,7 @@ export async function authRoutes(server: FastifyInstance) {
     return reply.redirect(`${process.env.FRONTEND_URL}/verified`)
   })
   
-  server.post('/resend-verification', { onRequest: [(server as any).authenticate] }, async (request, reply) => {
+  server.post('/resend-verification', { onRequest: [authenticate] }, async (request, reply) => {
     const user = (request as any).user
     const verification_token = crypto.randomBytes(32).toString('hex')
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000)
@@ -106,7 +109,7 @@ export async function authRoutes(server: FastifyInstance) {
     return { success: true }
   })
 
-  server.patch('/username', { onRequest: [(server as any).authenticate] }, async (request, reply) => {
+  server.patch('/username', { onRequest: [authenticate] }, async (request, reply) => {
     const user = (request as any).user
     const { username } = request.body as any
     try {
@@ -123,7 +126,7 @@ export async function authRoutes(server: FastifyInstance) {
     }
   })
 
-  server.get('/me', { onRequest: [(server as any).authenticate] }, async (request) => {
+  server.get('/me', { onRequest: [authenticate] }, async (request) => {
     const user = (request as any).user
     const { rows } = await db.query(
       `SELECT id, email, username, is_admin, email_notifications,
@@ -134,7 +137,7 @@ export async function authRoutes(server: FastifyInstance) {
     return rows[0]
   })
 
-  server.patch('/notif-prefs', { onRequest: [(server as any).authenticate] }, async (request) => {
+  server.patch('/notif-prefs', { onRequest: [authenticate] }, async (request) => {
     const user = (request as any).user
     const { email_notifications, notif_comment_replies, notif_politician_updates, notif_app_news } = request.body as any
     const { rows } = await db.query(

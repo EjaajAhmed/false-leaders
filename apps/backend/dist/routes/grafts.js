@@ -2,20 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.graftsRoutes = graftsRoutes;
 const client_1 = require("../db/client");
-async function requireVerified(request, reply) {
-    try {
-        await request.jwtVerify();
-        if (!request.user?.email_verified) {
-            return reply.status(403).send({ error: 'Please verify your email to continue.' });
-        }
-    }
-    catch (err) {
-        reply.status(401).send({ error: 'Unauthorized' });
-    }
-}
+const auth_1 = require("../middleware/auth");
 async function graftsRoutes(server) {
-    const auth = { onRequest: [server.authenticate] };
-    server.get('/', auth, async (request) => {
+    server.get('/', { onRequest: [auth_1.authenticate] }, async (request) => {
         const user = request.user;
         const { rows } = await client_1.db.query(`SELECT g.*, COUNT(b.id) AS bookmark_count
        FROM grafts g
@@ -25,20 +14,20 @@ async function graftsRoutes(server) {
        ORDER BY g.created_at DESC`, [user.id]);
         return rows;
     });
-    server.post('/', { onRequest: [requireVerified] }, async (request, reply) => {
+    server.post('/', { onRequest: [auth_1.requireVerified] }, async (request, reply) => {
         const user = request.user;
         const { name, description } = request.body;
         const { rows } = await client_1.db.query(`INSERT INTO grafts (user_id, name, description)
        VALUES ($1, $2, $3) RETURNING *`, [user.id, name, description]);
         return reply.status(201).send(rows[0]);
     });
-    server.delete('/', { onRequest: [requireVerified] }, async (request, reply) => {
+    server.delete('/:id', { onRequest: [auth_1.requireVerified] }, async (request, reply) => {
         const user = request.user;
         const { id } = request.params;
         await client_1.db.query('DELETE FROM grafts WHERE id = $1 AND user_id = $2', [id, user.id]);
         return { success: true };
     });
-    server.get('/:id/politicians', auth, async (request) => {
+    server.get('/:id/politicians', { onRequest: [auth_1.authenticate] }, async (request) => {
         const user = request.user;
         const { id } = request.params;
         const { rows } = await client_1.db.query(`SELECT p.*, b.id AS bookmark_id, b.created_at AS bookmarked_at

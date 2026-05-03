@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.influenceRoutes = influenceRoutes;
+const auth_1 = require("../middleware/auth");
 const client_1 = require("../db/client");
 async function influenceRoutes(server) {
-    const auth = { onRequest: [server.authenticate] };
+    const auth = { onRequest: [auth_1.authenticate] };
     server.get('/:politicianId', async (request) => {
         const { politicianId } = request.params;
         const { rows } = await client_1.db.query(`SELECT * FROM foreign_influence WHERE politician_id = $1 ORDER BY influence_score DESC`, [politicianId]);

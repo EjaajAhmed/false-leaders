@@ -1,21 +1,9 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
-
-async function requireVerified(request: any, reply: any) {
-  try {
-    await request.jwtVerify()
-    if (!request.user?.email_verified) {
-      return reply.status(403).send({ error: 'Please verify your email to continue.' })
-    }
-  } catch (err) {
-    reply.status(401).send({ error: 'Unauthorized' })
-  }
-}
+import { authenticate, requireVerified } from '../middleware/auth'
 
 export async function graftsRoutes(server: FastifyInstance) {
-  const auth = { onRequest: [(server as any).authenticate] }
-
-  server.get('/', auth, async (request) => {
+  server.get('/', { onRequest: [authenticate] }, async (request) => {
     const user = (request as any).user
     const { rows } = await db.query(
       `SELECT g.*, COUNT(b.id) AS bookmark_count
@@ -40,14 +28,14 @@ export async function graftsRoutes(server: FastifyInstance) {
     return reply.status(201).send(rows[0])
   })
 
-  server.delete('/', { onRequest: [requireVerified] }, async (request, reply) => {
+  server.delete('/:id', { onRequest: [requireVerified] }, async (request, reply) => {
     const user = (request as any).user
     const { id } = request.params as { id: string }
     await db.query('DELETE FROM grafts WHERE id = $1 AND user_id = $2', [id, user.id])
     return { success: true }
   })
 
-  server.get('/:id/politicians', auth, async (request) => {
+  server.get('/:id/politicians', { onRequest: [authenticate] }, async (request) => {
     const user = (request as any).user
     const { id } = request.params as { id: string }
     const { rows } = await db.query(

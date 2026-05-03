@@ -1,21 +1,9 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
-
-async function requireVerified(request: any, reply: any) {
-  try {
-    await request.jwtVerify()
-    if (!request.user?.email_verified) {
-      return reply.status(403).send({ error: 'Please verify your email to continue.' })
-    }
-  } catch (err) {
-    reply.status(401).send({ error: 'Unauthorized' })
-  }
-}
+import { authenticate, requireVerified } from '../middleware/auth'
 
 export async function bookmarksRoutes(server: FastifyInstance) {
-  const auth = { onRequest: [(server as any).authenticate] }
-
-  server.get('/', auth, async (request) => {
+  server.get('/', { onRequest: [authenticate] }, async (request) => {
     const user = (request as any).user
     const { rows } = await db.query(
       `SELECT b.id, b.created_at, b.graft_id,
@@ -48,7 +36,7 @@ export async function bookmarksRoutes(server: FastifyInstance) {
     }
   })
 
-  server.patch('/', { onRequest: [requireVerified] }, async (request, reply) => {
+  server.patch('/:id/move', { onRequest: [requireVerified] }, async (request, reply) => {
     const user = (request as any).user
     const { id } = request.params as { id: string }
     const { graft_id } = request.body as any
@@ -59,14 +47,14 @@ export async function bookmarksRoutes(server: FastifyInstance) {
     return rows[0]
   })
 
-  server.delete('/', { onRequest: [requireVerified] }, async (request, reply) => {
+  server.delete('/:id', { onRequest: [requireVerified] }, async (request, reply) => {
     const user = (request as any).user
     const { id } = request.params as { id: string }
     await db.query('DELETE FROM bookmarks WHERE id = $1 AND user_id = $2', [id, user.id])
     return { success: true }
   })
 
-  server.get('/check/:politicianId', auth, async (request) => {
+  server.get('/check/:politicianId', { onRequest: [authenticate] }, async (request) => {
     const user = (request as any).user
     const { politicianId } = request.params as { politicianId: string }
     const { rows } = await db.query(

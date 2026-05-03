@@ -1,9 +1,10 @@
+import { authenticate } from '../middleware/auth'
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 import { notifyPoliticianUpdate } from '../services/notify'
 
 export async function controversiesRoutes(server: FastifyInstance) {
-  const auth = { onRequest: [(server as any).authenticate] }
+  const auth = { onRequest: [authenticate] }
 
   server.get('/:politicianId', async (request) => {
     const { politicianId } = request.params as { politicianId: string }

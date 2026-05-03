@@ -18,7 +18,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
   const [quote] = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)])
   const [mounted, setMounted] = useState(false)
-  const { loginUser } = useAuth()
+  const { } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => { setMounted(true) }, [])

@@ -21,16 +21,24 @@ import PendingVerification from './pages/PendingVerification'
 
 const queryClient = new QueryClient()
 
+function PendingVerificationWrapper() {
+  const location = useLocation()
+  return <PendingVerification email={location.state?.email} />
+}
+
 function App() {
   const { user } = useAuth()
   const location = useLocation()
-  const isAuthPage = ['/login', '/register', '/pending-verification', '/verified'].includes(location.pathname)
+  const isAuthPage = ['/login', '/register', '/pending-verification'].includes(location.pathname) 
+    || location.pathname.startsWith('/verified')
 
   if (isAuthPage) {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/pending-verification" element={<PendingVerificationWrapper />} />
+        <Route path="/verified" element={<Verified />} />
       </Routes>
     )
   }
@@ -52,9 +60,6 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/admin" element={<Admin />} />
-          <Route path="/verified" element={<Verified />} />
-          <Route path="/pending-verification" element={<PendingVerification email={undefined} />} />
-          <Route path="/verified" element={<Verified />} /> 
         </Routes>
       </div>
     </div>

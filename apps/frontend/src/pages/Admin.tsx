@@ -93,6 +93,18 @@ export default function Admin() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['truth-score-config'] })
   })
 
+  const recalculateMutation = useMutation({
+    mutationFn: async () => {
+      const res = await client.post('/politicians/recalculate-all', {})
+      return res.data
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['politicians-admin'] })
+      queryClient.invalidateQueries({ queryKey: ['politicians'] })
+      alert(`Recalculated scores for ${data.updated} politicians.`)
+    }
+  })
+
   useEffect(() => {
     if (!user) navigate('/login')
   }, [user, navigate])
@@ -178,7 +190,7 @@ export default function Admin() {
             </div>
           ))}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
           <button
             onClick={() => configMutation.mutate()}
             disabled={configMutation.isPending}
@@ -186,7 +198,14 @@ export default function Admin() {
           >
             {configMutation.isPending ? 'Saving...' : 'Save weights'}
           </button>
-          {configMutation.isSuccess && <p style={{ color: '#1e7e34', fontSize: '0.85rem', margin: 0 }}>Saved — scores update on next politician view.</p>}
+          <button
+            onClick={() => recalculateMutation.mutate()}
+            disabled={recalculateMutation.isPending}
+            style={{ padding: '0.6rem 1.5rem', background: '#555', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem' }}
+          >
+            {recalculateMutation.isPending ? 'Recalculating...' : 'Recalculate all scores'}
+          </button>
+          {configMutation.isSuccess && <p style={{ color: '#1e7e34', fontSize: '0.85rem', margin: 0 }}>Saved — click recalculate to apply to all.</p>}
         </div>
       </div>
 

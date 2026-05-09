@@ -117,21 +117,42 @@ async function politiciansRoutes(server) {
         await client_1.db.query('UPDATE politicians SET truth_score = $1 WHERE id = $2', [score, id]);
         return { ...politician, truth_score: score };
     });
-    server.post('/', auth, async (request, reply) => {
+    server.post('/recalculate-all', auth, async (request, reply) => {
         const user = request.user;
         if (!user?.is_admin)
             return reply.status(403).send({ error: 'Forbidden' });
-        const { name, party, region, position, bio, country, age, latitude, longitude } = request.body;
-        const { rows } = await client_1.db.query(`INSERT INTO politicians (name, party, region, position, bio, country, age, truth_score, latitude, longitude)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`, [
-            name, party, region, position, bio || null,
-            country || 'Canada',
-            age ? Number(age) : null,
-            90,
-            latitude ? Number(latitude) : null,
-            longitude ? Number(longitude) : null
-        ]);
-        return reply.status(201).send(rows[0]);
+        const { rows: allPoliticians } = await client_1.db.query('SELECT id FROM politicians');
+        const { rows: config } = await client_1.db.query('SELECT key, value FROM truth_score_config');
+        const cfg = {};
+        for (const c of config)
+            cfg[c.key] = Number(c.value);
+        let updated = 0;
+        for (const p of allPoliticians) {
+            const { rows: controversies } = await client_1.db.query('SELECT level FROM controversies WHERE politician_id = $1', [p.id]);
+            const { rows: funding } = await client_1.db.query('SELECT source_type, amount FROM funding_sources WHERE politician_id = $1', [p.id]);
+            const { rows: influence } = await client_1.db.query('SELECT influence_score FROM foreign_influence WHERE politician_id = $1', [p.id]);
+            const baseScore = cfg.base_score ?? 90;
+            let score = baseScore;
+            for (const c of controversies) {
+                score -= cfg[`weight_${c.level}`] ?? 0;
+            }
+            if (funding.length > 0) {
+                const total = funding.reduce((sum, f) => sum + Number(f.amount), 0);
+                const corporate = funding.filter((f) => ['Corporate', 'PAC'].includes(f.source_type)).reduce((sum, f) => sum + Number(f.amount), 0);
+                if (total > 0 && (corporate / total) * 100 > (cfg.funding_corporate_threshold ?? 60)) {
+                    score -= cfg.funding_corporate_penalty ?? 10;
+                }
+            }
+            for (const inf of influence) {
+                if (Number(inf.influence_score) > (cfg.funding_foreign_threshold ?? 60)) {
+                    score -= cfg.funding_foreign_penalty ?? 10;
+                }
+            }
+            score = Math.max(1, Math.min(100, Math.round(score)));
+            await client_1.db.query('UPDATE politicians SET truth_score = $1 WHERE id = $2', [score, p.id]);
+            updated++;
+        }
+        return { success: true, updated };
     });
     server.put('/:id', auth, async (request, reply) => {
         const user = request.user;

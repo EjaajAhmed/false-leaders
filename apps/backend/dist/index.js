@@ -17,6 +17,7 @@ const controversies_1 = require("./routes/controversies");
 const notifications_1 = require("./routes/notifications");
 const funding_1 = require("./routes/funding");
 const influence_1 = require("./routes/influence");
+const config_1 = require("./routes/config");
 const server = (0, fastify_1.default)({ logger: true });
 server.register(cors_1.default, {
     origin: (origin, cb) => {
@@ -70,6 +71,7 @@ server.register(controversies_1.controversiesRoutes, { prefix: '/controversies' 
 server.register(notifications_1.notificationsRoutes, { prefix: '/notifications' });
 server.register(funding_1.fundingRoutes, { prefix: '/funding' });
 server.register(influence_1.influenceRoutes, { prefix: '/influence' });
+server.register(config_1.configRoutes, { prefix: '/config' });
 server.get('/health', async () => ({ status: 'ok' }));
 const start = async () => {
     try {

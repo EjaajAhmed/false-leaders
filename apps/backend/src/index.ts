@@ -12,6 +12,7 @@ import { controversiesRoutes } from './routes/controversies'
 import { notificationsRoutes } from './routes/notifications'
 import { fundingRoutes } from './routes/funding'
 import { influenceRoutes } from './routes/influence'
+import { configRoutes } from './routes/config'
 
 const server = Fastify({ logger: true })
 
@@ -68,6 +69,7 @@ server.register(controversiesRoutes, { prefix: '/controversies' })
 server.register(notificationsRoutes, { prefix: '/notifications' })
 server.register(fundingRoutes, { prefix: '/funding' })
 server.register(influenceRoutes, { prefix: '/influence' })
+server.register(configRoutes, { prefix: '/config' })
 
 server.get('/health', async () => ({ status: 'ok' }))
 

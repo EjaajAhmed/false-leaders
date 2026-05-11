@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getPoliticians } from '../api/politicians'
 import client from '../api/client'
+import AIAnalyzer from '../components/AIAnalyzer'
 
 const emptyForm = {
   name: '', party: '', region: '', position: '', bio: '',
@@ -254,6 +255,14 @@ export default function Admin() {
           )}
         </div>
       </div>
+
+      {/* AI Analyzer — only shown when editing an existing politician */}
+      {editing && (
+        <AIAnalyzer
+          politicianId={editing}
+          politicianName={form.name || 'this politician'}
+        />
+      )}
 
       {/* Politicians list */}
       <div>

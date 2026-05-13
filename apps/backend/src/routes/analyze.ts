@@ -131,17 +131,17 @@ ${combined.slice(0, 50000)}`
 
     for (const f of funding_sources) {
       await db.query(
-        `INSERT INTO funding_sources (politician_id, source_name, source_type, amount, currency, notes)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [id, f.source_name, f.source_type, Number(f.amount) || 0, f.currency || 'CAD', f.notes || null]
+        `INSERT INTO funding_sources (politician_id, source_name, source_type, amount)
+         VALUES ($1, $2, $3, $4)`,
+        [id, f.source_name, f.source_type, Number(f.amount) || 0]
       )
     }
 
     for (const inf of foreign_influence) {
       await db.query(
-        `INSERT INTO foreign_influence (politician_id, country, influence_type, influence_score, notes)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [id, inf.country, inf.influence_type || 'Other', Number(inf.influence_score) || 50, inf.notes || null]
+        `INSERT INTO foreign_influence (politician_id, country, influence_score, notes)
+         VALUES ($1, $2, $3, $4)`,
+        [id, inf.country, Number(inf.influence_score) || 50, inf.notes || null]
       )
     }
 

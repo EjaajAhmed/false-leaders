@@ -18,6 +18,7 @@ import NotificationBell from './components/NotificationBell'
 import { useAuth } from './context/AuthContext'
 import Verified from './pages/Verified'
 import PendingVerification from './pages/PendingVerification'
+import MobileAuthLanding from './pages/MobileAuthLanding'
 
 const queryClient = new QueryClient()
 
@@ -60,6 +61,7 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/welcome" element={<MobileAuthLanding />} />
         </Routes>
       </div>
     </div>

@@ -68,3 +68,10 @@ input, textarea, select {
 [style*="border: 1px solid #eee"] {
   border-color: #e0dbd2 !important;
 }
+
+@media (max-width: 768px) {
+  /* Push page content above the tab bar */
+  .page-content {
+    padding-bottom: 72px;
+  }
+}

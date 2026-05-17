@@ -165,8 +165,8 @@ export default function Login() {
                   </>
                 )}
               </div>
-
-              <p style={{ color: '#555', fontSize: '0.8rem', margin: 0 }}>Hold them accountable.</p>
+                {/*Insert Slogan Below*/}
+              <p style={{ color: '#555', fontSize: '0.8rem', margin: 0 }}></p>
             </div>
           </AuthSlideshow>
         </div>

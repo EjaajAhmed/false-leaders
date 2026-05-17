@@ -75,3 +75,10 @@ input, textarea, select {
     padding-bottom: 72px;
   }
 }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  overscroll-behavior: none;
+  background: #0d0d0d;
+}

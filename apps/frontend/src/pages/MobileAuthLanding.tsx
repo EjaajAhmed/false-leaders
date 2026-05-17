@@ -54,7 +54,7 @@ export default function MobileAuthLanding() {
               No one is coming to save us.
             </p>
             <p style={{ color: 'rgba(245,240,232,0.5)', fontSize: '0.85rem', margin: '1.25rem 0 0', fontFamily: 'sans-serif', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              Hold them accountable.
+              {/*Insert Slogan*/}
             </p>
           </div>
 

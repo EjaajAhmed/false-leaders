@@ -238,21 +238,33 @@ strong { font-weight: 600; }
 .tab__count { color: var(--dim); margin-left: 0.4rem; }
 .tab.is-active .tab__count { color: rgba(201, 168, 76, 0.6); }
 
-/* Chips (filters) */
-.chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+/* Chips (filters): quiet text controls, underline on active */
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.4rem; }
 .chip {
-  padding: 0.35rem 0.7rem;
+  padding: 0.45rem 0;
   background: transparent;
-  border: 1px solid var(--border-strong);
+  border: 0;
+  border-bottom: 1px solid transparent;
   font-family: var(--font-mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.14em;
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--muted);
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
 }
-.chip:hover { color: var(--text); border-color: #3a3a3a; }
-.chip.is-active { color: var(--gold); border-color: var(--gold); background: var(--gold-soft); }
+.chip:hover { color: var(--text); }
+.chip.is-active { color: var(--gold); border-bottom-color: var(--gold); }
+
+/* View bar: primary views on the left, narrowing selectors on the right */
+.viewbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem 2rem; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; margin-bottom: 1.25rem; }
+.viewbar__views { display: flex; gap: 1.6rem; overflow-x: auto; scrollbar-width: none; }
+.viewbar__views::-webkit-scrollbar { display: none; }
+.viewbar__views .chip { padding: 0.7rem 0; margin-bottom: -1px; font-size: 0.7rem; border-bottom-width: 2px; }
+.viewbar__narrow { display: flex; gap: 0.5rem; align-items: center; }
+.select--quiet { width: auto; background-color: transparent; border-color: transparent; padding: 0.45rem 1.8rem 0.45rem 0.4rem; font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.select--quiet:hover, .select--quiet:focus { color: var(--text); border-color: var(--border-strong); }
+.select--quiet.is-active { color: var(--gold); border-color: rgba(201, 168, 76, 0.4); }
 
 /* Badges */
 .badge {

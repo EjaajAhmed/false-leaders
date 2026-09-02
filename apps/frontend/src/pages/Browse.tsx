@@ -10,12 +10,16 @@ import type { ViewKey } from '../config'
 
 type Sort = 'prominence' | 'name' | 'score_asc' | 'score_desc' | 'newest'
 
+// Primary views shown in the bar. Specific categories and countries narrow across everyone on file.
+const PRIMARY = VIEWS.filter(v => v.key !== 'all')
+const NARROW_CATEGORIES = CATEGORIES.filter(c => c.value !== 'world_leader' && c.value !== 'politician')
+
 export default function Browse() {
   const [params, setParams] = useSearchParams()
   const [search, setSearch] = useState(params.get('q') || '')
   const [category, setCategory] = useState(params.get('category') || '')
-  const [view, setView] = useState<ViewKey>((VIEWS.find(v => v.key === params.get('view'))?.key || (params.get('category') ? 'all' : 'main')) as ViewKey)
-  const [country, setCountry] = useState('')
+  const [country, setCountry] = useState(params.get('country') || '')
+  const [view, setView] = useState<ViewKey>((PRIMARY.find(v => v.key === params.get('view'))?.key || 'main') as ViewKey)
   const [party, setParty] = useState('')
   const [position, setPosition] = useState('')
   const [minAge, setMinAge] = useState('')
@@ -26,23 +30,29 @@ export default function Browse() {
   const [showFilters, setShowFilters] = useState(false)
   const [page, setPage] = useState(1)
 
-  const activeFilterCount = [category, country, party, position, minAge, maxAge, minTruth, maxTruth].filter(Boolean).length
+  // Any narrowing (search, category, country) searches everyone on file rather than the current view.
+  const narrowed = !!(search || category || country)
+  const activeFilterCount = [party, position, minAge, maxAge, minTruth, maxTruth].filter(Boolean).length
 
-  const clearFilters = () => {
-    setCountry(''); setParty(''); setPosition(''); setMinAge(''); setMaxAge(''); setMinTruth(''); setMaxTruth('')
-    setCategory(''); setPage(1); syncParams(search, '', view)
+  const sync = (next: { q?: string; category?: string; country?: string; view?: ViewKey }) => {
+    const q = next.q ?? search
+    const c = next.category ?? category
+    const co = next.country ?? country
+    const v = next.view ?? view
+    const out: Record<string, string> = {}
+    if (q) out.q = q
+    if (c) out.category = c
+    if (co) out.country = co
+    if (v !== 'main') out.view = v
+    setParams(out, { replace: true })
+    setPage(1)
   }
-  const syncParams = (q: string, c: string, vw: ViewKey) => {
-    const next: Record<string, string> = {}
-    if (q) next.q = q
-    if (c) next.category = c
-    if (vw !== 'main') next.view = vw
-    setParams(next, { replace: true })
-  }
-  const onSearch = (v: string) => { setSearch(v); setPage(1); syncParams(v, category, view) }
-  const onCategory = (c: string) => { setCategory(c); setPage(1); if (c) setView('all'); syncParams(search, c, c ? 'all' : view) }
-  const onView = (vw: ViewKey) => { setView(vw); setCategory(''); setPage(1); syncParams(search, '', vw) }
+  const onSearch = (v: string) => { setSearch(v); sync({ q: v }) }
+  const onCategory = (c: string) => { setCategory(c); sync({ category: c }) }
+  const onCountry = (c: string) => { setCountry(c); sync({ country: c }) }
+  const onView = (v: ViewKey) => { setView(v); setCategory(''); setCountry(''); setSearch(''); sync({ view: v, category: '', country: '', q: '' }) }
   const set = (setter: (v: string) => void) => (v: string) => { setter(v); setPage(1) }
+  const clearFilters = () => { setParty(''); setPosition(''); setMinAge(''); setMaxAge(''); setMinTruth(''); setMaxTruth(''); setPage(1) }
 
   const { data: meta } = useQuery({ queryKey: ['politicians-meta'], queryFn: getPoliticiansMeta })
 
@@ -50,11 +60,11 @@ export default function Browse() {
     queryKey: ['politicians', search, view, category, country, party, position, minAge, maxAge, minTruth, maxTruth, sort, page],
     queryFn: () => getPoliticians({
       search: search || undefined,
+      category: category || undefined,
       country: country || undefined,
+      view: narrowed ? undefined : view,
       party: party || undefined,
       position: position || undefined,
-      category: category || undefined,
-      view: category || view === 'all' ? undefined : view,
       min_age: minAge ? Number(minAge) : undefined,
       max_age: maxAge ? Number(maxAge) : undefined,
       min_truth: minTruth ? Number(minTruth) : undefined,
@@ -68,25 +78,47 @@ export default function Browse() {
   const totalPages = data?.totalPages || 1
   const total = data?.total || 0
 
+  const heading = () => {
+    if (search) return `Everyone on file matching "${search}".`
+    if (category && country) return `${CATEGORIES.find(c => c.value === category)?.plural} · ${country}.`
+    if (category) return `${CATEGORIES.find(c => c.value === category)?.plural}, everywhere.`
+    if (country) return `Everyone on file from ${country}.`
+    return PRIMARY.find(v => v.key === view)?.blurb || ''
+  }
+
   return (
     <div className="page">
       <div className="page-head">
         <p className="eyebrow">Files</p>
         <h1>Browse</h1>
-        <p>{category ? CATEGORIES.find(c => c.value === category)?.plural : VIEWS.find(v => v.key === view)?.blurb} <span className="mono">{total.toLocaleString()}</span> on file.</p>
+        <p>{heading()} <span className="mono">{total.toLocaleString()}</span> on file.</p>
       </div>
 
-      <div className="chips" style={{ marginBottom: '1rem' }}>
-        {VIEWS.map(v => (
-          <button key={v.key} className={`chip${!category && view === v.key ? ' is-active' : ''}`} onClick={() => onView(v.key)}>{v.label}</button>
-        ))}
+      <div className="viewbar">
+        <div className="viewbar__views">
+          {PRIMARY.map(v => (
+            <button key={v.key} className={`chip${!narrowed && view === v.key ? ' is-active' : ''}`} onClick={() => onView(v.key)}>{v.label}</button>
+          ))}
+        </div>
+        <div className="viewbar__narrow">
+          <select className={`select select--quiet${category ? ' is-active' : ''}`} value={category} onChange={e => onCategory(e.target.value)} aria-label="Category">
+            <option value="">Category</option>
+            {NARROW_CATEGORIES.filter(c => (meta?.categories?.find((m: any) => m.key === c.value)?.count || 0) > 0).map(c => (
+              <option key={c.value} value={c.value}>{c.plural}</option>
+            ))}
+          </select>
+          <select className={`select select--quiet${country ? ' is-active' : ''}`} value={country} onChange={e => onCountry(e.target.value)} aria-label="Country">
+            <option value="">Country</option>
+            {meta?.countries?.map((c: string) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
       </div>
 
-      <div className="row" style={{ gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+      <div className="row" style={{ gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
         <input
           className="input"
           style={{ flex: 1, minWidth: 200 }}
-          placeholder="Search name, alias, party, region, position"
+          placeholder="Search everyone on file"
           value={search}
           onChange={e => onSearch(e.target.value)}
         />
@@ -106,23 +138,7 @@ export default function Browse() {
         <div className="card" style={{ marginBottom: '1rem' }}>
           <div className="grid-2" style={{ gap: '0.75rem' }}>
             <div className="field">
-              <label className="label">Category</label>
-              <select className="select" value={category} onChange={e => onCategory(e.target.value)}>
-                <option value="">Any</option>
-                {CATEGORIES.filter(c => (meta?.categories?.find((m: any) => m.key === c.value)?.count || 0) > 0).map(c => (
-                  <option key={c.value} value={c.value}>{c.plural} ({meta?.categories?.find((m: any) => m.key === c.value)?.count})</option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label className="label">Country</label>
-              <select className="select" value={country} onChange={e => set(setCountry)(e.target.value)}>
-                <option value="">All</option>
-                {meta?.countries?.map((c: string) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label className="label">Party</label>
+              <label className="label">Party / organisation</label>
               <select className="select" value={party} onChange={e => set(setParty)(e.target.value)}>
                 <option value="">All</option>
                 {meta?.parties?.map((p: string) => <option key={p} value={p}>{p}</option>)}

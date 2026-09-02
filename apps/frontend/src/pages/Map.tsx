@@ -34,7 +34,7 @@ function createIcon(score: number) {
 export default function MapPage() {
   const [view, setView] = useState<ViewKey>('main')
   const [country, setCountry] = useState('')
-  const { data, isLoading } = useQuery({ queryKey: ['politicians-map', view, country], queryFn: () => getMapLeaders({ view, country: country || undefined }), placeholderData: prev => prev })
+  const { data, isLoading } = useQuery({ queryKey: ['politicians-map', view, country], queryFn: () => getMapLeaders({ view: country ? 'all' : view, country: country || undefined }), placeholderData: prev => prev })
   const { data: meta } = useQuery({ queryKey: ['politicians-meta'], queryFn: getPoliticiansMeta })
   const withCoords = data || []
 
@@ -46,17 +46,21 @@ export default function MapPage() {
         </div>
       )}
 
-      <div className="map-legend" style={{ left: '3.5rem', right: 'auto', top: '1rem', maxWidth: 'calc(100% - 5rem)' }}>
-        <div className="chips">
-          {VIEWS.map(v => (
-            <button key={v.key} className={`chip${view === v.key ? ' is-active' : ''}`} onClick={() => setView(v.key)}>{v.label}</button>
-          ))}
-          <select className="select" style={{ width: 'auto', padding: '0.3rem 1.8rem 0.3rem 0.6rem', fontSize: '0.7rem' }} value={country} onChange={e => setCountry(e.target.value)}>
-            <option value="">Any country</option>
-            {meta?.countries?.map((c: string) => <option key={c} value={c}>{c}</option>)}
-          </select>
+      <div className="map-legend" style={{ left: '3.5rem', right: 'auto', top: '1rem', maxWidth: 'calc(100% - 5rem)', padding: '0.4rem 1rem 0.6rem' }}>
+        <div className="viewbar" style={{ borderBottom: 0, paddingBottom: 0, marginBottom: 0, gap: '0.5rem 1.5rem' }}>
+          <div className="viewbar__views" style={{ gap: '1.25rem' }}>
+            {VIEWS.filter(v => v.key !== 'all').map(v => (
+              <button key={v.key} className={`chip${!country && view === v.key ? ' is-active' : ''}`} onClick={() => { setView(v.key); setCountry('') }}>{v.label}</button>
+            ))}
+          </div>
+          <div className="viewbar__narrow">
+            <select className={`select select--quiet${country ? ' is-active' : ''}`} value={country} onChange={e => setCountry(e.target.value)} aria-label="Country">
+              <option value="">Country</option>
+              {meta?.countries?.map((c: string) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <span className="mono tiny dim" style={{ letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{withCoords.length} plotted</span>
+          </div>
         </div>
-        <div className="mono tiny dim" style={{ marginTop: '0.5rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{withCoords.length} plotted</div>
       </div>
 
       <div className="map-legend" style={{ top: 'auto', bottom: '1.5rem' }}>

@@ -51,7 +51,7 @@ export default function Feed() {
       <div className="page-head">
         <p className="eyebrow">Live · refreshes every 30s</p>
         <h1>The Wall</h1>
-        <p>Every score movement, leak, controversy and verdict shift across every leader on file.</p>
+        <p>{ARCHIVED.controversies ? 'Every score movement, leak and verdict shift across every leader on file.' : 'Every score movement, leak, controversy and verdict shift across every leader on file.'}</p>
       </div>
 
       <div className="chips" style={{ marginBottom: '1.25rem' }}>

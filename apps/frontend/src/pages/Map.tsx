@@ -2,9 +2,12 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
-import { getPoliticians } from '../api/politicians'
+import { useState } from 'react'
+import { getMapLeaders, getPoliticiansMeta } from '../api/politicians'
+import { VIEWS } from '../config'
+import type { ViewKey } from '../config'
 import ScoreRing from '../components/ScoreRing'
-import { leaderMeta } from '../lib/format'
+import { categoryLabel, leaderMeta } from '../lib/format'
 import 'leaflet/dist/leaflet.css'
 
 const COLORS = {
@@ -29,8 +32,11 @@ function createIcon(score: number) {
 }
 
 export default function MapPage() {
-  const { data, isLoading } = useQuery({ queryKey: ['politicians-map'], queryFn: () => getPoliticians({ limit: 1000 }) })
-  const withCoords = data?.politicians?.filter((p: any) => p.latitude && p.longitude) || []
+  const [view, setView] = useState<ViewKey>('main')
+  const [country, setCountry] = useState('')
+  const { data, isLoading } = useQuery({ queryKey: ['politicians-map', view, country], queryFn: () => getMapLeaders({ view, country: country || undefined }), placeholderData: prev => prev })
+  const { data: meta } = useQuery({ queryKey: ['politicians-meta'], queryFn: getPoliticiansMeta })
+  const withCoords = data || []
 
   return (
     <div style={{ height: '100vh', width: '100%', position: 'relative' }}>
@@ -40,7 +46,20 @@ export default function MapPage() {
         </div>
       )}
 
-      <div className="map-legend">
+      <div className="map-legend" style={{ left: '3.5rem', right: 'auto', top: '1rem', maxWidth: 'calc(100% - 5rem)' }}>
+        <div className="chips">
+          {VIEWS.map(v => (
+            <button key={v.key} className={`chip${view === v.key ? ' is-active' : ''}`} onClick={() => setView(v.key)}>{v.label}</button>
+          ))}
+          <select className="select" style={{ width: 'auto', padding: '0.3rem 1.8rem 0.3rem 0.6rem', fontSize: '0.7rem' }} value={country} onChange={e => setCountry(e.target.value)}>
+            <option value="">Any country</option>
+            {meta?.countries?.map((c: string) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div className="mono tiny dim" style={{ marginTop: '0.5rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{withCoords.length} plotted</div>
+      </div>
+
+      <div className="map-legend" style={{ top: 'auto', bottom: '1.5rem' }}>
         <div className="eyebrow">TruthScore</div>
         {[['Clean · 75–90', COLORS.clean], ['Watch list · 50–74', COLORS.watch], ['Warning · 25–49', COLORS.warn], ['Condemned · 1–24', COLORS.condemned]].map(([label, color]) => (
           <div key={label} className="map-legend__item"><span className="map-legend__swatch" style={{ background: color }} />{label}</div>
@@ -58,7 +77,8 @@ export default function MapPage() {
               <div className="row row--between" style={{ alignItems: 'flex-start', gap: '0.75rem' }}>
                 <div style={{ minWidth: 0 }}>
                   <p className="display" style={{ fontSize: '1rem', lineHeight: 1.2 }}>{p.name}</p>
-                  <p className="muted small" style={{ marginTop: '0.2rem' }}>{leaderMeta(p)}</p>
+                  <p className="mono tiny" style={{ color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '0.2rem' }}>{categoryLabel(p.category)}</p>
+                  <p className="muted small" style={{ marginTop: '0.1rem' }}>{leaderMeta(p)}</p>
                 </div>
                 {p.truth_score != null && <ScoreRing value={Number(p.truth_score)} size="sm" />}
               </div>

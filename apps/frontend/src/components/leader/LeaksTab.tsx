@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext'
 import Upvote from '../Upvote'
 import { Empty, Loading } from '../States'
 import { proleTag, timeAgo } from '../../lib/format'
+import { ARCHIVED } from '../../config'
 
 export default function LeaksTab({ leaderId, onGoTo }: { leaderId: string; onGoTo: (tab: any) => void }) {
   const { user } = useAuth()
@@ -68,13 +69,13 @@ export default function LeaksTab({ leaderId, onGoTo }: { leaderId: string; onGoT
               <div className="post__who">
                 <span className="post__prole">{proleTag(l.prole_number)}</span>
                 <span className="post__time">{timeAgo(l.created_at)}</span>
-                {l.status === 'escalated' && (
+                {l.status === 'escalated' && !ARCHIVED.controversies && (
                   <button className="badge badge--confirmed" style={{ cursor: 'pointer' }} onClick={() => onGoTo('controversies')}>Escalated to controversy</button>
                 )}
               </div>
               {user?.is_admin && l.status !== 'escalated' && (
                 <div className="row" style={{ gap: '0.3rem' }}>
-                  <button className="btn btn--sm" onClick={() => moderate.mutate({ id: l.id, status: 'escalated' })}>Escalate</button>
+                  {!ARCHIVED.controversies && <button className="btn btn--sm" onClick={() => moderate.mutate({ id: l.id, status: 'escalated' })}>Escalate</button>}
                   <button className="btn btn--ghost btn--sm btn--danger" onClick={() => { if (confirm('Remove this leak?')) moderate.mutate({ id: l.id, status: 'removed' }) }}>Remove</button>
                 </div>
               )}

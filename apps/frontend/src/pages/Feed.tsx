@@ -4,6 +4,7 @@ import { getFeed } from '../api/politicians'
 import type { FeedEvent } from '../types'
 import FeedList from '../components/FeedList'
 import { Loading } from '../components/States'
+import { ARCHIVED } from '../config'
 
 type Filter = 'all' | 'score_change' | 'leak' | 'controversy' | 'verdict_shift'
 const FILTERS: { key: Filter; label: string }[] = [
@@ -54,7 +55,7 @@ export default function Feed() {
       </div>
 
       <div className="chips" style={{ marginBottom: '1.25rem' }}>
-        {FILTERS.map(f => (
+        {FILTERS.filter(f => !(f.key === 'controversy' && ARCHIVED.controversies)).map(f => (
           <button key={f.key} className={`chip${filter === f.key ? ' is-active' : ''}`} onClick={() => setFilter(f.key)}>{f.label}</button>
         ))}
       </div>

@@ -23,10 +23,34 @@ const TOP_CONTROVERSY_JSON = `
             c.upvotes DESC, c.created_at DESC
    LIMIT 1) AS top_controversy`
 
+export const FIGURE_CATEGORIES = CATEGORIES.filter(c => c !== 'world_leader' && c !== 'politician')
+export const MAIN_VIEW_FIGURES = 50
+
+/** SQL fragment (no params) selecting the "main view": world leaders + top figures by prominence. */
+export const MAIN_VIEW_SQL = `(
+  p.category = 'world_leader' OR p.id IN (
+    SELECT id FROM politicians
+    WHERE category NOT IN ('world_leader', 'politician')
+    ORDER BY prominence DESC, name ASC
+    LIMIT ${MAIN_VIEW_FIGURES}
+  )
+)`
+
+export function viewCondition(view: string | undefined): string | null {
+  switch (view) {
+    case 'main': return MAIN_VIEW_SQL
+    case 'world_leader': return `p.category = 'world_leader'`
+    case 'figures': return `p.category NOT IN ('world_leader', 'politician')`
+    case 'politician': return `p.category = 'politician'`
+    default: return null
+  }
+}
+
 const CARD_COLUMNS = `
-  p.id, p.name, p.party, p.region, p.position, p.country, p.category, p.age, p.bio, p.photo_url,
+  p.id, p.name, p.party, p.region, p.position, p.country, p.category, p.prominence, p.age, p.bio, p.photo_url,
   p.aliases, p.truth_score, p.latitude, p.longitude, p.created_at,
   (SELECT COUNT(*) FROM controversies c WHERE c.politician_id = p.id)::int AS controversy_count,
+  (SELECT COUNT(*) FROM leaks l WHERE l.politician_id = p.id AND l.status IN ('visible', 'escalated'))::int AS leak_count,
   ${VERDICT_JSON},
   ${TOP_CONTROVERSY_JSON}`
 
@@ -40,7 +64,7 @@ export async function politiciansRoutes(server: FastifyInstance) {
   const admin = { onRequest: [requireAdmin] }
 
   server.get('/', async (request) => {
-    const { search, country, party, position, category, min_age, max_age, min_truth, max_truth, page, limit, sort } = request.query as any
+    const { search, country, party, position, category, view, min_age, max_age, min_truth, max_truth, page, limit, sort } = request.query as any
 
     const pageNum = Math.max(1, Number(page) || 1)
     const limitNum = Math.min(1000, Math.max(1, Number(limit) || 20))
@@ -59,6 +83,8 @@ export async function politiciansRoutes(server: FastifyInstance) {
     if (party) { where += ` AND p.party ILIKE $${i}`; params.push(`%${party}%`); i++ }
     if (position) { where += ` AND p.position ILIKE $${i}`; params.push(`%${position}%`); i++ }
     if (category && CATEGORIES.includes(category)) { where += ` AND p.category = $${i}`; params.push(category); i++ }
+    const viewSql = viewCondition(view)
+    if (viewSql) where += ` AND ${viewSql}`
     if (min_age) { where += ` AND p.age >= $${i}`; params.push(Number(min_age)); i++ }
     if (max_age) { where += ` AND p.age <= $${i}`; params.push(Number(max_age)); i++ }
     if (min_truth) { where += ` AND p.truth_score >= $${i}`; params.push(Number(min_truth)); i++ }
@@ -69,6 +95,7 @@ export async function politiciansRoutes(server: FastifyInstance) {
       score_asc: 'p.truth_score ASC NULLS LAST, p.name ASC',
       score_desc: 'p.truth_score DESC NULLS LAST, p.name ASC',
       newest: 'p.created_at DESC',
+      prominence: 'p.prominence DESC, p.truth_score ASC NULLS LAST, p.name ASC',
     }[String(sort) as 'name'] || 'p.name ASC'
 
     const countResult = await db.query(`SELECT COUNT(*) ${where}`, params)
@@ -102,6 +129,26 @@ export async function politiciansRoutes(server: FastifyInstance) {
       positions: positions.map(r => r.position),
       categories: CATEGORIES.map(c => ({ key: c, count: categories.find(r => r.category === c)?.count || 0 })),
     }
+  })
+
+  // Lightweight rows for the map. view: main | world_leader | figures | politician | all
+  server.get('/map', async (request) => {
+    const { view, country } = request.query as any
+    const params: any[] = []
+    let where = 'WHERE p.latitude IS NOT NULL AND p.longitude IS NOT NULL'
+    const viewSql = viewCondition(view || 'main')
+    if (viewSql) where += ` AND ${viewSql}`
+    if (country) { params.push(`%${country}%`); where += ` AND p.country ILIKE $${params.length}` }
+    const { rows } = await db.query(
+      `SELECT p.id, p.name, p.position, p.party, p.country, p.category, p.prominence, p.truth_score, p.latitude, p.longitude,
+              LEFT(p.bio, 140) AS bio,
+              ${VERDICT_JSON}
+       FROM politicians p ${where}
+       ORDER BY p.prominence DESC, p.name ASC
+       LIMIT 2000`,
+      params
+    )
+    return rows
   })
 
   server.get('/:id', async (request, reply) => {
@@ -138,16 +185,17 @@ export async function politiciansRoutes(server: FastifyInstance) {
   })
 
   server.post('/', admin, async (request, reply) => {
-    const { name, party, region, position, bio, country, category, age, latitude, longitude, photo_url, aliases } = request.body as any
+    const { name, party, region, position, bio, country, category, prominence, age, latitude, longitude, photo_url, aliases } = request.body as any
     if (!name || !String(name).trim()) return reply.status(400).send({ error: 'Name required.' })
 
     const { rows } = await db.query(
-      `INSERT INTO politicians (name, party, region, position, bio, country, category, age, latitude, longitude, photo_url, aliases, truth_score, score_history)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 90, '[]') RETURNING *`,
+      `INSERT INTO politicians (name, party, region, position, bio, country, category, prominence, age, latitude, longitude, photo_url, aliases, truth_score, score_history)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 90, '[]') RETURNING *`,
       [
         String(name).trim(), party || null, region || null, position || null, bio || null,
         country || null,
         CATEGORIES.includes(category) ? category : 'politician',
+        prominence != null && prominence !== '' ? Number(prominence) : (category === 'world_leader' ? 50 : 0),
         age ? Number(age) : null,
         latitude ? Number(latitude) : null,
         longitude ? Number(longitude) : null,
@@ -173,7 +221,7 @@ export async function politiciansRoutes(server: FastifyInstance) {
 
   server.put('/:id', admin, async (request, reply) => {
     const { id } = request.params as { id: string }
-    const { name, party, region, position, bio, country, category, age, latitude, longitude, photo_url, aliases } = request.body as any
+    const { name, party, region, position, bio, country, category, prominence, age, latitude, longitude, photo_url, aliases } = request.body as any
 
     const { rows: existing } = await db.query('SELECT * FROM politicians WHERE id = $1', [id])
     if (existing.length === 0) return reply.status(404).send({ error: 'No such leader.' })
@@ -182,7 +230,7 @@ export async function politiciansRoutes(server: FastifyInstance) {
     const { rows } = await db.query(
       `UPDATE politicians SET
         name=$1, party=$2, region=$3, position=$4, bio=$5,
-        country=$6, category=$7, age=$8, latitude=$9, longitude=$10, photo_url=$11, aliases=$12
+        country=$6, category=$7, age=$8, latitude=$9, longitude=$10, photo_url=$11, aliases=$12, prominence=$14
        WHERE id=$13 RETURNING *`,
       [
         name, party || null, region || null, position || null, bio || null,
@@ -193,7 +241,8 @@ export async function politiciansRoutes(server: FastifyInstance) {
         longitude ? Number(longitude) : null,
         photo_url || null,
         aliases === undefined ? prev.aliases : parseAliases(aliases),
-        id
+        id,
+        prominence != null && prominence !== '' ? Number(prominence) : prev.prominence,
       ]
     )
 

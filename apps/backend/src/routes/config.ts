@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 import { requireAdmin } from '../middleware/auth'
+import { ARCHIVED_CONFIG_KEYS } from '../services/score'
 
 export async function configRoutes(server: FastifyInstance) {
 
@@ -8,7 +9,7 @@ export async function configRoutes(server: FastifyInstance) {
     const { rows } = await db.query(
       'SELECT key, value, label FROM truth_score_config ORDER BY key'
     )
-    return rows
+    return rows.map(r => ({ ...r, archived: ARCHIVED_CONFIG_KEYS.includes(r.key) }))
   })
 
   server.put('/truth-score', { onRequest: [requireAdmin] }, async (request) => {
@@ -20,6 +21,6 @@ export async function configRoutes(server: FastifyInstance) {
       )
     }
     const { rows } = await db.query('SELECT key, value, label FROM truth_score_config ORDER BY key')
-    return rows
+    return rows.map(r => ({ ...r, archived: ARCHIVED_CONFIG_KEYS.includes(r.key) }))
   })
 }

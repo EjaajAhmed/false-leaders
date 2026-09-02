@@ -77,10 +77,11 @@ export async function leaksRoutes(server: FastifyInstance) {
       upvoted = true
     }
     const { rows } = await db.query(
-      `UPDATE leaks SET upvotes = (SELECT COUNT(*) FROM leak_upvotes WHERE leak_id = $1)::int WHERE id = $1 RETURNING upvotes`,
+      `UPDATE leaks SET upvotes = (SELECT COUNT(*) FROM leak_upvotes WHERE leak_id = $1)::int WHERE id = $1 RETURNING upvotes, politician_id`,
       [id]
     )
     if (rows.length === 0) return reply.status(404).send({ error: 'Not found.' })
+    await recalculateScore(rows[0].politician_id)
     return { upvoted, upvotes: rows[0].upvotes }
   })
 
@@ -139,6 +140,7 @@ export async function leaksRoutes(server: FastifyInstance) {
     }
 
     await db.query('UPDATE leaks SET status = $1 WHERE id = $2', [status, id])
+    await recalculateScore(leak.politician_id)
     return { success: true, status }
   })
 }

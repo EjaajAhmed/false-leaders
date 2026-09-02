@@ -7,6 +7,7 @@ import LeaderCard from '../components/LeaderCard'
 import Reveal from '../components/Reveal'
 import { Loading } from '../components/States'
 import { scoreColor } from '../lib/format'
+import { ARCHIVED } from '../config'
 
 function useCountUp(target: number, duration = 1800) {
   const [value, setValue] = useState(0)
@@ -166,7 +167,7 @@ export default function Home() {
           <div className="grid-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
             {[
               ['Leaders', stats.data?.leaders],
-              ['Controversies', stats.data?.controversies],
+              ...(ARCHIVED.controversies ? [] : [['Controversies', stats.data?.controversies]]),
               ['Verdicts', stats.data?.verdicts],
               ['Leaks', stats.data?.leaks],
               ['Proles', stats.data?.proles],

@@ -17,8 +17,9 @@ export async function homeRoutes(server: FastifyInstance) {
   // Leaders with the most activity in the last 7 days; falls back to lowest scores.
   server.get('/featured', async () => {
     const { rows } = await db.query(`
-      SELECT p.id, p.name, p.party, p.region, p.position, p.country, p.category, p.truth_score,
+      SELECT p.id, p.name, p.party, p.region, p.position, p.country, p.category, p.prominence, p.truth_score,
         (SELECT COUNT(*) FROM controversies c WHERE c.politician_id = p.id)::int AS controversy_count,
+        (SELECT COUNT(*) FROM leaks l WHERE l.politician_id = p.id AND l.status IN ('visible', 'escalated'))::int AS leak_count,
         (SELECT json_build_object('title', c.title, 'level', c.level)
          FROM controversies c WHERE c.politician_id = p.id
          ORDER BY CASE c.level WHEN 'confirmed' THEN 0 WHEN 'likely' THEN 1 WHEN 'maybe' THEN 2 ELSE 3 END, c.upvotes DESC, c.created_at DESC
@@ -32,7 +33,7 @@ export async function homeRoutes(server: FastifyInstance) {
          FROM verdicts v WHERE v.politician_id = p.id) AS verdict_counts,
         (SELECT COUNT(*) FROM feed_events f WHERE f.leader_id = p.id AND f.created_at > NOW() - INTERVAL '7 days')::int AS activity
       FROM politicians p
-      ORDER BY activity DESC, (SELECT COUNT(*) FROM controversies c WHERE c.politician_id = p.id) DESC, p.truth_score ASC
+      ORDER BY activity DESC, p.prominence DESC, p.truth_score ASC
       LIMIT 8
     `)
     return rows

@@ -322,3 +322,36 @@ export const LEADERS: SeedLeader[] = [
   ['Viktor Orbán', 'Leader of Fidesz', 'Hungary', 'Fidesz', 'Budapest', 47.50, 19.04, 1963, 'politician', 'Prime minister 2010–2026, ousted in the April 2026 election.'],
   ['Rahul Gandhi', 'Leader of the Opposition', 'India', 'Indian National Congress', 'New Delhi', 28.61, 77.21, 1970, 'politician', 'Congress leader and leader of the opposition in the Lok Sabha.'],
 ]
+
+// Prominence: drives the "main view" (world leaders + top 50 figures) and default sort.
+// World leaders default to 50; the most consequential are lifted above that.
+export const PROMINENCE: Record<string, number> = {
+  // Heads of state / government
+  'Donald Trump': 100, 'Xi Jinping': 99, 'Vladimir Putin': 98, 'Narendra Modi': 96, 'Keir Starmer': 92,
+  'Emmanuel Macron': 92, 'Friedrich Merz': 92, 'Benjamin Netanyahu': 91, 'Mohammed bin Salman': 91,
+  'Volodymyr Zelensky': 91, 'Ursula von der Leyen': 90, 'Giorgia Meloni': 88, 'Sanae Takaichi': 88,
+  'Luiz Inácio Lula da Silva': 88, 'Claudia Sheinbaum': 87, 'Recep Tayyip Erdoğan': 87, 'Ali Khamenei': 87,
+  'Kim Jong Un': 86, 'Mark Carney': 86, 'Javier Milei': 85, 'Lee Jae-myung': 84, 'Anthony Albanese': 84,
+  'Prabowo Subianto': 82, 'Cyril Ramaphosa': 82, 'Pedro Sánchez': 82, 'Donald Tusk': 82, 'Abdel Fattah el-Sisi': 80,
+  'Bola Tinubu': 80, 'Mohamed bin Zayed Al Nahyan': 80, 'Tamim bin Hamad Al Thani': 78, 'Ahmed al-Sharaa': 78,
+  'Shehbaz Sharif': 76, 'Nayib Bukele': 76, 'Viktor Orbán': 70, 'Péter Magyar': 76, 'Lai Ching-te': 76,
+  'JD Vance': 85, 'Mark Rutte': 75, 'António Guterres': 74, 'Charles III': 74, 'Leo XIV': 90,
+  // Business
+  'Elon Musk': 97, 'Mark Zuckerberg': 89, 'Jeff Bezos': 88, 'Bill Gates': 86, 'Sam Altman': 86, 'Jensen Huang': 85,
+  'Rupert Murdoch': 84, 'Larry Ellison': 82, 'Satya Nadella': 80, 'Sundar Pichai': 80, 'Tim Cook': 80,
+  'Peter Thiel': 79, 'Jamie Dimon': 78, 'Larry Fink': 77, 'Warren Buffett': 77, 'Lachlan Murdoch': 76,
+  'Bernard Arnault': 74, 'Mukesh Ambani': 74, 'Dario Amodei': 73, 'Alex Karp': 72, 'Michael Bloomberg': 71,
+  'Zhang Yiming': 70, 'Gautam Adani': 69, 'Larry Page': 68, 'Sergey Brin': 68, 'Andy Jassy': 66, 'Pony Ma': 65,
+  'Jack Ma': 64, 'Marc Benioff': 60, 'Michael Dell': 58, 'Carlos Slim': 62, 'Mark Cuban': 55, 'Ray Dalio': 52,
+  // Media
+  'Joe Rogan': 78, 'Tucker Carlson': 72, 'Jimmy Donaldson': 66, 'Oprah Winfrey': 64, 'Ben Shapiro': 58, 'Piers Morgan': 54,
+  // Judiciary / religious / international / military
+  'John Roberts': 80, 'Clarence Thomas': 70, 'Samuel Alito': 68, 'Amy Coney Barrett': 66, 'Brett Kavanaugh': 64,
+  'Sonia Sotomayor': 62, 'Richard Wagner': 40, 'Robert Reed': 42, 'Yuji Iwasawa': 44,
+  'Tenzin Gyatso': 66, 'Ali al-Sistani': 60, 'Kirill': 62, 'Bartholomew I': 48, 'Ahmed el-Tayeb': 50,
+  'Christine Lagarde': 72, 'Kristalina Georgieva': 68, 'Tedros Adhanom Ghebreyesus': 66, 'Ajay Banga': 60,
+  'Gianni Infantino': 62, 'Kirsty Coventry': 50, 'Asim Munir': 70,
+  // Other politicians
+  'Marco Rubio': 82, 'Pete Hegseth': 76, 'Robert F. Kennedy Jr.': 76, 'Gavin Newsom': 74, 'Nigel Farage': 74,
+  'Marine Le Pen': 70, 'Jordan Bardella': 70, 'Alice Weidel': 68, 'Rahul Gandhi': 62, 'Pierre Poilievre': 60,
+}

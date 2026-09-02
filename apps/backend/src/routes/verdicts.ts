@@ -3,6 +3,7 @@ import { db } from '../db/client'
 import { optionalAuth, requireVerified } from '../middleware/auth'
 import { VERDICT_KINDS, getVerdictAggregate } from '../services/verdicts'
 import { emitFeedEvent } from '../services/feed'
+import { recalculateScore } from '../services/score'
 
 const MAX_BODY = 1500
 
@@ -61,6 +62,7 @@ export async function leaderVerdictRoutes(server: FastifyInstance) {
     )
 
     const after = await getVerdictAggregate(id)
+    await recalculateScore(id)
     if (after.dominant && after.dominant !== before.dominant && after.total >= 3) {
       await emitFeedEvent('verdict_shift', id, leader[0].name, { from: before.dominant, to: after.dominant, total: after.total })
     }
@@ -100,11 +102,10 @@ export async function verdictsRoutes(server: FastifyInstance) {
   server.delete('/:id', { onRequest: [requireVerified] }, async (request) => {
     const { id } = request.params as { id: string }
     const user = (request as any).user
-    if (user.is_admin) {
-      await db.query('DELETE FROM verdicts WHERE id = $1', [id])
-    } else {
-      await db.query('DELETE FROM verdicts WHERE id = $1 AND user_id = $2', [id, user.id])
-    }
+    const { rows } = user.is_admin
+      ? await db.query('DELETE FROM verdicts WHERE id = $1 RETURNING politician_id', [id])
+      : await db.query('DELETE FROM verdicts WHERE id = $1 AND user_id = $2 RETURNING politician_id', [id, user.id])
+    if (rows[0]) await recalculateScore(rows[0].politician_id)
     return { success: true }
   })
 }

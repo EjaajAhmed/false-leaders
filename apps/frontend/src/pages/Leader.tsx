@@ -12,8 +12,9 @@ import InfluenceTab from '../components/leader/InfluenceTab'
 import VerdictsTab from '../components/leader/VerdictsTab'
 import LeaksTab from '../components/leader/LeaksTab'
 import { categoryLabel, scoreColor, scoreLabel } from '../lib/format'
+import { ARCHIVED } from '../config'
 
-const TABS = [
+const ALL_TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'controversies', label: 'Controversies' },
   { key: 'funding', label: 'Funding' },
@@ -21,7 +22,8 @@ const TABS = [
   { key: 'verdicts', label: 'Verdicts' },
   { key: 'leaks', label: 'Leaks' },
 ] as const
-type TabKey = typeof TABS[number]['key']
+const TABS = ALL_TABS.filter(t => !(ARCHIVED as Record<string, boolean>)[t.key])
+type TabKey = typeof ALL_TABS[number]['key']
 
 function SaveButton({ leaderId }: { leaderId: string }) {
   const { user } = useAuth()

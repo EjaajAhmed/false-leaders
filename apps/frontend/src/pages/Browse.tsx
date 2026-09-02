@@ -5,13 +5,16 @@ import { getPoliticians, getPoliticiansMeta } from '../api/politicians'
 import LeaderCard from '../components/LeaderCard'
 import { Empty, Loading } from '../components/States'
 import { CATEGORIES } from '../lib/format'
+import { VIEWS } from '../config'
+import type { ViewKey } from '../config'
 
-type Sort = 'name' | 'score_asc' | 'score_desc' | 'newest'
+type Sort = 'prominence' | 'name' | 'score_asc' | 'score_desc' | 'newest'
 
 export default function Browse() {
   const [params, setParams] = useSearchParams()
   const [search, setSearch] = useState(params.get('q') || '')
   const [category, setCategory] = useState(params.get('category') || '')
+  const [view, setView] = useState<ViewKey>((VIEWS.find(v => v.key === params.get('view'))?.key || (params.get('category') ? 'all' : 'main')) as ViewKey)
   const [country, setCountry] = useState('')
   const [party, setParty] = useState('')
   const [position, setPosition] = useState('')
@@ -19,36 +22,39 @@ export default function Browse() {
   const [maxAge, setMaxAge] = useState('')
   const [minTruth, setMinTruth] = useState('')
   const [maxTruth, setMaxTruth] = useState('')
-  const [sort, setSort] = useState<Sort>('name')
+  const [sort, setSort] = useState<Sort>('prominence')
   const [showFilters, setShowFilters] = useState(false)
   const [page, setPage] = useState(1)
 
-  const activeFilterCount = [country, party, position, minAge, maxAge, minTruth, maxTruth].filter(Boolean).length
+  const activeFilterCount = [category, country, party, position, minAge, maxAge, minTruth, maxTruth].filter(Boolean).length
 
   const clearFilters = () => {
     setCountry(''); setParty(''); setPosition(''); setMinAge(''); setMaxAge(''); setMinTruth(''); setMaxTruth('')
-    setPage(1)
+    setCategory(''); setPage(1); syncParams(search, '', view)
   }
-  const syncParams = (q: string, c: string) => {
+  const syncParams = (q: string, c: string, vw: ViewKey) => {
     const next: Record<string, string> = {}
     if (q) next.q = q
     if (c) next.category = c
+    if (vw !== 'main') next.view = vw
     setParams(next, { replace: true })
   }
-  const onSearch = (v: string) => { setSearch(v); setPage(1); syncParams(v, category) }
-  const onCategory = (c: string) => { setCategory(c); setPage(1); syncParams(search, c) }
+  const onSearch = (v: string) => { setSearch(v); setPage(1); syncParams(v, category, view) }
+  const onCategory = (c: string) => { setCategory(c); setPage(1); if (c) setView('all'); syncParams(search, c, c ? 'all' : view) }
+  const onView = (vw: ViewKey) => { setView(vw); setCategory(''); setPage(1); syncParams(search, '', vw) }
   const set = (setter: (v: string) => void) => (v: string) => { setter(v); setPage(1) }
 
   const { data: meta } = useQuery({ queryKey: ['politicians-meta'], queryFn: getPoliticiansMeta })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['politicians', search, category, country, party, position, minAge, maxAge, minTruth, maxTruth, sort, page],
+    queryKey: ['politicians', search, view, category, country, party, position, minAge, maxAge, minTruth, maxTruth, sort, page],
     queryFn: () => getPoliticians({
       search: search || undefined,
       country: country || undefined,
       party: party || undefined,
       position: position || undefined,
       category: category || undefined,
+      view: category || view === 'all' ? undefined : view,
       min_age: minAge ? Number(minAge) : undefined,
       max_age: maxAge ? Number(maxAge) : undefined,
       min_truth: minTruth ? Number(minTruth) : undefined,
@@ -67,15 +73,12 @@ export default function Browse() {
       <div className="page-head">
         <p className="eyebrow">Files</p>
         <h1>Browse</h1>
-        <p>Every leader on record. <span className="mono">{total.toLocaleString()}</span> and counting.</p>
+        <p>{category ? CATEGORIES.find(c => c.value === category)?.plural : VIEWS.find(v => v.key === view)?.blurb} <span className="mono">{total.toLocaleString()}</span> on file.</p>
       </div>
 
       <div className="chips" style={{ marginBottom: '1rem' }}>
-        <button className={`chip${!category ? ' is-active' : ''}`} onClick={() => onCategory('')}>All</button>
-        {CATEGORIES.filter(c => (meta?.categories?.find((m: any) => m.key === c.value)?.count || 0) > 0).map(c => (
-          <button key={c.value} className={`chip${category === c.value ? ' is-active' : ''}`} onClick={() => onCategory(c.value)}>
-            {c.plural} <span style={{ opacity: 0.6, marginLeft: '0.3rem' }}>{meta?.categories?.find((m: any) => m.key === c.value)?.count}</span>
-          </button>
+        {VIEWS.map(v => (
+          <button key={v.key} className={`chip${!category && view === v.key ? ' is-active' : ''}`} onClick={() => onView(v.key)}>{v.label}</button>
         ))}
       </div>
 
@@ -88,6 +91,7 @@ export default function Browse() {
           onChange={e => onSearch(e.target.value)}
         />
         <select className="select" style={{ width: 'auto' }} value={sort} onChange={e => { setSort(e.target.value as Sort); setPage(1) }}>
+          <option value="prominence">Prominence</option>
           <option value="name">A–Z</option>
           <option value="score_asc">Lowest score</option>
           <option value="score_desc">Highest score</option>
@@ -101,6 +105,15 @@ export default function Browse() {
       {showFilters && (
         <div className="card" style={{ marginBottom: '1rem' }}>
           <div className="grid-2" style={{ gap: '0.75rem' }}>
+            <div className="field">
+              <label className="label">Category</label>
+              <select className="select" value={category} onChange={e => onCategory(e.target.value)}>
+                <option value="">Any</option>
+                {CATEGORIES.filter(c => (meta?.categories?.find((m: any) => m.key === c.value)?.count || 0) > 0).map(c => (
+                  <option key={c.value} value={c.value}>{c.plural} ({meta?.categories?.find((m: any) => m.key === c.value)?.count})</option>
+                ))}
+              </select>
+            </div>
             <div className="field">
               <label className="label">Country</label>
               <select className="select" value={country} onChange={e => set(setCountry)(e.target.value)}>

@@ -3,11 +3,16 @@ import type { FeedType, Level, VerdictKind } from '../types'
 
 // ── Leaders ──
 export const getPoliticians = async (filters?: {
-  search?: string; country?: string; party?: string; position?: string; category?: string
+  search?: string; country?: string; party?: string; position?: string; category?: string; view?: string
   min_age?: number; max_age?: number; min_truth?: number; max_truth?: number
-  page?: number; limit?: number; sort?: 'name' | 'score_asc' | 'score_desc' | 'newest'
+  page?: number; limit?: number; sort?: 'name' | 'score_asc' | 'score_desc' | 'newest' | 'prominence'
 }) => {
   const res = await client.get('/politicians', { params: filters })
+  return res.data
+}
+
+export const getMapLeaders = async (params: { view?: string; country?: string }) => {
+  const res = await client.get('/politicians/map', { params })
   return res.data
 }
 

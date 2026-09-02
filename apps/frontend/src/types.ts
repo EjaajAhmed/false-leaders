@@ -31,6 +31,7 @@ export interface Leader {
   photo_url?: string | null
   country?: string | null
   category?: Category | string | null
+  prominence?: number
   age?: number | null
   aliases?: string[]
   truth_score?: number | string | null
@@ -38,6 +39,7 @@ export interface Leader {
   longitude?: number | string | null
   created_at?: string
   controversy_count?: number
+  leak_count?: number
   verdict_counts?: VerdictCounts | null
   top_controversy?: { id?: string; title: string; level: Level } | null
 }

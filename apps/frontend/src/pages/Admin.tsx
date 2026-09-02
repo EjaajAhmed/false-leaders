@@ -9,10 +9,11 @@ import LevelBadge from '../components/LevelBadge'
 import { Empty, Loading } from '../components/States'
 import { CATEGORIES, LEVELS, proleTag, timeAgo } from '../lib/format'
 import type { Level } from '../types'
+import { ARCHIVED } from '../config'
 
 const emptyForm = {
   name: '', party: '', region: '', position: '', bio: '', country: '', category: 'politician',
-  age: '', latitude: '', longitude: '', photo_url: '', aliases: '',
+  age: '', latitude: '', longitude: '', photo_url: '', aliases: '', prominence: '',
 }
 
 function LeakQueue() {
@@ -43,7 +44,7 @@ function LeakQueue() {
                 <span className="post__time">{timeAgo(l.created_at)} · {l.upvotes} upvotes</span>
               </div>
               <div className="row" style={{ gap: '0.3rem' }}>
-                <button className="btn btn--sm" onClick={() => { setEscalating(escalating === l.id ? null : l.id); setTitle(l.body.slice(0, 80)) }}>Escalate</button>
+                {!ARCHIVED.controversies && <button className="btn btn--sm" onClick={() => { setEscalating(escalating === l.id ? null : l.id); setTitle(l.body.slice(0, 80)) }}>Escalate</button>}
                 <button className="btn btn--ghost btn--sm btn--danger" onClick={() => { if (confirm('Remove this leak?')) mutate.mutate({ id: l.id, status: 'removed' }) }}>Remove</button>
               </div>
             </div>
@@ -185,7 +186,7 @@ export default function Admin() {
     setForm({
       name: p.name || '', party: p.party || '', region: p.region || '', position: p.position || '',
       bio: p.bio || '', country: p.country || '', category: p.category || 'politician', age: p.age || '', latitude: p.latitude || '',
-      longitude: p.longitude || '', photo_url: p.photo_url || '', aliases: (p.aliases || []).join(', '),
+      longitude: p.longitude || '', photo_url: p.photo_url || '', aliases: (p.aliases || []).join(', '), prominence: p.prominence ?? '',
     })
     document.getElementById('leader-form')?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -203,7 +204,7 @@ export default function Admin() {
         <p className="eyebrow">Restricted</p>
         <h1>Admin</h1>
         <div className="chips" style={{ marginTop: '0.75rem' }}>
-          {[['#leaks', 'Leak queue'], ['#proposals', 'Proposals'], ['#weights', 'Weights'], ['#leader-form', 'Leaders'], ['#broadcast', 'Broadcast']].map(([href, label]) => (
+          {[['#leaks', 'Leak queue'], ...(ARCHIVED.controversies ? [] : [['#proposals', 'Proposals']]), ['#weights', 'Weights'], ['#leader-form', 'Leaders'], ['#broadcast', 'Broadcast']].map(([href, label]) => (
             <a key={href} href={href} className="chip">{label}</a>
           ))}
         </div>
@@ -211,13 +212,15 @@ export default function Admin() {
 
       <div className="stack" style={{ gap: '1.5rem' }}>
         <LeakQueue />
-        <ProposalQueue />
+        {!ARCHIVED.controversies && <ProposalQueue />}
 
         <div className="card" id="weights">
           <div className="section-title"><h2>TruthScore weights</h2></div>
-          <p className="help" style={{ marginBottom: '1rem' }}>Points deducted per controversy level and funding condition. Floor is 1.</p>
+          <p className="help" style={{ marginBottom: '1rem' }}>
+            Score starts at the base and is reduced by community verdicts (Guilty and Suspicious shares, scaled by how many verdicts exist) and by upvoted leaks. Floor is 1.
+          </p>
           <div className="grid-2" style={{ gap: '0.75rem' }}>
-            {configData?.map((c: any) => (
+            {configData?.filter((c: any) => !c.archived).map((c: any) => (
               <div key={c.key} className="field">
                 <label className="label">{c.label}</label>
                 <input className="input mono" type="number" value={configValues[c.key] ?? c.value} onChange={e => setConfigValues(prev => ({ ...prev, [c.key]: Number(e.target.value) }))} />
@@ -246,6 +249,7 @@ export default function Admin() {
             {field('region', 'Region')}
             {field('country', 'Country')}
             {field('age', 'Age', 'number')}
+            {field('prominence', 'Prominence (0–100)', 'number', 'Ranks figures for the main view')}
             {field('latitude', 'Latitude', 'number')}
             {field('longitude', 'Longitude', 'number')}
             {field('photo_url', 'Photo URL')}
@@ -263,7 +267,7 @@ export default function Admin() {
           </div>
         </div>
 
-        {editing && <AIAnalyzer politicianId={editing} politicianName={form.name || 'this leader'} />}
+        {editing && !ARCHIVED.controversies && <AIAnalyzer politicianId={editing} politicianName={form.name || 'this leader'} />}
 
         <div className="card" id="broadcast">
           <div className="section-title"><h2>Broadcast</h2></div>

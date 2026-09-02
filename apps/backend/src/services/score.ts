@@ -3,6 +3,13 @@ import { emitFeedEvent } from './feed'
 
 type Config = Record<string, number>
 
+// Config keys that belong to the archived controversy/funding/influence formula.
+export const ARCHIVED_CONFIG_KEYS = [
+  'weight_confirmed', 'weight_likely', 'weight_maybe', 'weight_speculative',
+  'funding_corporate_threshold', 'funding_corporate_penalty',
+  'funding_foreign_threshold', 'funding_foreign_penalty',
+]
+
 export async function loadScoreConfig(): Promise<Config> {
   const { rows } = await db.query('SELECT key, value FROM truth_score_config')
   const cfg: Config = {}
@@ -10,35 +17,53 @@ export async function loadScoreConfig(): Promise<Config> {
   return cfg
 }
 
-export function computeScore(
+export interface VerdictTally { total: number; guilty: number; suspicious: number; unclear: number; clean: number }
+export interface LeakTally { counted: number }
+
+/**
+ * Community-driven TruthScore.
+ *
+ * Starts at base_score (90). Verdicts deduct once there are at least
+ * verdict_min_count of them: the Guilty share deducts up to verdict_guilty_weight
+ * and the Suspicious share up to verdict_suspicious_weight, scaled by a confidence
+ * factor that reaches 1 at verdict_confidence_n verdicts. Leaks with at least
+ * leak_upvote_threshold upvotes deduct leak_weight each, capped at leak_max_penalty.
+ * Floor 1. Never zero.
+ */
+export function computeScore(cfg: Config, verdicts: VerdictTally, leaks: LeakTally): number {
+  let score = cfg.base_score ?? 90
+
+  const minCount = cfg.verdict_min_count ?? 3
+  if (verdicts.total >= minCount && verdicts.total > 0) {
+    const confidence = Math.min(1, verdicts.total / Math.max(1, cfg.verdict_confidence_n ?? 25))
+    const guiltyShare = verdicts.guilty / verdicts.total
+    const suspiciousShare = verdicts.suspicious / verdicts.total
+    score -= (guiltyShare * (cfg.verdict_guilty_weight ?? 60) + suspiciousShare * (cfg.verdict_suspicious_weight ?? 30)) * confidence
+  }
+
+  const leakPenalty = Math.min(cfg.leak_max_penalty ?? 20, leaks.counted * (cfg.leak_weight ?? 2))
+  score -= leakPenalty
+
+  return Math.max(1, Math.min(100, Math.round(score)))
+}
+
+/** Archived formula (controversy levels, corporate funding, foreign influence). Kept for reference. */
+export function computeArchivedScore(
   cfg: Config,
   controversies: { level: string }[],
   funding: { source_type: string; amount: number | string }[],
   influence: { influence_score: number | string }[]
 ): number {
   let score = cfg.base_score ?? 90
-
-  for (const c of controversies) {
-    score -= cfg[`weight_${c.level}`] ?? 0
-  }
-
+  for (const c of controversies) score -= cfg[`weight_${c.level}`] ?? 0
   if (funding.length > 0) {
     const total = funding.reduce((s, f) => s + Number(f.amount), 0)
-    const corporate = funding
-      .filter(f => ['Corporate', 'PAC'].includes(f.source_type))
-      .reduce((s, f) => s + Number(f.amount), 0)
-    if (total > 0 && (corporate / total) * 100 > (cfg.funding_corporate_threshold ?? 60)) {
-      score -= cfg.funding_corporate_penalty ?? 10
-    }
+    const corporate = funding.filter(f => ['Corporate', 'PAC'].includes(f.source_type)).reduce((s, f) => s + Number(f.amount), 0)
+    if (total > 0 && (corporate / total) * 100 > (cfg.funding_corporate_threshold ?? 60)) score -= cfg.funding_corporate_penalty ?? 10
   }
-
   for (const inf of influence) {
-    if (Number(inf.influence_score) > (cfg.funding_foreign_threshold ?? 60)) {
-      score -= cfg.funding_foreign_penalty ?? 10
-    }
+    if (Number(inf.influence_score) > (cfg.funding_foreign_threshold ?? 60)) score -= cfg.funding_foreign_penalty ?? 10
   }
-
-  // Floor at 1. Never zero.
   return Math.max(1, Math.min(100, Math.round(score)))
 }
 
@@ -67,13 +92,24 @@ export async function recalculateScore(
   if (rows.length === 0) return null
   const leader = rows[0]
 
-  const [{ rows: controversies }, { rows: funding }, { rows: influence }] = await Promise.all([
-    db.query('SELECT level FROM controversies WHERE politician_id = $1', [politicianId]),
-    db.query('SELECT source_type, amount FROM funding_sources WHERE politician_id = $1', [politicianId]),
-    db.query('SELECT influence_score FROM foreign_influence WHERE politician_id = $1', [politicianId]),
+  const [{ rows: v }, { rows: l }] = await Promise.all([
+    db.query(
+      `SELECT COUNT(*)::int AS total,
+              COUNT(*) FILTER (WHERE verdict = 'guilty')::int AS guilty,
+              COUNT(*) FILTER (WHERE verdict = 'suspicious')::int AS suspicious,
+              COUNT(*) FILTER (WHERE verdict = 'unclear')::int AS unclear,
+              COUNT(*) FILTER (WHERE verdict = 'clean')::int AS clean
+       FROM verdicts WHERE politician_id = $1`,
+      [politicianId]
+    ),
+    db.query(
+      `SELECT COUNT(*)::int AS counted FROM leaks
+       WHERE politician_id = $1 AND status IN ('visible', 'escalated') AND upvotes >= $2`,
+      [politicianId, config.leak_upvote_threshold ?? 3]
+    ),
   ])
 
-  const score = computeScore(config, controversies, funding, influence)
+  const score = computeScore(config, v[0], l[0])
   const previous = leader.truth_score == null ? null : Math.round(Number(leader.truth_score))
   const changed = previous !== score
 

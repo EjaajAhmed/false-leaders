@@ -12,6 +12,7 @@ import { usePostAsProle } from '../../lib/identity'
 import { getComments, postComment, deleteComment } from '../../api/politicians'
 import { errorMessage } from '../../api/client'
 import { proleTag, scoreLabel, timeAgo, verdictLabel } from '../../lib/format'
+import { ARCHIVED } from '../../config'
 
 function Discussion({ leaderId }: { leaderId: string }) {
   const { user } = useAuth()
@@ -113,12 +114,12 @@ export default function OverviewTab({ leader, onGoTo }: { leader: LeaderDetail; 
 
         <div className="stack" style={{ gap: '1.25rem' }}>
           <div className="grid-2" style={{ gap: '0.75rem', gridTemplateColumns: '1fr 1fr' }}>
-            {[
+            {([
               ['Controversies', leader.stats?.controversies, 'controversies'],
               ['Verdicts', leader.stats?.verdicts, 'verdicts'],
               ['Leaks', leader.stats?.leaks, 'leaks'],
               ['Discussion', leader.stats?.comments, null],
-            ].map(([label, v, target]) => (
+            ] as [string, number | undefined, string | null][]).filter(([, , target]) => !(target && (ARCHIVED as Record<string, boolean>)[target])).map(([label, v, target]) => (
               <button key={String(label)} className="stat" style={{ textAlign: 'left', cursor: target ? 'pointer' : 'default', border: '1px solid var(--border)' }} onClick={() => target && onGoTo(target)}>
                 <div className="stat__value">{v ?? 0}</div>
                 <div className="stat__label eyebrow">{label}</div>

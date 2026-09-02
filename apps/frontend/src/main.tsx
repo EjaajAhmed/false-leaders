@@ -1,36 +1,50 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation, Navigate, useParams } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AuthProvider } from './context/AuthContext'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import './index.css'
 import Navbar from './components/Navbar'
-import Browse from './pages/Browse'
-import PoliticianProfile from './pages/PoliticianProfile'
-import Login from './pages/Login'
-import Register from './pages/Register'
+import NotificationBell from './components/NotificationBell'
 import Home from './pages/Home'
+import Browse from './pages/Browse'
+import Leader from './pages/Leader'
+import Feed from './pages/Feed'
+import Leaderboard from './pages/Leaderboard'
+import MapPage from './pages/Map'
 import Bookmarks from './pages/Bookmarks'
 import Profile from './pages/Profile'
-import MapPage from './pages/Map'
 import Admin from './pages/Admin'
-import NotificationBell from './components/NotificationBell'
-import { useAuth } from './context/AuthContext'
+import Login from './pages/Login'
+import Register from './pages/Register'
 import Verified from './pages/Verified'
 import PendingVerification from './pages/PendingVerification'
 import MobileAuthLanding from './pages/MobileAuthLanding'
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
+})
 
 function PendingVerificationWrapper() {
   const location = useLocation()
   return <PendingVerification email={location.state?.email} />
 }
 
+function LegacyLeaderRedirect() {
+  const { id } = useParams()
+  return <Navigate to={`/leaders/${id}`} replace />
+}
+
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'auto' }) }, [pathname])
+  return null
+}
+
 function App() {
   const { user } = useAuth()
   const location = useLocation()
-  const isAuthPage = ['/login', '/register', '/pending-verification'].includes(location.pathname) 
+  const isAuthPage = ['/login', '/register', '/pending-verification', '/welcome'].includes(location.pathname)
     || location.pathname.startsWith('/verified')
 
   if (isAuthPage) {
@@ -40,30 +54,48 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/pending-verification" element={<PendingVerificationWrapper />} />
         <Route path="/verified" element={<Verified />} />
+        <Route path="/welcome" element={<MobileAuthLanding />} />
       </Routes>
     )
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div className="app-shell">
+      <ScrollToTop />
       <Navbar />
-      <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
+      <div className="app-main">
         {user && (
-          <div style={{ position: 'fixed', top: '1rem', right: '1rem', zIndex: 500 }}>
+          <div className="topbar">
             <NotificationBell />
           </div>
         )}
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/browse" element={<Browse />} />
-          <Route path="/politicians/:id" element={<PoliticianProfile />} />
-          <Route path="/bookmarks" element={<Bookmarks />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/map" element={<MapPage />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/welcome" element={<MobileAuthLanding />} />
-        </Routes>
+        {/* Keyed on pathname so every navigation replays the declassify transition */}
+        <div key={location.pathname} className="declassify">
+          <Routes location={location}>
+            <Route path="/" element={<Home />} />
+            <Route path="/browse" element={<Browse />} />
+            <Route path="/leaders/:id" element={<Leader />} />
+            <Route path="/politicians/:id" element={<LegacyLeaderRedirect />} />
+            <Route path="/feed" element={<Feed />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/map" element={<MapPage />} />
+            <Route path="/bookmarks" element={<Bookmarks />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </div>
       </div>
+    </div>
+  )
+}
+
+function NotFound() {
+  return (
+    <div className="page page--narrow" style={{ paddingTop: '6rem' }}>
+      <p className="eyebrow">404</p>
+      <h1 style={{ fontSize: '2.5rem', margin: '0.5rem 0 1rem' }}>Nothing here.</h1>
+      <p className="muted">Either it never existed, or it was removed.</p>
     </div>
   )
 }

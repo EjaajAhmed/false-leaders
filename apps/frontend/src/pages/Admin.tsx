@@ -1,303 +1,296 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getPoliticians } from '../api/politicians'
-import client from '../api/client'
+import { getPoliticians, getLeakQueue, setLeakStatus, getProposalQueue, reviewProposal } from '../api/politicians'
+import client, { errorMessage } from '../api/client'
 import AIAnalyzer from '../components/AIAnalyzer'
+import LevelBadge from '../components/LevelBadge'
+import { Empty, Loading } from '../components/States'
+import { LEVELS, proleTag, timeAgo } from '../lib/format'
+import type { Level } from '../types'
 
 const emptyForm = {
-  name: '', party: '', region: '', position: '', bio: '',
-  country: 'Canada', age: '', latitude: '', longitude: ''
+  name: '', party: '', region: '', position: '', bio: '', country: 'Canada',
+  age: '', latitude: '', longitude: '', photo_url: '', aliases: '',
+}
+
+function LeakQueue() {
+  const qc = useQueryClient()
+  const [escalating, setEscalating] = useState<string | null>(null)
+  const [title, setTitle] = useState('')
+  const [level, setLevel] = useState<Level>('speculative')
+  const { data, isLoading } = useQuery({ queryKey: ['leak-queue'], queryFn: () => getLeakQueue() })
+  const mutate = useMutation({
+    mutationFn: setLeakStatus,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['leak-queue'] }); setEscalating(null); setTitle('') },
+    onError: e => alert(errorMessage(e)),
+  })
+
+  return (
+    <div className="card" id="leaks">
+      <div className="section-title"><h2>Leak queue</h2><span className="mono tiny dim">{data?.length || 0} awaiting</span></div>
+      {isLoading && <Loading />}
+      {!isLoading && data?.length === 0 && <Empty text="Queue is empty. The Proles are quiet." />}
+      <div className="stack">
+        {data?.map((l: any) => (
+          <div key={l.id} className="post">
+            <div className="post__head">
+              <div className="post__who">
+                <span className="post__prole">{proleTag(l.prole_number)}</span>
+                <span className="mono tiny dim">(@{l.username})</span>
+                <Link to={`/leaders/${l.politician_id}?tab=leaks`} className="post__name">{l.leader_name}</Link>
+                <span className="post__time">{timeAgo(l.created_at)} · {l.upvotes} upvotes</span>
+              </div>
+              <div className="row" style={{ gap: '0.3rem' }}>
+                <button className="btn btn--sm" onClick={() => { setEscalating(escalating === l.id ? null : l.id); setTitle(l.body.slice(0, 80)) }}>Escalate</button>
+                <button className="btn btn--ghost btn--sm btn--danger" onClick={() => { if (confirm('Remove this leak?')) mutate.mutate({ id: l.id, status: 'removed' }) }}>Remove</button>
+              </div>
+            </div>
+            <p className="post__body">{l.body}</p>
+            {escalating === l.id && (
+              <div className="stack" style={{ marginTop: '0.75rem', padding: '0.75rem', border: '1px solid var(--border-strong)', background: 'var(--bg)' }}>
+                <div className="grid-2" style={{ gap: '0.5rem' }}>
+                  <div className="field"><label className="label">Controversy title</label><input className="input" value={title} onChange={e => setTitle(e.target.value)} maxLength={200} /></div>
+                  <div className="field"><label className="label">Level</label>
+                    <select className="select" value={level} onChange={e => setLevel(e.target.value as Level)}>{LEVELS.map(x => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
+                  </div>
+                </div>
+                <div className="row">
+                  <button className="btn btn--gold btn--sm" disabled={!title.trim() || mutate.isPending} onClick={() => mutate.mutate({ id: l.id, status: 'escalated', title, level })}>Escalate to controversy</button>
+                  <button className="btn btn--ghost btn--sm" onClick={() => setEscalating(null)}>Cancel</button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ProposalQueue() {
+  const qc = useQueryClient()
+  const { data, isLoading } = useQuery({ queryKey: ['proposal-queue'], queryFn: () => getProposalQueue('pending') })
+  const [edits, setEdits] = useState<Record<string, { level: Level }>>({})
+  const mutate = useMutation({
+    mutationFn: reviewProposal,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['proposal-queue'] }),
+    onError: e => alert(errorMessage(e)),
+  })
+
+  return (
+    <div className="card" id="proposals">
+      <div className="section-title"><h2>Controversy proposals</h2><span className="mono tiny dim">{data?.length || 0} pending</span></div>
+      {isLoading && <Loading />}
+      {!isLoading && data?.length === 0 && <Empty text="No proposals pending." />}
+      <div className="stack">
+        {data?.map((p: any) => {
+          const level = edits[p.id]?.level || p.level
+          return (
+            <div key={p.id} className="post">
+              <div className="post__head">
+                <div className="post__who">
+                  <LevelBadge level={level} />
+                  <span className="post__name">{p.title}</span>
+                </div>
+                <span className="post__time">@{p.username} · {timeAgo(p.created_at)}</span>
+              </div>
+              <p className="small muted" style={{ marginTop: '0.3rem' }}>
+                <Link to={`/leaders/${p.politician_id}?tab=controversies`} style={{ color: 'var(--text)' }}>{p.leader_name}</Link>
+                {p.source_url && <> · <a href={p.source_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)' }}>source</a></>}
+              </p>
+              <p className="post__body">{p.description}</p>
+              <div className="post__foot" style={{ flexWrap: 'wrap' }}>
+                <select className="select" style={{ width: 'auto', padding: '0.35rem 2rem 0.35rem 0.6rem', fontSize: '0.75rem' }} value={level} onChange={e => setEdits({ ...edits, [p.id]: { level: e.target.value as Level } })}>
+                  {LEVELS.map(x => <option key={x.value} value={x.value}>{x.label}</option>)}
+                </select>
+                <button className="btn btn--gold btn--sm" disabled={mutate.isPending} onClick={() => mutate.mutate({ id: p.id, action: 'approve', level })}>Approve</button>
+                <button className="btn btn--ghost btn--sm btn--danger" disabled={mutate.isPending} onClick={() => mutate.mutate({ id: p.id, action: 'reject' })}>Reject</button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 export default function Admin() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
+  const qc = useQueryClient()
   const [form, setForm] = useState(emptyForm)
   const [editing, setEditing] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [broadcastSubject, setBroadcastSubject] = useState('')
   const [broadcastMessage, setBroadcastMessage] = useState('')
   const [configValues, setConfigValues] = useState<Record<string, number>>({})
+  const [saveError, setSaveError] = useState('')
 
-  const { data } = useQuery({
-    queryKey: ['politicians-admin'],
-    queryFn: () => getPoliticians({ limit: 1000 }),
-    enabled: !!user
-  })
+  useEffect(() => { if (!user) navigate('/login') }, [user, navigate])
 
+  const { data } = useQuery({ queryKey: ['politicians-admin'], queryFn: () => getPoliticians({ limit: 1000 }), enabled: !!user?.is_admin })
   const { data: configData } = useQuery({
     queryKey: ['truth-score-config'],
-    queryFn: async () => {
-      const res = await client.get('/config/truth-score')
-      return res.data
-    },
-    enabled: !!user
+    queryFn: async () => (await client.get('/config/truth-score')).data,
+    enabled: !!user?.is_admin,
   })
 
   useEffect(() => {
     if (configData) {
       const vals: Record<string, number> = {}
-      for (const c of configData) vals[c.key] = c.value
+      for (const c of configData) vals[c.key] = Number(c.value)
       setConfigValues(vals)
     }
   }, [configData])
 
-  const saveMutation = useMutation({
-    mutationFn: async (formData: any) => {
-      if (editing) {
-        const res = await client.put(`/politicians/${editing}`, formData)
-        return res.data
-      } else {
-        const res = await client.post('/politicians', formData)
-        return res.data
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['politicians-admin'] })
-      queryClient.invalidateQueries({ queryKey: ['politicians'] })
-      setForm(emptyForm)
-      setEditing(null)
-    },
-    onError: (err: any) => {
-      console.error('Save failed:', err.response?.data || err.message)
-      alert('Save failed: ' + (err.response?.data?.error || err.message))
-    }
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await client.delete(`/politicians/${id}`)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['politicians-admin'] })
-      queryClient.invalidateQueries({ queryKey: ['politicians'] })
-    }
-  })
-
-  const broadcastMutation = useMutation({
-    mutationFn: async () => {
-      const res = await client.post('/notifications/broadcast', { subject: broadcastSubject, message: broadcastMessage })
-      return res.data
-    },
-    onSuccess: () => { setBroadcastSubject(''); setBroadcastMessage('') }
-  })
-
-  const configMutation = useMutation({
-    mutationFn: async () => {
-      const updates = Object.entries(configValues).map(([key, value]) => ({ key, value: Number(value) }))
-      const res = await client.put('/config/truth-score', updates)
-      return res.data
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['truth-score-config'] })
-  })
-
-  const recalculateMutation = useMutation({
-    mutationFn: async () => {
-      const res = await client.post('/politicians/recalculate-all', {})
-      return res.data
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['politicians-admin'] })
-      queryClient.invalidateQueries({ queryKey: ['politicians'] })
-      alert(`Recalculated scores for ${data.updated} politicians.`)
-    }
-  })
-
-  useEffect(() => {
-    if (!user) navigate('/login')
-  }, [user, navigate])
-
-  if (!user) return null
-
-  const allPoliticians = data?.politicians || []
-  const filtered = allPoliticians.filter((p: any) =>
-    p.name.toLowerCase().includes(search.toLowerCase())
-  )
-
-  const handleEdit = (p: any) => {
-    setEditing(p.id)
-    setForm({
-      name: p.name || '', party: p.party || '', region: p.region || '',
-      position: p.position || '', bio: p.bio || '', country: p.country || 'Canada',
-      age: p.age || '', latitude: p.latitude || '', longitude: p.longitude || ''
-    })
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+  const invalidateLeaders = () => {
+    qc.invalidateQueries({ queryKey: ['politicians-admin'] })
+    qc.invalidateQueries({ queryKey: ['politicians'] })
+    qc.invalidateQueries({ queryKey: ['stats'] })
   }
 
-  const field = (key: string, label: string, type = 'text') => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-      <label style={{ fontSize: '0.8rem', color: '#888' }}>{label}</label>
-      <input
-        type={type}
-        value={(form as any)[key]}
-        onChange={e => setForm({ ...form, [key]: e.target.value })}
-        style={{ padding: '0.5rem 0.75rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem' }}
-      />
+  const save = useMutation({
+    mutationFn: async (formData: any) => editing
+      ? (await client.put(`/politicians/${editing}`, formData)).data
+      : (await client.post('/politicians', formData)).data,
+    onSuccess: () => { invalidateLeaders(); setForm(emptyForm); setEditing(null); setSaveError('') },
+    onError: (err) => setSaveError(errorMessage(err)),
+  })
+  const del = useMutation({ mutationFn: async (id: string) => client.delete(`/politicians/${id}`), onSuccess: invalidateLeaders })
+  const broadcast = useMutation({
+    mutationFn: async () => (await client.post('/notifications/broadcast', { subject: broadcastSubject, message: broadcastMessage })).data,
+    onSuccess: () => { setBroadcastSubject(''); setBroadcastMessage('') },
+  })
+  const saveConfig = useMutation({
+    mutationFn: async () => (await client.put('/config/truth-score', Object.entries(configValues).map(([key, value]) => ({ key, value: Number(value) })))).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['truth-score-config'] }),
+  })
+  const recalc = useMutation({
+    mutationFn: async () => (await client.post('/politicians/recalculate-all', {})).data,
+    onSuccess: (d) => { invalidateLeaders(); alert(`Recalculated ${d.updated} leaders. ${d.changed} changed.`) },
+  })
+
+  if (!user) return null
+  if (!user.is_admin) {
+    return <div className="page page--narrow" style={{ paddingTop: '5rem' }}><p className="eyebrow">403</p><h1 style={{ fontSize: '2.2rem', marginTop: '0.5rem' }}>Access denied.</h1></div>
+  }
+
+  const all = data?.politicians || []
+  const filtered = all.filter((p: any) => p.name.toLowerCase().includes(search.toLowerCase()))
+
+  const edit = (p: any) => {
+    setEditing(p.id)
+    setForm({
+      name: p.name || '', party: p.party || '', region: p.region || '', position: p.position || '',
+      bio: p.bio || '', country: p.country || 'Canada', age: p.age || '', latitude: p.latitude || '',
+      longitude: p.longitude || '', photo_url: p.photo_url || '', aliases: (p.aliases || []).join(', '),
+    })
+    document.getElementById('leader-form')?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const field = (key: keyof typeof emptyForm, label: string, type = 'text', placeholder = '') => (
+    <div className="field">
+      <label className="label">{label}</label>
+      <input className="input" type={type} value={form[key]} placeholder={placeholder} onChange={e => setForm({ ...form, [key]: e.target.value })} />
     </div>
   )
 
   return (
-    <div style={{ maxWidth: '900px', margin: '2rem auto', padding: '0 1rem' }}>
-      <h1 style={{ margin: '0 0 0.25rem' }}>Admin panel</h1>
-      <p style={{ color: '#888', marginBottom: '2rem' }}>Add and manage politicians.</p>
-
-      {/* Broadcast */}
-      <div style={{ padding: '1.5rem', border: '1px solid #f0c070', borderRadius: '12px', marginBottom: '2rem', background: '#fffdf5' }}>
-        <h2 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>Broadcast app news</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <input
-            placeholder="Subject line"
-            value={broadcastSubject}
-            onChange={e => setBroadcastSubject(e.target.value)}
-            style={{ padding: '0.5rem 0.75rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem' }}
-          />
-          <textarea
-            placeholder="Message to all users..."
-            value={broadcastMessage}
-            onChange={e => setBroadcastMessage(e.target.value)}
-            rows={3}
-            style={{ padding: '0.5rem 0.75rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem', resize: 'vertical' }}
-          />
-          <button
-            onClick={() => broadcastMutation.mutate()}
-            disabled={!broadcastSubject.trim() || !broadcastMessage.trim() || broadcastMutation.isPending}
-            style={{ padding: '0.6rem 1.5rem', background: '#b8860b', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem', alignSelf: 'flex-start' }}
-          >
-            {broadcastMutation.isPending ? 'Sending...' : 'Send to all users'}
-          </button>
-          {broadcastMutation.isSuccess && <p style={{ color: '#1e7e34', fontSize: '0.85rem', margin: 0 }}>Sent!</p>}
-        </div>
-      </div>
-
-      {/* TruthScore weights */}
-      <div style={{ padding: '1.5rem', border: '1px solid #eee', borderRadius: '12px', marginBottom: '2rem' }}>
-        <h2 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>TruthScore weights</h2>
-        <p style={{ color: '#888', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
-          Points deducted per controversy level or funding condition. Score starts at base score.
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-          {configData?.map((c: any) => (
-            <div key={c.key} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: '0.8rem', color: '#888' }}>{c.label}</label>
-              <input
-                type="number"
-                value={configValues[c.key] ?? c.value}
-                onChange={e => setConfigValues(prev => ({ ...prev, [c.key]: Number(e.target.value) }))}
-                style={{ padding: '0.5rem 0.75rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem' }}
-              />
-            </div>
+    <div className="page">
+      <div className="page-head">
+        <p className="eyebrow">Restricted</p>
+        <h1>Admin</h1>
+        <div className="chips" style={{ marginTop: '0.75rem' }}>
+          {[['#leaks', 'Leak queue'], ['#proposals', 'Proposals'], ['#weights', 'Weights'], ['#leader-form', 'Leaders'], ['#broadcast', 'Broadcast']].map(([href, label]) => (
+            <a key={href} href={href} className="chip">{label}</a>
           ))}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => configMutation.mutate()}
-            disabled={configMutation.isPending}
-            style={{ padding: '0.6rem 1.5rem', background: '#1a1a1a', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem' }}
-          >
-            {configMutation.isPending ? 'Saving...' : 'Save weights'}
-          </button>
-          <button
-            onClick={() => recalculateMutation.mutate()}
-            disabled={recalculateMutation.isPending}
-            style={{ padding: '0.6rem 1.5rem', background: '#555', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem' }}
-          >
-            {recalculateMutation.isPending ? 'Recalculating...' : 'Recalculate all scores'}
-          </button>
-          {configMutation.isSuccess && <p style={{ color: '#1e7e34', fontSize: '0.85rem', margin: 0 }}>Saved — click recalculate to apply to all.</p>}
-        </div>
       </div>
 
-      {/* Add/Edit form */}
-      <div style={{ padding: '1.5rem', border: '1px solid #eee', borderRadius: '12px', marginBottom: '2rem' }}>
-        <h2 style={{ margin: '0 0 1.25rem', fontSize: '1rem' }}>
-          {editing ? 'Edit politician' : 'Add politician'}
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-          {field('name', 'Name')}
-          {field('party', 'Party')}
-          {field('region', 'Region / Province')}
-          {field('position', 'Position / Title')}
-          {field('country', 'Country')}
-          {field('age', 'Age', 'number')}
-          {field('latitude', 'Latitude', 'number')}
-          {field('longitude', 'Longitude', 'number')}
-        </div>
-        <div style={{ marginTop: '0.75rem' }}>
-          <label style={{ fontSize: '0.8rem', color: '#888', display: 'block', marginBottom: '0.3rem' }}>Bio</label>
-          <textarea
-            value={form.bio}
-            onChange={e => setForm({ ...form, bio: e.target.value })}
-            rows={3}
-            style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem', boxSizing: 'border-box', resize: 'vertical' }}
-          />
-        </div>
-        <p style={{ margin: '0.75rem 0 0', fontSize: '0.8rem', color: '#aaa' }}>
-          TruthScore is calculated automatically from controversies, funding and foreign influence.
-        </p>
-        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
-          <button
-            onClick={() => saveMutation.mutate(form)}
-            disabled={!form.name.trim() || saveMutation.isPending}
-            style={{ padding: '0.6rem 1.5rem', background: '#1a1a1a', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem' }}
-          >
-            {saveMutation.isPending ? 'Saving...' : editing ? 'Save changes' : 'Add politician'}
-          </button>
-          {editing && (
-            <button
-              onClick={() => { setEditing(null); setForm(emptyForm) }}
-              style={{ padding: '0.6rem 1.5rem', border: '1px solid #ddd', background: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem' }}
-            >
-              Cancel
-            </button>
-          )}
-        </div>
-      </div>
+      <div className="stack" style={{ gap: '1.5rem' }}>
+        <LeakQueue />
+        <ProposalQueue />
 
-      {/* AI Analyzer — only shown when editing an existing politician */}
-      {editing && (
-        <AIAnalyzer
-          politicianId={editing}
-          politicianName={form.name || 'this politician'}
-        />
-      )}
-
-      {/* Politicians list */}
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1rem' }}>All politicians ({allPoliticians.length})</h2>
-          <input
-            placeholder="Search..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ padding: '0.4rem 0.75rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem' }}
-          />
+        <div className="card" id="weights">
+          <div className="section-title"><h2>TruthScore weights</h2></div>
+          <p className="help" style={{ marginBottom: '1rem' }}>Points deducted per controversy level and funding condition. Floor is 1.</p>
+          <div className="grid-2" style={{ gap: '0.75rem' }}>
+            {configData?.map((c: any) => (
+              <div key={c.key} className="field">
+                <label className="label">{c.label}</label>
+                <input className="input mono" type="number" value={configValues[c.key] ?? c.value} onChange={e => setConfigValues(prev => ({ ...prev, [c.key]: Number(e.target.value) }))} />
+              </div>
+            ))}
+          </div>
+          <div className="row row--wrap" style={{ marginTop: '1rem' }}>
+            <button className="btn btn--gold" onClick={() => saveConfig.mutate()} disabled={saveConfig.isPending}>{saveConfig.isPending ? 'Saving' : 'Save weights'}</button>
+            <button className="btn" onClick={() => recalc.mutate()} disabled={recalc.isPending}>{recalc.isPending ? 'Recalculating' : 'Recalculate all scores'}</button>
+            {saveConfig.isSuccess && <span className="mono tiny" style={{ color: 'var(--gold)' }}>Saved. Recalculate to apply.</span>}
+          </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {filtered.map((p: any) => (
-            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', border: '1px solid #eee', borderRadius: '8px' }}>
-              <div>
-                <p style={{ margin: 0, fontWeight: 500 }}>{p.name}</p>
-                <p style={{ margin: '0.1rem 0 0', fontSize: '0.8rem', color: '#888' }}>{p.party} — {p.position}</p>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button
-                  onClick={() => handleEdit(p)}
-                  style={{ padding: '0.3rem 0.75rem', border: '1px solid #ddd', background: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => { if (confirm(`Delete ${p.name}?`)) deleteMutation.mutate(p.id) }}
-                  style={{ padding: '0.3rem 0.75rem', border: '1px solid #fcc', background: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', color: '#c0392b' }}
-                >
-                  Delete
-                </button>
-              </div>
+
+        <div className="card" id="leader-form">
+          <div className="section-title"><h2>{editing ? 'Edit leader' : 'Add leader'}</h2>{editing && <span className="mono tiny dim">{editing}</span>}</div>
+          <div className="grid-2" style={{ gap: '0.75rem' }}>
+            {field('name', 'Name')}
+            {field('position', 'Position', 'text', 'Prime Minister, CEO, Cardinal, Judge')}
+            {field('party', 'Party / organisation')}
+            {field('region', 'Region')}
+            {field('country', 'Country')}
+            {field('age', 'Age', 'number')}
+            {field('latitude', 'Latitude', 'number')}
+            {field('longitude', 'Longitude', 'number')}
+            {field('photo_url', 'Photo URL')}
+            {field('aliases', 'Aliases', 'text', 'Comma separated')}
+          </div>
+          <div className="field" style={{ marginTop: '0.75rem' }}>
+            <label className="label">Bio</label>
+            <textarea className="textarea" value={form.bio} onChange={e => setForm({ ...form, bio: e.target.value })} rows={3} />
+          </div>
+          <p className="help" style={{ marginTop: '0.6rem' }}>TruthScore is derived from controversies, funding and foreign influence. It is not editable.</p>
+          {saveError && <div className="error" style={{ marginTop: '0.75rem' }}>{saveError}</div>}
+          <div className="row" style={{ marginTop: '0.9rem' }}>
+            <button className="btn btn--gold" onClick={() => save.mutate(form)} disabled={!form.name.trim() || save.isPending}>{save.isPending ? 'Saving' : editing ? 'Save changes' : 'Add leader'}</button>
+            {editing && <button className="btn btn--ghost" onClick={() => { setEditing(null); setForm(emptyForm) }}>Cancel</button>}
+          </div>
+        </div>
+
+        {editing && <AIAnalyzer politicianId={editing} politicianName={form.name || 'this leader'} />}
+
+        <div className="card" id="broadcast">
+          <div className="section-title"><h2>Broadcast</h2></div>
+          <div className="stack">
+            <input className="input" placeholder="Subject" value={broadcastSubject} onChange={e => setBroadcastSubject(e.target.value)} />
+            <textarea className="textarea" placeholder="Dispatch to every Prole" value={broadcastMessage} onChange={e => setBroadcastMessage(e.target.value)} rows={3} />
+            <div className="row">
+              <button className="btn" onClick={() => { if (confirm('Send to every Prole?')) broadcast.mutate() }} disabled={!broadcastSubject.trim() || !broadcastMessage.trim() || broadcast.isPending}>{broadcast.isPending ? 'Sending' : 'Send to all'}</button>
+              {broadcast.isSuccess && <span className="mono tiny" style={{ color: 'var(--gold)' }}>Sent.</span>}
             </div>
-          ))}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="section-title">
+            <h2>All leaders <span className="mono tiny dim">{all.length}</span></h2>
+            <input className="input" style={{ width: 220 }} placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <div className="stack" style={{ gap: '0.4rem', maxHeight: 520, overflowY: 'auto' }}>
+            {filtered.map((p: any) => (
+              <div key={p.id} className="row row--between" style={{ padding: '0.55rem 0.7rem', border: '1px solid var(--border)', background: 'var(--bg)' }}>
+                <div style={{ minWidth: 0 }}>
+                  <p className="small truncate" style={{ fontWeight: 500 }}>{p.name} <span className="mono dim">{Math.round(Number(p.truth_score))}</span></p>
+                  <p className="tiny muted truncate">{[p.position, p.party].filter(Boolean).join(' · ')}</p>
+                </div>
+                <div className="row" style={{ gap: '0.3rem' }}>
+                  <Link to={`/leaders/${p.id}`} className="btn btn--ghost btn--sm">View</Link>
+                  <button className="btn btn--sm" onClick={() => edit(p)}>Edit</button>
+                  <button className="btn btn--ghost btn--sm btn--danger" onClick={() => { if (confirm(`Delete ${p.name}? This removes every controversy, verdict and leak on file.`)) del.mutate(p.id) }}>Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

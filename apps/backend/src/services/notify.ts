@@ -44,7 +44,7 @@ export async function notifyUser(
 
 export async function notifyCommentReply(
   commenterId: string,
-  commenterUsername: string,
+  commenterDisplayName: string,
   politicianId: string,
   politicianName: string
 ) {
@@ -63,8 +63,8 @@ export async function notifyCommentReply(
     await notifyUser(
       u.user_id,
       'comment_reply',
-      `@${commenterUsername} also commented on ${politicianName}`,
-      `/politicians/${politicianId}`
+      `${commenterDisplayName} also commented on ${politicianName}`,
+      `/leaders/${politicianId}`
     )
 
     if (!u.email_notifications || !u.email_verified) continue
@@ -109,7 +109,7 @@ export async function notifyPoliticianUpdate(
       u.user_id,
       'politician_update',
       `${politicianName}: ${changes.join(', ')}`,
-      `/politicians/${politicianId}`
+      `/leaders/${politicianId}`
     )
 
     if (!u.email_notifications || !u.email_verified) continue

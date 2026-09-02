@@ -1,4 +1,4 @@
-import { authenticate } from '../middleware/auth'
+import { authenticate, requireAdmin } from '../middleware/auth'
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 import { notifyAllUsers } from '../services/notify'
@@ -49,10 +49,7 @@ export async function notificationsRoutes(server: FastifyInstance) {
     return { success: true }
   })
 
-  server.post('/broadcast', auth, async (request, reply) => {
-    const user = (request as any).user
-    if (!user?.is_admin) return reply.status(403).send({ error: 'Forbidden' })
-    const { subject, message } = request.body as any
+  server.post('/broadcast', { onRequest: [requireAdmin] }, async (request) => {    const { subject, message } = request.body as any
     await notifyAllUsers('app_news', subject, message)
     return { success: true }
   })

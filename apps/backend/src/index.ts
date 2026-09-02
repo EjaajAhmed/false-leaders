@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
@@ -14,6 +15,11 @@ import { fundingRoutes } from './routes/funding'
 import { influenceRoutes } from './routes/influence'
 import { configRoutes } from './routes/config'
 import { analyzeRoutes } from './routes/analyze'
+import { leaderVerdictRoutes, verdictsRoutes } from './routes/verdicts'
+import { leaderLeakRoutes, leaksRoutes } from './routes/leaks'
+import { leaderProposalRoutes, proposalsRoutes } from './routes/proposals'
+import { feedRoutes } from './routes/feed'
+import { leaderboardRoutes } from './routes/leaderboard'
 
 const server = Fastify({ logger: true })
 
@@ -26,7 +32,7 @@ server.register(cors, {
       'https://false-leaders.pages.dev',
       'http://localhost:5173'
     ]
-    if (!origin || allowed.includes(origin)) {
+    if (!origin || allowed.includes(origin) || /^https:\/\/[a-z0-9-]+\.false-leaders\.pages\.dev$/.test(origin)) {
       cb(null, true)
     } else {
       cb(new Error('Not allowed by CORS'), false)
@@ -34,6 +40,19 @@ server.register(cors, {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+})
+
+// Tolerate empty JSON bodies (e.g. bare POST /x/upvote)
+server.removeContentTypeParser('application/json')
+server.addContentTypeParser('application/json', { parseAs: 'string' }, (_req, body, done) => {
+  const text = typeof body === 'string' ? body.trim() : ''
+  if (!text) return done(null, {})
+  try {
+    done(null, JSON.parse(text))
+  } catch (err: any) {
+    err.statusCode = 400
+    done(err, undefined)
+  }
 })
 
 server.register(jwt, {
@@ -44,7 +63,7 @@ server.decorate('authenticate', async function(request: any, reply: any) {
   try {
     await request.jwtVerify()
   } catch (err) {
-    reply.status(401).send({ error: 'Unauthorized' })
+    reply.status(401).send({ error: 'Access denied.' })
   }
 })
 
@@ -52,15 +71,30 @@ server.decorate('requireVerified', async function(request: any, reply: any) {
   try {
     await request.jwtVerify()
     if (!request.user.email_verified) {
-      return reply.status(403).send({ error: 'Please verify your email to continue.' })
+      return reply.status(403).send({ error: 'Verify your email first.' })
     }
   } catch (err) {
-    reply.status(401).send({ error: 'Unauthorized' })
+    reply.status(401).send({ error: 'Access denied.' })
   }
+})
+
+server.setErrorHandler((error: any, _request, reply) => {
+  server.log.error(error)
+  const status = error.statusCode && error.statusCode >= 400 ? error.statusCode : 500
+  reply.status(status).send({ error: status === 500 ? 'Something broke.' : (error.message || 'Request failed.') })
 })
 
 server.register(authRoutes, { prefix: '/auth' })
 server.register(politiciansRoutes, { prefix: '/politicians' })
+server.register(analyzeRoutes, { prefix: '/politicians' })
+server.register(leaderVerdictRoutes, { prefix: '/politicians' })
+server.register(leaderLeakRoutes, { prefix: '/politicians' })
+server.register(leaderProposalRoutes, { prefix: '/politicians' })
+server.register(verdictsRoutes, { prefix: '/verdicts' })
+server.register(leaksRoutes, { prefix: '/leaks' })
+server.register(proposalsRoutes, { prefix: '/controversy-proposals' })
+server.register(feedRoutes, { prefix: '/feed' })
+server.register(leaderboardRoutes, { prefix: '/leaderboard' })
 server.register(commentsRoutes, { prefix: '/comments' })
 server.register(votesRoutes, { prefix: '/votes' })
 server.register(homeRoutes, { prefix: '/home' })
@@ -71,7 +105,6 @@ server.register(notificationsRoutes, { prefix: '/notifications' })
 server.register(fundingRoutes, { prefix: '/funding' })
 server.register(influenceRoutes, { prefix: '/influence' })
 server.register(configRoutes, { prefix: '/config' })
-server.register(analyzeRoutes, { prefix: '/politicians' })
 
 server.get('/health', async () => ({ status: 'ok' }))
 

@@ -1,65 +1,79 @@
-import { authenticate } from '../middleware/auth'
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
+import { authenticate, requireAdmin } from '../middleware/auth'
 import { notifyPoliticianUpdate } from '../services/notify'
+import { loadScoreConfig, recalculateScore } from '../services/score'
+import { getVerdictAggregate } from '../services/verdicts'
+
+const VERDICT_JSON = `
+  (SELECT json_build_object(
+     'total', COUNT(*),
+     'guilty', COUNT(*) FILTER (WHERE verdict = 'guilty'),
+     'suspicious', COUNT(*) FILTER (WHERE verdict = 'suspicious'),
+     'unclear', COUNT(*) FILTER (WHERE verdict = 'unclear'),
+     'clean', COUNT(*) FILTER (WHERE verdict = 'clean')
+   ) FROM verdicts v WHERE v.politician_id = p.id) AS verdict_counts`
+
+const TOP_CONTROVERSY_JSON = `
+  (SELECT json_build_object('id', c.id, 'title', c.title, 'level', c.level)
+   FROM controversies c WHERE c.politician_id = p.id
+   ORDER BY CASE c.level WHEN 'confirmed' THEN 0 WHEN 'likely' THEN 1 WHEN 'maybe' THEN 2 ELSE 3 END,
+            c.upvotes DESC, c.created_at DESC
+   LIMIT 1) AS top_controversy`
+
+const CARD_COLUMNS = `
+  p.id, p.name, p.party, p.region, p.position, p.country, p.age, p.bio, p.photo_url,
+  p.aliases, p.truth_score, p.latitude, p.longitude, p.created_at,
+  (SELECT COUNT(*) FROM controversies c WHERE c.politician_id = p.id)::int AS controversy_count,
+  ${VERDICT_JSON},
+  ${TOP_CONTROVERSY_JSON}`
+
+function parseAliases(input: unknown): string[] {
+  if (Array.isArray(input)) return input.map(a => String(a).trim()).filter(Boolean)
+  if (typeof input === 'string') return input.split(',').map(a => a.trim()).filter(Boolean)
+  return []
+}
 
 export async function politiciansRoutes(server: FastifyInstance) {
-  const auth = { onRequest: [authenticate] }
+  const admin = { onRequest: [requireAdmin] }
 
   server.get('/', async (request) => {
-    const { search, country, party, min_age, max_age, min_truth, max_truth, page, limit } = request.query as any
+    const { search, country, party, position, min_age, max_age, min_truth, max_truth, page, limit, sort } = request.query as any
 
-    const pageNum = Number(page) || 1
-    const limitNum = Number(limit) || 20
+    const pageNum = Math.max(1, Number(page) || 1)
+    const limitNum = Math.min(1000, Math.max(1, Number(limit) || 20))
     const offset = (pageNum - 1) * limitNum
 
-    let baseQuery = `FROM politicians WHERE 1=1`
+    let where = `FROM politicians p WHERE 1=1`
     const params: any[] = []
     let i = 1
 
     if (search) {
-      baseQuery += ` AND (name ILIKE $${i} OR party ILIKE $${i} OR region ILIKE $${i} OR position ILIKE $${i})`
+      where += ` AND (p.name ILIKE $${i} OR p.party ILIKE $${i} OR p.region ILIKE $${i} OR p.position ILIKE $${i} OR array_to_string(p.aliases, ' ') ILIKE $${i})`
       params.push(`%${search}%`)
       i++
     }
-    if (country) {
-      baseQuery += ` AND country ILIKE $${i}`
-      params.push(`%${country}%`)
-      i++
-    }
-    if (party) {
-      baseQuery += ` AND party ILIKE $${i}`
-      params.push(`%${party}%`)
-      i++
-    }
-    if (min_age) {
-      baseQuery += ` AND age >= $${i}`
-      params.push(Number(min_age))
-      i++
-    }
-    if (max_age) {
-      baseQuery += ` AND age <= $${i}`
-      params.push(Number(max_age))
-      i++
-    }
-    if (min_truth) {
-      baseQuery += ` AND truth_score >= $${i}`
-      params.push(Number(min_truth))
-      i++
-    }
-    if (max_truth) {
-      baseQuery += ` AND truth_score <= $${i}`
-      params.push(Number(max_truth))
-      i++
-    }
+    if (country) { where += ` AND p.country ILIKE $${i}`; params.push(`%${country}%`); i++ }
+    if (party) { where += ` AND p.party ILIKE $${i}`; params.push(`%${party}%`); i++ }
+    if (position) { where += ` AND p.position ILIKE $${i}`; params.push(`%${position}%`); i++ }
+    if (min_age) { where += ` AND p.age >= $${i}`; params.push(Number(min_age)); i++ }
+    if (max_age) { where += ` AND p.age <= $${i}`; params.push(Number(max_age)); i++ }
+    if (min_truth) { where += ` AND p.truth_score >= $${i}`; params.push(Number(min_truth)); i++ }
+    if (max_truth) { where += ` AND p.truth_score <= $${i}`; params.push(Number(max_truth)); i++ }
 
-    const countResult = await db.query(`SELECT COUNT(*) ${baseQuery}`, params)
+    const orderBy = {
+      name: 'p.name ASC',
+      score_asc: 'p.truth_score ASC NULLS LAST, p.name ASC',
+      score_desc: 'p.truth_score DESC NULLS LAST, p.name ASC',
+      newest: 'p.created_at DESC',
+    }[String(sort) as 'name'] || 'p.name ASC'
+
+    const countResult = await db.query(`SELECT COUNT(*) ${where}`, params)
     const total = Number(countResult.rows[0].count)
 
-    const dataParams = [...params, limitNum, offset]
     const { rows } = await db.query(
-      `SELECT * ${baseQuery} ORDER BY name ASC LIMIT $${i} OFFSET $${i + 1}`,
-      dataParams
+      `SELECT ${CARD_COLUMNS} ${where} ORDER BY ${orderBy} LIMIT $${i} OFFSET $${i + 1}`,
+      [...params, limitNum, offset]
     )
 
     return {
@@ -73,170 +87,128 @@ export async function politiciansRoutes(server: FastifyInstance) {
   })
 
   server.get('/meta', async () => {
-    const { rows: countries } = await db.query(`SELECT DISTINCT country FROM politicians WHERE country IS NOT NULL ORDER BY country`)
-    const { rows: parties } = await db.query(`SELECT DISTINCT party FROM politicians WHERE party IS NOT NULL ORDER BY party`)
+    const [{ rows: countries }, { rows: parties }, { rows: positions }] = await Promise.all([
+      db.query(`SELECT DISTINCT country FROM politicians WHERE country IS NOT NULL AND country <> '' ORDER BY country`),
+      db.query(`SELECT DISTINCT party FROM politicians WHERE party IS NOT NULL AND party <> '' ORDER BY party`),
+      db.query(`SELECT DISTINCT position FROM politicians WHERE position IS NOT NULL AND position <> '' ORDER BY position`),
+    ])
     return {
       countries: countries.map(r => r.country),
-      parties: parties.map(r => r.party)
+      parties: parties.map(r => r.party),
+      positions: positions.map(r => r.position),
     }
   })
 
   server.get('/:id', async (request, reply) => {
     const { id } = request.params as { id: string }
     const { rows } = await db.query('SELECT * FROM politicians WHERE id = $1', [id])
-    if (rows.length === 0) return reply.status(404).send({ error: 'Not found' })
+    if (rows.length === 0) return reply.status(404).send({ error: 'No such leader.' })
 
-    const politician = rows[0]
+    const result = await recalculateScore(id)
+    const score = result?.score ?? Math.round(Number(rows[0].truth_score ?? 90))
 
-    // Get config
-    const { rows: config } = await db.query('SELECT key, value FROM truth_score_config')
-    const cfg: Record<string, number> = {}
-    for (const c of config) cfg[c.key] = Number(c.value)
+    const [{ rows: fresh }, verdicts, { rows: counts }] = await Promise.all([
+      db.query('SELECT score_history FROM politicians WHERE id = $1', [id]),
+      getVerdictAggregate(id),
+      db.query(
+        `SELECT
+           (SELECT COUNT(*) FROM controversies WHERE politician_id = $1)::int AS controversies,
+           (SELECT COUNT(*) FROM verdicts WHERE politician_id = $1)::int AS verdicts,
+           (SELECT COUNT(*) FROM leaks WHERE politician_id = $1 AND status IN ('visible', 'escalated'))::int AS leaks,
+           (SELECT COUNT(*) FROM comments WHERE politician_id = $1)::int AS comments`,
+        [id]
+      ),
+    ])
 
-    // Get controversies
-    const { rows: controversies } = await db.query(
-      'SELECT level FROM controversies WHERE politician_id = $1',
-      [id]
-    )
+    const history: { d: string; s: number }[] = Array.isArray(fresh[0]?.score_history) ? fresh[0].score_history : []
+    const cutoff = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
 
-    // Get funding
-    const { rows: funding } = await db.query(
-      'SELECT source_type, amount FROM funding_sources WHERE politician_id = $1',
-      [id]
-    )
-
-    // Get foreign influence
-    const { rows: influence } = await db.query(
-      'SELECT influence_score FROM foreign_influence WHERE politician_id = $1',
-      [id]
-    )
-
-    // Calculate score
-    const baseScore = cfg.base_score ?? 90
-    let score = baseScore
-
-    // Deduct for controversies
-    for (const c of controversies) {
-      const weight = cfg[`weight_${c.level}`] ?? 0
-      score -= weight
+    return {
+      ...rows[0],
+      truth_score: score,
+      score_history: history.filter(p => p.d >= cutoff),
+      verdicts,
+      stats: counts[0],
     }
-
-    // Deduct for corporate funding
-    if (funding.length > 0) {
-      const totalFunding = funding.reduce((sum: number, f: any) => sum + Number(f.amount), 0)
-      const corporate = funding
-        .filter((f: any) => ['Corporate', 'PAC'].includes(f.source_type))
-        .reduce((sum: number, f: any) => sum + Number(f.amount), 0)
-      const corporatePct = totalFunding > 0 ? (corporate / totalFunding) * 100 : 0
-      if (corporatePct > (cfg.funding_corporate_threshold ?? 60)) {
-        score -= cfg.funding_corporate_penalty ?? 10
-      }
-    }
-
-    // Deduct for foreign influence
-    for (const inf of influence) {
-      if (Number(inf.influence_score) > (cfg.funding_foreign_threshold ?? 60)) {
-        score -= cfg.funding_foreign_penalty ?? 10
-      }
-    }
-
-    score = Math.max(1, Math.min(100, Math.round(score)))
-
-    // Update stored truth_score
-    await db.query('UPDATE politicians SET truth_score = $1 WHERE id = $2', [score, id])
-
-    return { ...politician, truth_score: score }
   })
 
-  server.post('/recalculate-all', auth, async (request, reply) => {
-    const user = (request as any).user
-    if (!user?.is_admin) return reply.status(403).send({ error: 'Forbidden' })
-  
-    const { rows: allPoliticians } = await db.query('SELECT id FROM politicians')
-    const { rows: config } = await db.query('SELECT key, value FROM truth_score_config')
-    const cfg: Record<string, number> = {}
-    for (const c of config) cfg[c.key] = Number(c.value)
-  
-    let updated = 0
-    for (const p of allPoliticians) {
-      const { rows: controversies } = await db.query('SELECT level FROM controversies WHERE politician_id = $1', [p.id])
-      const { rows: funding } = await db.query('SELECT source_type, amount FROM funding_sources WHERE politician_id = $1', [p.id])
-      const { rows: influence } = await db.query('SELECT influence_score FROM foreign_influence WHERE politician_id = $1', [p.id])
-  
-      const baseScore = cfg.base_score ?? 90
-      let score = baseScore
-  
-      for (const c of controversies) {
-        score -= cfg[`weight_${c.level}`] ?? 0
-      }
-  
-      if (funding.length > 0) {
-        const total = funding.reduce((sum: number, f: any) => sum + Number(f.amount), 0)
-        const corporate = funding.filter((f: any) => ['Corporate', 'PAC'].includes(f.source_type)).reduce((sum: number, f: any) => sum + Number(f.amount), 0)
-        if (total > 0 && (corporate / total) * 100 > (cfg.funding_corporate_threshold ?? 60)) {
-          score -= cfg.funding_corporate_penalty ?? 10
-        }
-      }
-  
-      for (const inf of influence) {
-        if (Number(inf.influence_score) > (cfg.funding_foreign_threshold ?? 60)) {
-          score -= cfg.funding_foreign_penalty ?? 10
-        }
-      }
-  
-      score = Math.max(1, Math.min(100, Math.round(score)))
-      await db.query('UPDATE politicians SET truth_score = $1 WHERE id = $2', [score, p.id])
-      updated++
-    }
-  
-    return { success: true, updated }
-  })
-
-  server.put('/:id', auth, async (request, reply) => {
-    const user = (request as any).user
-    if (!user?.is_admin) return reply.status(403).send({ error: 'Forbidden' })
-
-    const { id } = request.params as { id: string }
-    const { name, party, region, position, bio, country, age, latitude, longitude, photo_url } = request.body as any
-
-    const { rows: existing } = await db.query('SELECT * FROM politicians WHERE id = $1', [id])
-    const prev = existing[0]
+  server.post('/', admin, async (request, reply) => {
+    const { name, party, region, position, bio, country, age, latitude, longitude, photo_url, aliases } = request.body as any
+    if (!name || !String(name).trim()) return reply.status(400).send({ error: 'Name required.' })
 
     const { rows } = await db.query(
-      `UPDATE politicians SET
-        name=$1, party=$2, region=$3, position=$4, bio=$5,
-        country=$6, age=$7, latitude=$8, longitude=$9, photo_url=$10
-       WHERE id=$11 RETURNING *`,
+      `INSERT INTO politicians (name, party, region, position, bio, country, age, latitude, longitude, photo_url, aliases, truth_score, score_history)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 90, '[]') RETURNING *`,
       [
-        name, party, region, position, bio || null,
+        String(name).trim(), party || null, region || null, position || null, bio || null,
         country || 'Canada',
         age ? Number(age) : null,
         latitude ? Number(latitude) : null,
         longitude ? Number(longitude) : null,
         photo_url || null,
+        parseAliases(aliases),
+      ]
+    )
+    await recalculateScore(rows[0].id)
+    return reply.status(201).send(rows[0])
+  })
+
+  server.post('/recalculate-all', admin, async () => {
+    const cfg = await loadScoreConfig()
+    const { rows: all } = await db.query('SELECT id FROM politicians')
+    let updated = 0
+    let changed = 0
+    for (const p of all) {
+      const r = await recalculateScore(p.id, cfg)
+      if (r) { updated++; if (r.changed) changed++ }
+    }
+    return { success: true, updated, changed }
+  })
+
+  server.put('/:id', admin, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { name, party, region, position, bio, country, age, latitude, longitude, photo_url, aliases } = request.body as any
+
+    const { rows: existing } = await db.query('SELECT * FROM politicians WHERE id = $1', [id])
+    if (existing.length === 0) return reply.status(404).send({ error: 'No such leader.' })
+    const prev = existing[0]
+
+    const { rows } = await db.query(
+      `UPDATE politicians SET
+        name=$1, party=$2, region=$3, position=$4, bio=$5,
+        country=$6, age=$7, latitude=$8, longitude=$9, photo_url=$10, aliases=$11
+       WHERE id=$12 RETURNING *`,
+      [
+        name, party || null, region || null, position || null, bio || null,
+        country || 'Canada',
+        age ? Number(age) : null,
+        latitude ? Number(latitude) : null,
+        longitude ? Number(longitude) : null,
+        photo_url || null,
+        aliases === undefined ? prev.aliases : parseAliases(aliases),
         id
       ]
     )
 
     const updated = rows[0]
     const changes: string[] = []
-
     if (prev.position !== updated.position) changes.push(`position updated to "${updated.position}"`)
     if (prev.party !== updated.party) changes.push(`party changed to ${updated.party}`)
-
-    if (changes.length > 0) {
-      await notifyPoliticianUpdate(id, updated.name, changes)
-    }
+    if (changes.length > 0) await notifyPoliticianUpdate(id, updated.name, changes)
 
     return updated
   })
 
-  server.delete('/:id', auth, async (request, reply) => {
-    const user = (request as any).user
-    if (!user?.is_admin) return reply.status(403).send({ error: 'Forbidden' })
-
+  server.delete('/:id', admin, async (request) => {
     const { id } = request.params as { id: string }
     await db.query('DELETE FROM politicians WHERE id = $1', [id])
     return { success: true }
+  })
+
+  // Kept for backwards compatibility with older clients.
+  server.get('/:id/score', { onRequest: [authenticate] }, async (request) => {
+    const { id } = request.params as { id: string }
+    const r = await recalculateScore(id)
+    return { truth_score: r?.score ?? null }
   })
 }

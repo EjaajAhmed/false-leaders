@@ -1,260 +1,113 @@
 import { useState, useEffect } from 'react'
+import type { DragEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { getBookmarks, getGrafts, createGraft, deleteGraft, moveBookmark, removeBookmark } from '../api/politicians'
 import { useAuth } from '../context/AuthContext'
+import { Empty } from '../components/States'
 
 export default function Bookmarks() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const [selectedGraft, setSelectedGraft] = useState<string | 'all' | 'unsorted'>('all')
-  const [newGraftName, setNewGraftName] = useState('')
-  const [newGraftDesc, setNewGraftDesc] = useState('')
-  const [showNewGraft, setShowNewGraft] = useState(false)
+  const qc = useQueryClient()
+  const [selected, setSelected] = useState<string | 'all' | 'unsorted'>('all')
+  const [newName, setNewName] = useState('')
+  const [newDesc, setNewDesc] = useState('')
+  const [showNew, setShowNew] = useState(false)
   const [draggingId, setDraggingId] = useState<string | null>(null)
-  const [dragOverGraft, setDragOverGraft] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState<string | null>(null)
 
   const { data: bookmarks } = useQuery({ queryKey: ['bookmarks'], queryFn: getBookmarks, enabled: !!user })
   const { data: grafts } = useQuery({ queryKey: ['grafts'], queryFn: getGrafts, enabled: !!user })
 
-  const createGraftMutation = useMutation({
-    mutationFn: createGraft,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['grafts'] })
-      setNewGraftName('')
-      setNewGraftDesc('')
-      setShowNewGraft(false)
-    }
-  })
+  const invalidate = () => { qc.invalidateQueries({ queryKey: ['grafts'] }); qc.invalidateQueries({ queryKey: ['bookmarks'] }) }
+  const create = useMutation({ mutationFn: createGraft, onSuccess: () => { invalidate(); setNewName(''); setNewDesc(''); setShowNew(false) } })
+  const del = useMutation({ mutationFn: deleteGraft, onSuccess: () => { invalidate(); setSelected('all') } })
+  const move = useMutation({ mutationFn: moveBookmark, onSuccess: invalidate })
+  const remove = useMutation({ mutationFn: removeBookmark, onSuccess: invalidate })
 
-  const deleteGraftMutation = useMutation({
-    mutationFn: deleteGraft,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['grafts'] })
-      queryClient.invalidateQueries({ queryKey: ['bookmarks'] })
-      setSelectedGraft('all')
-    }
-  })
-
-  const moveMutation = useMutation({
-    mutationFn: moveBookmark,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookmarks'] })
-      queryClient.invalidateQueries({ queryKey: ['grafts'] })
-    }
-  })
-
-  const removeMutation = useMutation({
-    mutationFn: removeBookmark,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookmarks'] })
-  })
-
-  useEffect(() => {
-    if (!user) navigate('/login')
-  }, [user, navigate])
-
+  useEffect(() => { if (!user) navigate('/login') }, [user, navigate])
   if (!user) return null
 
-  const handleDragStart = (e: React.DragEvent, bookmarkId: string) => {
-    setDraggingId(bookmarkId)
-    e.dataTransfer.effectAllowed = 'move'
-  }
-
-  const handleDragOver = (e: React.DragEvent, graftId: string | null) => {
+  const onDragStart = (e: DragEvent, id: string) => { setDraggingId(id); e.dataTransfer.effectAllowed = 'move' }
+  const onDragOver = (e: DragEvent, graftId: string | null) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOver(graftId ?? 'unsorted') }
+  const onDrop = (e: DragEvent, graftId: string | null) => {
     e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    setDragOverGraft(graftId ?? 'unsorted')
+    if (draggingId) move.mutate({ id: draggingId, graft_id: graftId })
+    setDraggingId(null); setDragOver(null)
   }
 
-  const handleDrop = (e: React.DragEvent, graftId: string | null) => {
-    e.preventDefault()
-    if (draggingId) moveMutation.mutate({ id: draggingId, graft_id: graftId })
-    setDraggingId(null)
-    setDragOverGraft(null)
-  }
+  const all = bookmarks || []
+  const unsorted = all.filter((b: any) => !b.graft_id)
+  const inGraft = (id: string) => all.filter((b: any) => b.graft_id === id)
+  const shown = selected === 'all' ? all : selected === 'unsorted' ? unsorted : inGraft(selected)
 
-  const handleDragEnd = () => {
-    setDraggingId(null)
-    setDragOverGraft(null)
-  }
-
-  const allBookmarks = bookmarks || []
-  const unsorted = allBookmarks.filter((b: any) => !b.graft_id)
-  const inGraft = (graftId: string) => allBookmarks.filter((b: any) => b.graft_id === graftId)
-
-  const displayedBookmarks = selectedGraft === 'all'
-    ? allBookmarks
-    : selectedGraft === 'unsorted'
-    ? unsorted
-    : inGraft(selectedGraft)
-
-  const graftDropStyle = (graftId: string | null) => ({
-    transition: 'all 0.15s',
-    background: dragOverGraft === (graftId ?? 'unsorted') ? 'rgba(201,168,76,0.08)' : 'none',
-    borderRadius: '8px'
-  })
+  const dropStyle = (id: string | null) => ({ background: dragOver === (id ?? 'unsorted') ? 'var(--gold-soft)' : 'transparent', transition: 'background 0.15s' })
+  const navBtn = (active: boolean) => `btn btn--ghost btn--sm btn--block${active ? ' is-active' : ''}`
 
   return (
-    <div style={{ maxWidth: '960px', margin: '2rem auto', padding: '0 1rem' }}>
-      <h1 style={{ margin: '0 0 0.25rem' }}>Bookmarks</h1>
-      <p style={{ color: '#888', marginBottom: '2rem' }}>Drag politicians into grafts to organise them.</p>
+    <div className="page">
+      <div className="page-head">
+        <p className="eyebrow">Your watch list</p>
+        <h1>Bookmarks</h1>
+        <p>Drag leaders into grafts to group them.</p>
+      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '2rem' }}>
-
+      <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '2rem' }} className="bookmarks-grid">
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <p style={{ margin: 0, fontWeight: 500, fontSize: '0.9rem' }}>Grafts</p>
-            <button
-              onClick={() => setShowNewGraft(!showNewGraft)}
-              style={{ fontSize: '0.8rem', border: 'none', background: 'none', cursor: 'pointer', color: '#555' }}
-            >
-              + New
-            </button>
+          <div className="row row--between" style={{ marginBottom: '0.6rem' }}>
+            <span className="eyebrow">Grafts</span>
+            <button className="btn btn--ghost btn--sm" onClick={() => setShowNew(!showNew)}>{showNew ? 'Cancel' : 'New'}</button>
           </div>
-
-          {showNewGraft && (
-            <div style={{ marginBottom: '1rem', padding: '0.75rem', border: '1px solid #eee', borderRadius: '8px' }}>
-              <input
-                placeholder="Graft name"
-                value={newGraftName}
-                onChange={e => setNewGraftName(e.target.value)}
-                style={{ width: '100%', padding: '0.4rem', border: '1px solid #ddd', borderRadius: '4px', marginBottom: '0.5rem', boxSizing: 'border-box', fontSize: '0.85rem' }}
-              />
-              <input
-                placeholder="Description (optional)"
-                value={newGraftDesc}
-                onChange={e => setNewGraftDesc(e.target.value)}
-                style={{ width: '100%', padding: '0.4rem', border: '1px solid #ddd', borderRadius: '4px', marginBottom: '0.5rem', boxSizing: 'border-box', fontSize: '0.85rem' }}
-              />
-              <button
-                onClick={() => createGraftMutation.mutate({ name: newGraftName, description: newGraftDesc })}
-                disabled={!newGraftName.trim()}
-                style={{ width: '100%', padding: '0.4rem', background: '#1a1a1a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}
-              >
-                Create
-              </button>
+          {showNew && (
+            <div className="card card--tight stack" style={{ marginBottom: '0.75rem', gap: '0.5rem' }}>
+              <input className="input" placeholder="Graft name" value={newName} onChange={e => setNewName(e.target.value)} />
+              <input className="input" placeholder="Description" value={newDesc} onChange={e => setNewDesc(e.target.value)} />
+              <button className="btn btn--gold btn--sm" disabled={!newName.trim()} onClick={() => create.mutate({ name: newName, description: newDesc })}>Create</button>
             </div>
           )}
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <button
-              onClick={() => setSelectedGraft('all')}
-              style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderRadius: '6px', border: 'none', background: selectedGraft === 'all' ? '#f3f3f3' : 'none', cursor: 'pointer', fontSize: '0.9rem', fontWeight: selectedGraft === 'all' ? 500 : 400 }}
-            >
-              All saved ({allBookmarks.length})
-            </button>
-
-            <div
-              style={graftDropStyle(null)}
-              onDragOver={e => handleDragOver(e, null)}
-              onDrop={e => handleDrop(e, null)}
-              onDragLeave={() => setDragOverGraft(null)}
-            >
-              <button
-                onClick={() => setSelectedGraft('unsorted')}
-                style={{ width: '100%', textAlign: 'left', padding: '0.5rem 0.75rem', borderRadius: '6px', border: 'none', background: selectedGraft === 'unsorted' ? '#f3f3f3' : 'none', cursor: 'pointer', fontSize: '0.9rem', fontWeight: selectedGraft === 'unsorted' ? 500 : 400 }}
-              >
-                Unsorted ({unsorted.length})
-              </button>
+          <div className="stack" style={{ gap: '0.2rem' }}>
+            <button className={navBtn(selected === 'all')} style={{ justifyContent: 'space-between' }} onClick={() => setSelected('all')}>All <span className="dim">{all.length}</span></button>
+            <div style={dropStyle(null)} onDragOver={e => onDragOver(e, null)} onDrop={e => onDrop(e, null)} onDragLeave={() => setDragOver(null)}>
+              <button className={navBtn(selected === 'unsorted')} style={{ justifyContent: 'space-between' }} onClick={() => setSelected('unsorted')}>Unsorted <span className="dim">{unsorted.length}</span></button>
             </div>
-
             {grafts?.map((g: any) => (
-              <div
-                key={g.id}
-                style={graftDropStyle(g.id)}
-                onDragOver={e => handleDragOver(e, g.id)}
-                onDrop={e => handleDrop(e, g.id)}
-                onDragLeave={() => setDragOverGraft(null)}
-              >
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <button
-                    onClick={() => setSelectedGraft(g.id)}
-                    style={{ flex: 1, textAlign: 'left', padding: '0.5rem 0.75rem', borderRadius: '6px', border: 'none', background: selectedGraft === g.id ? '#f3f3f3' : 'none', cursor: 'pointer', fontSize: '0.9rem', fontWeight: selectedGraft === g.id ? 500 : 400 }}
-                  >
-                    {g.name}
-                    <span style={{ color: '#aaa', fontSize: '0.8rem', marginLeft: '0.4rem' }}>
-                      {inGraft(g.id).length}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => { if (confirm(`Delete "${g.name}"?`)) deleteGraftMutation.mutate(g.id) }}
-                    style={{ background: 'none', border: 'none', color: '#ddd', cursor: 'pointer', fontSize: '0.8rem', padding: '0.25rem 0.5rem' }}
-                  >
-                    ×
-                  </button>
-                </div>
+              <div key={g.id} style={dropStyle(g.id)} onDragOver={e => onDragOver(e, g.id)} onDrop={e => onDrop(e, g.id)} onDragLeave={() => setDragOver(null)} className="row" >
+                <button className={navBtn(selected === g.id)} style={{ justifyContent: 'space-between', flex: 1 }} onClick={() => setSelected(g.id)}>
+                  <span className="truncate">{g.name}</span><span className="dim">{inGraft(g.id).length}</span>
+                </button>
+                <button className="btn btn--ghost btn--sm btn--danger" onClick={() => { if (confirm(`Delete "${g.name}"?`)) del.mutate(g.id) }}>×</button>
               </div>
             ))}
           </div>
-
-          <p style={{ fontSize: '0.75rem', color: '#bbb', marginTop: '1rem', lineHeight: '1.5' }}>
-            Drag a politician card onto a graft to move it there.
-          </p>
         </div>
 
         <div>
-          {selectedGraft !== 'all' && selectedGraft !== 'unsorted' && grafts && (
+          {selected !== 'all' && selected !== 'unsorted' && grafts && (
             <div style={{ marginBottom: '1rem' }}>
-              <h2 style={{ margin: '0 0 0.25rem', fontSize: '1.1rem' }}>
-                {grafts.find((g: any) => g.id === selectedGraft)?.name}
-              </h2>
-              <p style={{ margin: 0, color: '#888', fontSize: '0.85rem' }}>
-                {grafts.find((g: any) => g.id === selectedGraft)?.description}
-              </p>
+              <h2 style={{ fontSize: '1.3rem' }}>{grafts.find((g: any) => g.id === selected)?.name}</h2>
+              <p className="muted small">{grafts.find((g: any) => g.id === selected)?.description}</p>
             </div>
           )}
-
-          {displayedBookmarks.length === 0 && (
-            <div style={{ padding: '2rem', border: '2px dashed #eee', borderRadius: '10px', textAlign: 'center', color: '#aaa' }}>
-              {selectedGraft === 'unsorted' ? 'No unsorted politicians.' : 'Nothing here yet.'}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {displayedBookmarks.map((b: any) => (
-              <div
-                key={b.id}
-                draggable
-                onDragStart={e => handleDragStart(e, b.id)}
-                onDragEnd={handleDragEnd}
-                style={{
-                  padding: '0.875rem 1rem',
-                  border: '1px solid #eee',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  cursor: 'grab',
-                  opacity: draggingId === b.id ? 0.4 : 1,
-                  transition: 'opacity 0.15s',
-                  background: 'white'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
-                  <span style={{ color: '#ccc', fontSize: '1rem', flexShrink: 0 }}>⠿</span>
+          {shown.length === 0 && <Empty text={selected === 'unsorted' ? 'Nothing unsorted.' : 'Nothing saved here. Everyone is worth watching.'} />}
+          <div className="stack" style={{ gap: '0.5rem' }}>
+            {shown.map((b: any) => (
+              <div key={b.id} draggable onDragStart={e => onDragStart(e, b.id)} onDragEnd={() => { setDraggingId(null); setDragOver(null) }}
+                className="card card--tight row row--between" style={{ cursor: 'grab', opacity: draggingId === b.id ? 0.4 : 1 }}>
+                <div className="row" style={{ minWidth: 0 }}>
+                  <span className="dim mono" style={{ userSelect: 'none' }}>⋮⋮</span>
                   <div style={{ minWidth: 0 }}>
-                    <Link to={`/politicians/${b.politician_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      <p style={{ margin: 0, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</p>
-                    </Link>
-                    <p style={{ margin: '0.1rem 0 0', color: '#888', fontSize: '0.8rem' }}>
-                      {b.party} — {b.region}
-                      {b.graft_name && <span style={{ marginLeft: '0.5rem', color: '#bbb' }}>· {b.graft_name}</span>}
-                    </p>
+                    <Link to={`/leaders/${b.politician_id}`} className="truncate" style={{ display: 'block', fontWeight: 500 }}>{b.name}</Link>
+                    <p className="muted tiny truncate">{[b.position, b.party].filter(Boolean).join(' · ')}{b.graft_name && <span className="dim"> · {b.graft_name}</span>}</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => removeMutation.mutate(b.id)}
-                  style={{ background: 'none', border: 'none', color: '#ddd', cursor: 'pointer', fontSize: '1rem', flexShrink: 0, marginLeft: '0.5rem' }}
-                  title="Remove bookmark"
-                >
-                  ×
-                </button>
+                <button className="btn btn--ghost btn--sm btn--danger" onClick={() => remove.mutate(b.id)} title="Remove">×</button>
               </div>
             ))}
           </div>
         </div>
       </div>
+      <style>{`@media (max-width: 768px) { .bookmarks-grid { grid-template-columns: 1fr !important; } }`}</style>
     </div>
   )
 }

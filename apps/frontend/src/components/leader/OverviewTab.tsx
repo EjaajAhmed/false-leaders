@@ -1,0 +1,151 @@
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { LeaderDetail } from '../../types'
+import ScoreRing from '../ScoreRing'
+import Sparkline from '../Sparkline'
+import VerdictBar from '../VerdictBar'
+import IdentityToggle from '../IdentityToggle'
+import { Empty, Loading } from '../States'
+import { useAuth } from '../../context/AuthContext'
+import { usePostAsProle } from '../../lib/identity'
+import { getComments, postComment, deleteComment } from '../../api/politicians'
+import { errorMessage } from '../../api/client'
+import { proleTag, scoreLabel, timeAgo, verdictLabel } from '../../lib/format'
+
+function Discussion({ leaderId }: { leaderId: string }) {
+  const { user } = useAuth()
+  const qc = useQueryClient()
+  const [body, setBody] = useState('')
+  const [anon, setAnon] = usePostAsProle()
+  const [error, setError] = useState('')
+  const verified = !!user?.email_verified
+
+  const { data: comments, isLoading } = useQuery({ queryKey: ['comments', leaderId], queryFn: () => getComments(leaderId) })
+  const post = useMutation({
+    mutationFn: postComment,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['comments', leaderId] }); setBody(''); setError('') },
+    onError: (e) => setError(errorMessage(e)),
+  })
+  const del = useMutation({ mutationFn: deleteComment, onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', leaderId] }) })
+
+  return (
+    <section style={{ marginTop: '2.5rem' }}>
+      <div className="section-title">
+        <h2>Discussion</h2>
+        <span className="mono tiny dim">{comments?.length || 0} entries</span>
+      </div>
+
+      {!user && (
+        <div className="notice notice--plain" style={{ marginBottom: '1rem' }}>
+          <Link to="/login" style={{ color: 'var(--gold)' }}>Sign in</Link> to join the discussion.
+        </div>
+      )}
+      {user && !verified && <div className="notice" style={{ marginBottom: '1rem' }}>Verify your email to post.</div>}
+
+      {verified && (
+        <div className="stack" style={{ marginBottom: '1.25rem' }}>
+          <textarea className="textarea" placeholder="Say what you know." value={body} onChange={e => setBody(e.target.value)} maxLength={2000} rows={3} />
+          <IdentityToggle anonymous={anon} onChange={setAnon} />
+          {error && <div className="error">{error}</div>}
+          <div>
+            <button className="btn btn--gold" disabled={!body.trim() || post.isPending} onClick={() => post.mutate({ politician_id: leaderId, body: body.trim(), is_anonymous: anon })}>
+              {post.isPending ? 'Posting' : 'Post'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isLoading && <Loading />}
+      {!isLoading && comments?.length === 0 && <Empty text="No discussion. Silence is also a statement." />}
+      <div className="stack">
+        {comments?.map((c: any) => (
+          <div key={c.id} className="post">
+            <div className="post__head">
+              <div className="post__who">
+                {c.username ? <span className="post__name">@{c.username}</span> : <span className="post__prole">{proleTag(c.prole_number)}</span>}
+                <span className="post__time">{timeAgo(c.created_at)}</span>
+              </div>
+              {(c.is_own || user?.is_admin) && <button className="btn btn--ghost btn--sm" onClick={() => del.mutate(c.id)}>Delete</button>}
+            </div>
+            <p className="post__body">{c.body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+export default function OverviewTab({ leader, onGoTo }: { leader: LeaderDetail; onGoTo: (tab: any) => void }) {
+  const score = Number(leader.truth_score)
+  const verdict = leader.verdicts
+  const history = leader.score_history || []
+  const first = history[0]?.s
+  const delta = first != null ? score - first : 0
+
+  return (
+    <div>
+      <div className="grid-2" style={{ gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr)' }}>
+        <div className="stack" style={{ gap: '1.25rem' }}>
+          <div className="card" style={{ display: 'flex', justifyContent: 'space-around', gap: '1rem', padding: '1.75rem 1rem', flexWrap: 'wrap' }}>
+            <ScoreRing value={score} size="lg" label="TruthScore" sublabel={scoreLabel(score)} />
+            <ScoreRing value={verdict?.score} size="lg" label="Community verdict" sublabel={verdict?.total ? verdictLabel(verdict.dominant) : 'No verdicts'} />
+          </div>
+
+          <div className="card">
+            <div className="row row--between" style={{ marginBottom: '0.75rem' }}>
+              <span className="eyebrow">TruthScore · 30 days</span>
+              {history.length > 1 && (
+                <span className={`mono small ${delta < 0 ? 'delta-down' : delta > 0 ? 'delta-up' : 'dim'}`}>{delta > 0 ? '+' : ''}{delta}</span>
+              )}
+            </div>
+            <Sparkline points={history} />
+          </div>
+
+          <div className="card">
+            <div className="row row--between" style={{ marginBottom: '0.6rem' }}>
+              <span className="eyebrow">Community verdict</span>
+              <button className="btn btn--ghost btn--sm" onClick={() => onGoTo('verdicts')}>Cast yours →</button>
+            </div>
+            <VerdictBar counts={verdict?.counts} size="lg" legend />
+          </div>
+        </div>
+
+        <div className="stack" style={{ gap: '1.25rem' }}>
+          <div className="grid-2" style={{ gap: '0.75rem', gridTemplateColumns: '1fr 1fr' }}>
+            {[
+              ['Controversies', leader.stats?.controversies, 'controversies'],
+              ['Verdicts', leader.stats?.verdicts, 'verdicts'],
+              ['Leaks', leader.stats?.leaks, 'leaks'],
+              ['Discussion', leader.stats?.comments, null],
+            ].map(([label, v, target]) => (
+              <button key={String(label)} className="stat" style={{ textAlign: 'left', cursor: target ? 'pointer' : 'default', border: '1px solid var(--border)' }} onClick={() => target && onGoTo(target)}>
+                <div className="stat__value">{v ?? 0}</div>
+                <div className="stat__label eyebrow">{label}</div>
+              </button>
+            ))}
+          </div>
+
+          <div className="card">
+            <p className="eyebrow" style={{ marginBottom: '0.6rem' }}>Dossier</p>
+            {leader.bio ? (
+              <p style={{ lineHeight: 1.65, color: '#c9c3b7' }}>{leader.bio}</p>
+            ) : (
+              <p className="dim">No biography on file. Someone should fix that.</p>
+            )}
+            <dl style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.35rem 1rem', fontSize: '0.82rem' }}>
+              {[['Position', leader.position], ['Party', leader.party], ['Region', leader.region], ['Country', leader.country], ['Age', leader.age]].filter(([, v]) => v).map(([k, v]) => (
+                <div key={String(k)} style={{ display: 'contents' }}>
+                  <dt className="eyebrow" style={{ paddingTop: '0.15rem' }}>{k}</dt>
+                  <dd className="mono small">{String(v)}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
+      </div>
+
+      <Discussion leaderId={leader.id} />
+    </div>
+  )
+}

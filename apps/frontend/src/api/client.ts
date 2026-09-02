@@ -10,4 +10,8 @@ client.interceptors.request.use((config) => {
   return config
 })
 
+export function errorMessage(err: any, fallback = 'Request failed.'): string {
+  return err?.response?.data?.error || err?.message || fallback
+}
+
 export default client

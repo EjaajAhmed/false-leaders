@@ -1,6 +1,8 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
-import { authenticate } from '../middleware/auth'
+import { requireAdmin } from '../middleware/auth'
+import { recalculateScore } from '../services/score'
+import { emitFeedEvent } from '../services/feed'
 
 async function fetchArticleText(url: string): Promise<string> {
   try {
@@ -23,10 +25,7 @@ async function fetchArticleText(url: string): Promise<string> {
 export async function analyzeRoutes(server: FastifyInstance) {
 
   // Analyze articles and return extracted data for review
-  server.post('/:id/analyze', { onRequest: [authenticate] }, async (request, reply) => {
-    const user = (request as any).user
-    if (!user?.is_admin) return reply.status(403).send({ error: 'Forbidden' })
-
+  server.post('/:id/analyze', { onRequest: [requireAdmin] }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const { urls = [], rawText = '' } = request.body as { urls?: string[]; rawText?: string }
 
@@ -46,7 +45,7 @@ export async function analyzeRoutes(server: FastifyInstance) {
     const apiKey = process.env.GEMINI_API_KEY
     if (!apiKey) return reply.status(500).send({ error: 'GEMINI_API_KEY not configured in Railway env vars' })
 
-    const prompt = `You are a political research analyst. Analyze these articles about the Canadian politician "${name}" and extract structured data.
+    const prompt = `You are an investigative research analyst. Analyze these articles about the public figure "${name}" (politician, executive, or other person of influence) and extract structured data.
 
 Return ONLY a valid JSON object with no markdown, no explanation, nothing else. Use this exact structure:
 
@@ -122,10 +121,7 @@ ${combined.slice(0, 50000)}`
   })
 
   // Save selected items to DB and recalculate score
-  server.post('/:id/analyze/save', { onRequest: [authenticate] }, async (request, reply) => {
-    const user = (request as any).user
-    if (!user?.is_admin) return reply.status(403).send({ error: 'Forbidden' })
-
+  server.post('/:id/analyze/save', { onRequest: [requireAdmin] }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const { funding_sources = [], foreign_influence = [], controversies = [] } = request.body as any
 
@@ -153,32 +149,13 @@ ${combined.slice(0, 50000)}`
       )
     }
 
-    // Recalculate truth score
-    const { rows: config } = await db.query('SELECT key, value FROM truth_score_config')
-    const cfg: Record<string, number> = {}
-    for (const c of config) cfg[c.key] = Number(c.value)
-
-    const { rows: allControversies } = await db.query('SELECT level FROM controversies WHERE politician_id = $1', [id])
-    const { rows: allFunding } = await db.query('SELECT source_type, amount FROM funding_sources WHERE politician_id = $1', [id])
-    const { rows: allInfluence } = await db.query('SELECT influence_score FROM foreign_influence WHERE politician_id = $1', [id])
-
-    let score = cfg.base_score ?? 90
-    for (const c of allControversies) score -= cfg[`weight_${c.level}`] ?? 0
-    if (allFunding.length > 0) {
-      const total = allFunding.reduce((s: number, f: any) => s + Number(f.amount), 0)
-      const corp = allFunding.filter((f: any) => ['Corporate', 'PAC'].includes(f.source_type))
-        .reduce((s: number, f: any) => s + Number(f.amount), 0)
-      if (total > 0 && (corp / total) * 100 > (cfg.funding_corporate_threshold ?? 60)) {
-        score -= cfg.funding_corporate_penalty ?? 10
-      }
+    const { rows: leader } = await db.query('SELECT name FROM politicians WHERE id = $1', [id])
+    const leaderName = leader[0]?.name || 'a leader'
+    for (const c of controversies) {
+      await emitFeedEvent('controversy', id, leaderName, { title: c.title, level: c.level || 'speculative' })
     }
-    for (const inf of allInfluence) {
-      if (Number(inf.influence_score) > (cfg.funding_foreign_threshold ?? 60)) {
-        score -= cfg.funding_foreign_penalty ?? 10
-      }
-    }
-    score = Math.max(1, Math.min(100, Math.round(score)))
-    await db.query('UPDATE politicians SET truth_score = $1 WHERE id = $2', [score, id])
+    const result = await recalculateScore(id)
+    const score = result?.score ?? null
 
     return { success: true, new_truth_score: score }
   })

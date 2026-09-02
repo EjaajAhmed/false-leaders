@@ -1,87 +1,184 @@
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getLeaderboard, getRecent } from '../api/politicians'
-import ArticleCarousel from '../components/ArticleCarousel'
+import { useQuery } from '@tanstack/react-query'
+import { getStats, getFeed, getLeaderboard, getFeatured } from '../api/politicians'
+import FeedList from '../components/FeedList'
+import LeaderCard from '../components/LeaderCard'
+import Reveal from '../components/Reveal'
+import { Loading } from '../components/States'
+import { scoreColor } from '../lib/format'
 
-function ScoreBadge({ score }: { score: number }) {
-  const positive = score >= 0
+function useCountUp(target: number, duration = 1800) {
+  const [value, setValue] = useState(0)
+  useEffect(() => {
+    if (!target) return
+    let raf = 0
+    const start = performance.now()
+    const step = (now: number) => {
+      const p = Math.min(1, (now - start) / duration)
+      const eased = 1 - Math.pow(1 - p, 4)
+      setValue(Math.round(target * eased))
+      if (p < 1) raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+  }, [target, duration])
+  return value
+}
+
+function Hero({ leaders }: { leaders: number }) {
+  const inner = useRef<HTMLDivElement>(null)
+  const count = useCountUp(leaders)
+
+  useEffect(() => {
+    const el = inner.current
+    if (!el) return
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduce) return
+    let raf = 0
+    const onScroll = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        const y = window.scrollY
+        el.style.transform = `translateY(${y * 0.22}px)`
+        el.style.opacity = String(Math.max(0, 1 - y / 700))
+      })
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => { window.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf) }
+  }, [])
+
   return (
-    <span style={{ padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 500, background: positive ? '#e6f4ea' : '#fce8e8', color: positive ? '#1e7e34' : '#c0392b' }}>
-      {positive ? '+' : ''}{score}
-    </span>
+    <section className="hero noise">
+      <div className="hero__inner" ref={inner}>
+        <div className="hero__rule" />
+        <p className="eyebrow eyebrow--gold" style={{ marginTop: '1.25rem' }}>FalseLeaders · Civic intelligence</p>
+        <h1 className="hero__title">The Proles are <em>watching.</em></h1>
+        <p className="hero__counter">
+          <strong>{count.toLocaleString()}</strong> leaders under watch
+        </p>
+        <p className="muted" style={{ maxWidth: '52ch', marginTop: '1.25rem', fontSize: '0.95rem' }}>
+          Politicians, executives, judges, moguls. Every score is earned, every verdict is public, and every leak is anonymous.
+        </p>
+        <div className="hero__actions">
+          <Link to="/browse" className="btn btn--gold">Open the files</Link>
+          <Link to="/feed" className="btn">Read the Wall</Link>
+        </div>
+      </div>
+      <div className="hero__scroll" />
+    </section>
+  )
+}
+
+function Snapshot({ title, to, query, render }: { title: string; to: string; query: any; render: (row: any, i: number) => React.ReactNode }) {
+  return (
+    <div>
+      <div className="section-title">
+        <h2 style={{ fontSize: '1.1rem' }}>{title}</h2>
+        <Link to={to} className="eyebrow" style={{ whiteSpace: 'nowrap' }}>Full board →</Link>
+      </div>
+      {query.isLoading && <Loading />}
+      {query.data && query.data.length === 0 && <p className="dim small" style={{ padding: '0.5rem 0' }}>No movement recorded this week.</p>}
+      {query.data?.slice(0, 5).map(render)}
+    </div>
   )
 }
 
 export default function Home() {
-  const { data: leaderboard } = useQuery({ queryKey: ['leaderboard'], queryFn: getLeaderboard })
-  const { data: recent } = useQuery({ queryKey: ['recent'], queryFn: getRecent })
+  const stats = useQuery({ queryKey: ['stats'], queryFn: getStats })
+  const feed = useQuery({ queryKey: ['feed', 'home'], queryFn: () => getFeed({ limit: 12 }), refetchInterval: 30000 })
+  const condemned = useQuery({ queryKey: ['leaderboard', 'condemned', 5], queryFn: () => getLeaderboard('condemned', 5) })
+  const drop = useQuery({ queryKey: ['leaderboard', 'drop', 5], queryFn: () => getLeaderboard('drop', 5) })
+  const featured = useQuery({ queryKey: ['featured'], queryFn: getFeatured })
 
   return (
-    <div style={{ maxWidth: '900px', margin: '2rem auto', padding: '0 1rem' }}>
+    <div>
+      <Hero leaders={stats.data?.leaders || 0} />
 
-      <div style={{ marginBottom: '3rem' }}>
-        <h1 style={{ fontSize: '4rem', margin: 0, fontFamily: 'var(--font-display)', letterSpacing: '0.05em', lineHeight: 1 }}>
-          FalseLeaders
-        </h1>
-        <p style={{ color: '#888', marginTop: '0.5rem', fontFamily: 'var(--font-body)', fontSize: '1rem' }}>
-          Track, rate, and comment on politicians. Hold them accountable.
-        </p>
-        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem' }}>
-          <Link to="/browse" style={{ padding: '0.6rem 1.5rem', background: '#1a1a1a', color: '#f5f0e8', borderRadius: '8px', textDecoration: 'none', fontFamily: 'var(--font-body)', fontSize: '0.9rem' }}>
-            Browse politicians
-          </Link>
+      <div className="page page--wide">
+        <div className="home-grid">
+          <Reveal>
+            <div className="section-title">
+              <div>
+                <p className="eyebrow">Live</p>
+                <h2>The Wall</h2>
+              </div>
+              <Link to="/feed" className="eyebrow">All events →</Link>
+            </div>
+            {feed.isLoading ? <Loading /> : <FeedList events={feed.data?.events || []} />}
+          </Reveal>
+
+          <Reveal delay={120}>
+            <p className="eyebrow" style={{ marginBottom: '0.25rem' }}>Leaderboards</p>
+            <div className="stack" style={{ gap: '2rem' }}>
+              <Snapshot
+                title="Most Condemned"
+                to="/leaderboard?tab=condemned"
+                query={condemned}
+                render={(p, i) => (
+                  <Link key={p.id} to={`/leaders/${p.id}`} className="lb-row">
+                    <span className="lb-row__rank">{String(i + 1).padStart(2, '0')}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="lb-row__name truncate">{p.name}</div>
+                      <div className="lb-row__meta truncate">{p.position}</div>
+                    </div>
+                    <div className="lb-row__value" style={{ color: scoreColor(Number(p.truth_score)) }}>{Math.round(Number(p.truth_score))}</div>
+                  </Link>
+                )}
+              />
+              <Snapshot
+                title="Biggest Drop"
+                to="/leaderboard?tab=drop"
+                query={drop}
+                render={(p, i) => (
+                  <Link key={p.id} to={`/leaders/${p.id}`} className="lb-row">
+                    <span className="lb-row__rank">{String(i + 1).padStart(2, '0')}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="lb-row__name truncate">{p.name}</div>
+                      <div className="lb-row__meta truncate">{p.position}</div>
+                    </div>
+                    <div>
+                      <div className="lb-row__value delta-down">{p.delta}</div>
+                      <div className="lb-row__sub">7 days</div>
+                    </div>
+                  </Link>
+                )}
+              />
+            </div>
+          </Reveal>
         </div>
-      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+        <Reveal style={{ marginTop: '3.5rem' }}>
+          <div className="section-title">
+            <div>
+              <p className="eyebrow">Under watch</p>
+              <h2>Featured leaders</h2>
+            </div>
+            <Link to="/browse" className="eyebrow">Browse all →</Link>
+          </div>
+          {featured.isLoading && <Loading />}
+          <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+            {featured.data?.map((p: any) => <LeaderCard key={p.id} leader={p} />)}
+          </div>
+        </Reveal>
 
-        <div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', marginBottom: '1rem', borderBottom: '2px solid #1a1a1a', paddingBottom: '0.5rem', letterSpacing: '0.05em' }}>
-            Leaderboard
-          </h2>
-          {!leaderboard && <p style={{ color: '#aaa' }}>Loading...</p>}
-          {leaderboard?.length === 0 && <p style={{ color: '#aaa' }}>No votes yet.</p>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {leaderboard?.map((p: any, i: number) => (
-              <Link key={p.id} to={`/politicians/${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.75rem', border: '1px solid #ddd8cf', borderRadius: '8px', background: 'rgba(255,255,255,0.5)' }}>
-                  <span style={{ width: '24px', textAlign: 'center', fontWeight: 500, color: i < 3 ? '#1a1a1a' : '#aaa', fontFamily: 'var(--font-display)', fontSize: '1.1rem', flexShrink: 0 }}>{i + 1}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: 'var(--font-body)' }}>{p.name}</p>
-                    <p style={{ margin: 0, color: '#888', fontSize: '0.8rem', fontFamily: 'var(--font-body)' }}>{p.party}</p>
-                  </div>
-                  <ScoreBadge score={Number(p.score)} />
-                </div>
-              </Link>
+        <Reveal style={{ marginTop: '3.5rem' }}>
+          <div className="grid-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+            {[
+              ['Leaders', stats.data?.leaders],
+              ['Controversies', stats.data?.controversies],
+              ['Verdicts', stats.data?.verdicts],
+              ['Leaks', stats.data?.leaks],
+              ['Proles', stats.data?.proles],
+            ].map(([label, v]) => (
+              <div key={String(label)} className="stat">
+                <div className="stat__value">{v == null ? '—' : Number(v).toLocaleString()}</div>
+                <div className="stat__label eyebrow">{label}</div>
+              </div>
             ))}
           </div>
-        </div>
-
-        <div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', marginBottom: '1rem', borderBottom: '2px solid #1a1a1a', paddingBottom: '0.5rem', letterSpacing: '0.05em' }}>
-            Recently added
-          </h2>
-          {!recent && <p style={{ color: '#aaa' }}>Loading...</p>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {recent?.map((p: any) => (
-              <Link key={p.id} to={`/politicians/${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <div style={{ padding: '0.65rem 0.75rem', border: '1px solid #ddd8cf', borderRadius: '8px', background: 'rgba(255,255,255,0.5)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: '0.95rem', fontFamily: 'var(--font-body)' }}>{p.name}</p>
-                    <span style={{ fontSize: '0.75rem', color: '#aaa', fontFamily: 'var(--font-body)' }}>{p.comment_count} comments</span>
-                  </div>
-                  <p style={{ margin: '0.1rem 0 0', color: '#888', fontSize: '0.8rem', fontFamily: 'var(--font-body)' }}>{p.party} — {p.region}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
+        </Reveal>
       </div>
-
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', marginBottom: '1rem', borderBottom: '2px solid #1a1a1a', paddingBottom: '0.5rem', letterSpacing: '0.05em' }}>
-        Latest articles
-      </h2>
-      <ArticleCarousel />
     </div>
   )
 }

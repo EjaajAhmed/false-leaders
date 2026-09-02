@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
-import { authenticate } from '../middleware/auth'
+import { requireAdmin } from '../middleware/auth'
 
 export async function configRoutes(server: FastifyInstance) {
 
@@ -11,10 +11,7 @@ export async function configRoutes(server: FastifyInstance) {
     return rows
   })
 
-  server.put('/truth-score', { onRequest: [authenticate] }, async (request, reply) => {
-    const user = (request as any).user
-    if (!user?.is_admin) return reply.status(403).send({ error: 'Forbidden' })
-
+  server.put('/truth-score', { onRequest: [requireAdmin] }, async (request) => {
     const updates = request.body as { key: string; value: number }[]
     for (const { key, value } of updates) {
       await db.query(

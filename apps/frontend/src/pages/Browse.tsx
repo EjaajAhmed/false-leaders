@@ -1,216 +1,149 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { getPoliticians, getPoliticiansMeta } from '../api/politicians'
-import TruthScore from '../components/TruthScore'
+import LeaderCard from '../components/LeaderCard'
+import { Empty, Loading } from '../components/States'
+
+type Sort = 'name' | 'score_asc' | 'score_desc' | 'newest'
 
 export default function Browse() {
-  const [search, setSearch] = useState('')
+  const [params, setParams] = useSearchParams()
+  const [search, setSearch] = useState(params.get('q') || '')
   const [country, setCountry] = useState('')
   const [party, setParty] = useState('')
+  const [position, setPosition] = useState('')
   const [minAge, setMinAge] = useState('')
   const [maxAge, setMaxAge] = useState('')
   const [minTruth, setMinTruth] = useState('')
   const [maxTruth, setMaxTruth] = useState('')
+  const [sort, setSort] = useState<Sort>('name')
   const [showFilters, setShowFilters] = useState(false)
   const [page, setPage] = useState(1)
 
-  const activeFilterCount = [country, party, minAge, maxAge, minTruth, maxTruth].filter(Boolean).length
+  const activeFilterCount = [country, party, position, minAge, maxAge, minTruth, maxTruth].filter(Boolean).length
 
   const clearFilters = () => {
-    setCountry('')
-    setParty('')
-    setMinAge('')
-    setMaxAge('')
-    setMinTruth('')
-    setMaxTruth('')
+    setCountry(''); setParty(''); setPosition(''); setMinAge(''); setMaxAge(''); setMinTruth(''); setMaxTruth('')
     setPage(1)
   }
-
-  const handleSearchChange = (val: string) => { setSearch(val); setPage(1) }
-  const handleFilterChange = (setter: (v: string) => void, val: string) => { setter(val); setPage(1) }
+  const onSearch = (v: string) => {
+    setSearch(v); setPage(1)
+    setParams(v ? { q: v } : {}, { replace: true })
+  }
+  const set = (setter: (v: string) => void) => (v: string) => { setter(v); setPage(1) }
 
   const { data, isLoading } = useQuery({
-    queryKey: ['politicians', search, country, party, minAge, maxAge, minTruth, maxTruth, page],
+    queryKey: ['politicians', search, country, party, position, minAge, maxAge, minTruth, maxTruth, sort, page],
     queryFn: () => getPoliticians({
       search: search || undefined,
       country: country || undefined,
       party: party || undefined,
+      position: position || undefined,
       min_age: minAge ? Number(minAge) : undefined,
       max_age: maxAge ? Number(maxAge) : undefined,
       min_truth: minTruth ? Number(minTruth) : undefined,
       max_truth: maxTruth ? Number(maxTruth) : undefined,
-      page,
-      limit: 20
+      sort, page, limit: 20,
     }),
-    staleTime: 300
+    placeholderData: prev => prev,
   })
+  const { data: meta } = useQuery({ queryKey: ['politicians-meta'], queryFn: getPoliticiansMeta })
 
-  const politicians = data?.politicians || []
+  const leaders = data?.politicians || []
   const totalPages = data?.totalPages || 1
   const total = data?.total || 0
 
-  const { data: meta } = useQuery({
-    queryKey: ['politicians-meta'],
-    queryFn: getPoliticiansMeta
-  })
-
   return (
-    <div style={{ maxWidth: '800px', margin: '2rem auto', padding: '0 1rem' }}>
-      <h1 style={{ marginBottom: '0.25rem' }}>Politicians</h1>
-      <p style={{ color: '#888', marginBottom: '1.5rem' }}>Search, filter, and browse profiles. {total > 0 && `${total} total.`}</p>
+    <div className="page">
+      <div className="page-head">
+        <p className="eyebrow">Files</p>
+        <h1>Browse</h1>
+        <p>Every leader on record. <span className="mono">{total.toLocaleString()}</span> and counting.</p>
+      </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+      <div className="row" style={{ gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
         <input
-          placeholder="Search by name, party, region..."
+          className="input"
+          style={{ flex: 1, minWidth: 200 }}
+          placeholder="Search name, alias, party, region, position"
           value={search}
-          onChange={e => handleSearchChange(e.target.value)}
-          style={{ flex: 1, padding: '0.65rem 1rem', fontSize: '0.95rem', border: '1px solid #ddd', borderRadius: '8px', boxSizing: 'border-box' }}
+          onChange={e => onSearch(e.target.value)}
         />
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          style={{
-            padding: '0.65rem 1rem',
-            border: `1px solid ${activeFilterCount > 0 ? '#1a1a1a' : '#ddd'}`,
-            borderRadius: '8px',
-            background: activeFilterCount > 0 ? '#1a1a1a' : 'white',
-            color: activeFilterCount > 0 ? 'white' : '#555',
-            cursor: 'pointer',
-            fontSize: '0.9rem',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
+        <select className="select" style={{ width: 'auto' }} value={sort} onChange={e => { setSort(e.target.value as Sort); setPage(1) }}>
+          <option value="name">A–Z</option>
+          <option value="score_asc">Lowest score</option>
+          <option value="score_desc">Highest score</option>
+          <option value="newest">Newest files</option>
+        </select>
+        <button className={`btn${activeFilterCount > 0 ? ' is-active' : ''}`} onClick={() => setShowFilters(!showFilters)}>
+          Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
         </button>
       </div>
 
       {showFilters && (
-        <div style={{ padding: '1rem', border: '1px solid #eee', borderRadius: '8px', marginBottom: '1rem', background: '#fafafa' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-
-            <div>
-              <label style={{ fontSize: '0.8rem', color: '#888', display: 'block', marginBottom: '0.3rem' }}>Country</label>
-              <select
-                value={country}
-                onChange={e => handleFilterChange(setCountry, e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem', background: 'white' }}
-              >
-                <option value="">All countries</option>
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <div className="grid-2" style={{ gap: '0.75rem' }}>
+            <div className="field">
+              <label className="label">Country</label>
+              <select className="select" value={country} onChange={e => set(setCountry)(e.target.value)}>
+                <option value="">All</option>
                 {meta?.countries?.map((c: string) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-
-            <div>
-              <label style={{ fontSize: '0.8rem', color: '#888', display: 'block', marginBottom: '0.3rem' }}>Party</label>
-              <select
-                value={party}
-                onChange={e => handleFilterChange(setParty, e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem', background: 'white' }}
-              >
-                <option value="">All parties</option>
+            <div className="field">
+              <label className="label">Party</label>
+              <select className="select" value={party} onChange={e => set(setParty)(e.target.value)}>
+                <option value="">All</option>
                 {meta?.parties?.map((p: string) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
-
-            <div>
-              <label style={{ fontSize: '0.8rem', color: '#888', display: 'block', marginBottom: '0.3rem' }}>Age range</label>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input
-                  type="number" placeholder="Min" value={minAge}
-                  onChange={e => handleFilterChange(setMinAge, e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem' }}
-                />
-                <span style={{ color: '#aaa', fontSize: '0.85rem' }}>to</span>
-                <input
-                  type="number" placeholder="Max" value={maxAge}
-                  onChange={e => handleFilterChange(setMaxAge, e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem' }}
-                />
+            <div className="field">
+              <label className="label">Position</label>
+              <select className="select" value={position} onChange={e => set(setPosition)(e.target.value)}>
+                <option value="">All</option>
+                {meta?.positions?.map((p: string) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label className="label">Age</label>
+              <div className="row" style={{ gap: '0.5rem' }}>
+                <input className="input" type="number" placeholder="Min" value={minAge} onChange={e => set(setMinAge)(e.target.value)} />
+                <span className="dim">–</span>
+                <input className="input" type="number" placeholder="Max" value={maxAge} onChange={e => set(setMaxAge)(e.target.value)} />
               </div>
             </div>
-
-            <div>
-              <label style={{ fontSize: '0.8rem', color: '#888', display: 'block', marginBottom: '0.3rem' }}>TruthScore range (0–100)</label>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input
-                  type="number" placeholder="Min" min={0} max={100} value={minTruth}
-                  onChange={e => handleFilterChange(setMinTruth, e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem' }}
-                />
-                <span style={{ color: '#aaa', fontSize: '0.85rem' }}>to</span>
-                <input
-                  type="number" placeholder="Max" min={0} max={100} value={maxTruth}
-                  onChange={e => handleFilterChange(setMaxTruth, e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem' }}
-                />
+            <div className="field">
+              <label className="label">TruthScore</label>
+              <div className="row" style={{ gap: '0.5rem' }}>
+                <input className="input" type="number" min={1} max={100} placeholder="Min" value={minTruth} onChange={e => set(setMinTruth)(e.target.value)} />
+                <span className="dim">–</span>
+                <input className="input" type="number" min={1} max={100} placeholder="Max" value={maxTruth} onChange={e => set(setMaxTruth)(e.target.value)} />
               </div>
             </div>
           </div>
-
           {activeFilterCount > 0 && (
-            <button
-              onClick={clearFilters}
-              style={{ marginTop: '0.75rem', background: 'none', border: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '0.85rem', padding: 0 }}
-            >
-              Clear all filters
-            </button>
+            <button className="btn btn--ghost btn--sm" style={{ marginTop: '0.75rem' }} onClick={clearFilters}>Clear filters</button>
           )}
         </div>
       )}
 
-      {isLoading && <p style={{ color: '#aaa' }}>Searching...</p>}
-      {!isLoading && politicians.length === 0 && (
-        <p style={{ color: '#888' }}>No politicians found{search ? ` for "${search}"` : ''}.</p>
+      {isLoading && <Loading />}
+      {!isLoading && leaders.length === 0 && (
+        <Empty text={search ? `Nothing on file for "${search}". Either they're clean, or nobody's looked yet.` : 'Nothing on file.'} />
       )}
 
-      <div style={{ display: 'grid', gap: '0.75rem' }}>
-        {politicians.map((p: any) => (
-          <Link key={p.id} to={`/politicians/${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <div style={{ padding: '1rem 1.25rem', border: '1px solid #eee', borderRadius: '10px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{p.name}</h2>
-                  <p style={{ margin: '0.2rem 0 0', color: '#888', fontSize: '0.85rem' }}>
-                    {p.party} — {p.region}{p.country ? `, ${p.country}` : ''}
-                    {p.age ? ` · Age ${p.age}` : ''}
-                  </p>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem', flexShrink: 0, marginLeft: '1rem' }}>
-                  <span style={{ fontSize: '0.8rem', background: '#f3f3f3', padding: '0.2rem 0.6rem', borderRadius: '20px', color: '#555' }}>
-                    {p.position}
-                  </span>
-                  {p.truth_score != null && <TruthScore score={Number(p.truth_score)} size="sm" />}
-                </div>
-              </div>
-              {p.bio && (
-                <p style={{ margin: '0.5rem 0 0', color: '#555', fontSize: '0.875rem' }}>
-                  {p.bio.length > 120 ? p.bio.slice(0, 120) + '...' : p.bio}
-                </p>
-              )}
-            </div>
-          </Link>
-        ))}
+      <div className="grid-cards" style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+        {leaders.map((p: any) => <LeaderCard key={p.id} leader={p} />)}
       </div>
 
       {totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '1.5rem' }}>
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            style={{ padding: '0.4rem 0.9rem', border: '1px solid #ddd', borderRadius: '6px', background: 'none', cursor: page === 1 ? 'not-allowed' : 'pointer', color: page === 1 ? '#ccc' : '#111' }}
-          >
-            ←
-          </button>
-          <span style={{ fontSize: '0.9rem', color: '#888' }}>
-            Page {page} of {totalPages} · {total} politicians
+        <div className="row" style={{ justifyContent: 'center', gap: '1rem', marginTop: '2rem' }}>
+          <button className="btn btn--sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Prev</button>
+          <span className="mono tiny muted" style={{ letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            Page {page} / {totalPages}
           </span>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            style={{ padding: '0.4rem 0.9rem', border: '1px solid #ddd', borderRadius: '6px', background: 'none', cursor: page === totalPages ? 'not-allowed' : 'pointer', color: page === totalPages ? '#ccc' : '#111' }}
-          >
-            →
-          </button>
+          <button className="btn btn--sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</button>
         </div>
       )}
     </div>

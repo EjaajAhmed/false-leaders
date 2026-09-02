@@ -30,8 +30,8 @@ export async function sendCommentReplyEmail(
         <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 2rem; color: #1a1a1a;">
           <h2 style="font-size: 1.1rem; margin: 0 0 0.5rem;">Hey @${username},</h2>
           <p style="color: #555; margin: 0 0 1rem;">There's new activity on <strong>${politicianName}</strong>.</p>
-          <a href="${APP_URL}/politicians/${politicianId}"
-             style="display: inline-block; padding: 0.7rem 1.5rem; background: #1a1a1a; color: white; text-decoration: none; border-radius: 8px; font-size: 0.9rem;">
+          <a href="${APP_URL}/leaders/${politicianId}"
+             style="display: inline-block; padding: 0.7rem 1.5rem; background: #1a1a1a; color: white; text-decoration: none; border-radius: 0; font-size: 0.9rem;">
             View discussion
           </a>
           <hr style="border: none; border-top: 1px solid #eee; margin: 2rem 0;" />
@@ -70,8 +70,8 @@ export async function sendPoliticianUpdateEmail(
           <ul style="color: #555; padding-left: 1.25rem; margin: 0 0 1.5rem;">
             ${changes.map(c => `<li style="margin-bottom: 0.3rem;">${c}</li>`).join('')}
           </ul>
-          <a href="${APP_URL}/politicians/${politicianId}"
-             style="display: inline-block; padding: 0.7rem 1.5rem; background: #1a1a1a; color: white; text-decoration: none; border-radius: 8px; font-size: 0.9rem;">
+          <a href="${APP_URL}/leaders/${politicianId}"
+             style="display: inline-block; padding: 0.7rem 1.5rem; background: #1a1a1a; color: white; text-decoration: none; border-radius: 0; font-size: 0.9rem;">
             View profile
           </a>
           <hr style="border: none; border-top: 1px solid #eee; margin: 2rem 0;" />
@@ -106,12 +106,12 @@ export async function sendAppNewsEmail(
         <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 2rem; color: #1a1a1a;">
           <div style="text-align: center; margin-bottom: 2rem;">
             <h1 style="font-size: 1.4rem; color: #1a1a1a; margin: 0;">FalseLeaders</h1>
-            <p style="color: #aaa; font-size: 0.8rem; margin: 0.25rem 0 0;">Hold them accountable.</p>
+            <p style="color: #aaa; font-size: 0.8rem; margin: 0.25rem 0 0;">The Proles are watching.</p>
           </div>
           <h2 style="font-size: 1.1rem; margin: 0 0 0.5rem;">Hey @${username},</h2>
           <p style="color: #555; margin: 0 0 1.5rem; white-space: pre-line;">${message}</p>
           <a href="${APP_URL}"
-             style="display: inline-block; padding: 0.7rem 1.5rem; background: #1a1a1a; color: white; text-decoration: none; border-radius: 8px; font-size: 0.9rem;">
+             style="display: inline-block; padding: 0.7rem 1.5rem; background: #1a1a1a; color: white; text-decoration: none; border-radius: 0; font-size: 0.9rem;">
             Open FalseLeaders
           </a>
           <hr style="border: none; border-top: 1px solid #eee; margin: 2rem 0;" />
@@ -142,12 +142,12 @@ export async function sendWelcomeEmail(to: string, username: string, verificatio
         <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 2rem; color: #1a1a1a;">
           <div style="text-align: center; margin-bottom: 2rem;">
             <h1 style="font-size: 1.4rem; color: #1a1a1a; margin: 0;">FalseLeaders</h1>
-            <p style="color: #aaa; font-size: 0.8rem; margin: 0.25rem 0 0;">Hold them accountable.</p>
+            <p style="color: #aaa; font-size: 0.8rem; margin: 0.25rem 0 0;">The Proles are watching.</p>
           </div>
           <h2 style="font-size: 1.1rem; margin: 0 0 0.5rem;">Welcome, @${username}</h2>
-          <p style="color: #555; margin: 0 0 1.5rem;">Please verify your email address to unlock commenting and voting.</p>
+          <p style="color: #555; margin: 0 0 1.5rem;">Verify your email to submit verdicts, leaks and intelligence.</p>
           <a href="${verifyUrl}"
-             style="display: inline-block; padding: 0.7rem 1.5rem; background: #1a1a1a; color: white; text-decoration: none; border-radius: 8px; font-size: 0.9rem;">
+             style="display: inline-block; padding: 0.7rem 1.5rem; background: #1a1a1a; color: white; text-decoration: none; border-radius: 0; font-size: 0.9rem;">
             Verify my email
           </a>
           <p style="color: #aaa; font-size: 0.8rem; margin-top: 1.5rem;">

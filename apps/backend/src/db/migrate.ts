@@ -1,9 +1,7 @@
+import 'dotenv/config'
 import fs from 'fs'
 import path from 'path'
 import { db } from './client'
-import dotenv from 'dotenv'
-
-dotenv.config({ path: path.resolve(__dirname, '../.env') })
 
 async function migrate() {
   const migrationsDir = path.join(__dirname, 'migrations')

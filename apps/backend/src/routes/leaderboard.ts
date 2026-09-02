@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 import { scoreDaysAgo } from '../services/score'
 
-const LEADER_COLS = 'p.id, p.name, p.party, p.region, p.position, p.country, p.truth_score'
+const LEADER_COLS = 'p.id, p.name, p.party, p.region, p.position, p.country, p.category, p.truth_score'
 
 export async function leaderboardRoutes(server: FastifyInstance) {
   server.get('/condemned', async (request) => {

@@ -11,7 +11,7 @@ import FundingTab from '../components/leader/FundingTab'
 import InfluenceTab from '../components/leader/InfluenceTab'
 import VerdictsTab from '../components/leader/VerdictsTab'
 import LeaksTab from '../components/leader/LeaksTab'
-import { leaderMeta, scoreColor, scoreLabel } from '../lib/format'
+import { categoryLabel, scoreColor, scoreLabel } from '../lib/format'
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
@@ -107,9 +107,9 @@ export default function Leader() {
       <header style={{ marginBottom: '1.5rem' }}>
         <div className="row row--between row--wrap" style={{ alignItems: 'flex-start', gap: '1rem' }}>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p className="eyebrow">Case file · {leader.country || 'Unknown'}</p>
+            <p className="eyebrow">Case file · {categoryLabel(leader.category)}{leader.country ? ` · ${leader.country}` : ''}</p>
             <h1 style={{ fontSize: 'clamp(2rem, 4.5vw, 3.4rem)', margin: '0.4rem 0 0.5rem' }}>{leader.name}</h1>
-            <p className="muted">{leaderMeta(leader) || 'Position unlisted'}{leader.age ? ` · ${leader.age}` : ''}</p>
+            <p className="muted">{[leader.position, leader.party, leader.region].filter(Boolean).join(' · ') || 'Position unlisted'}{leader.age ? ` · ${leader.age}` : ''}</p>
             {leader.aliases && leader.aliases.length > 0 && (
               <p className="mono tiny dim" style={{ marginTop: '0.4rem', letterSpacing: '0.08em' }}>a.k.a. {leader.aliases.join(' · ')}</p>
             )}

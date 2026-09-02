@@ -17,7 +17,7 @@ export async function homeRoutes(server: FastifyInstance) {
   // Leaders with the most activity in the last 7 days; falls back to lowest scores.
   server.get('/featured', async () => {
     const { rows } = await db.query(`
-      SELECT p.id, p.name, p.party, p.region, p.position, p.country, p.truth_score,
+      SELECT p.id, p.name, p.party, p.region, p.position, p.country, p.category, p.truth_score,
         (SELECT COUNT(*) FROM controversies c WHERE c.politician_id = p.id)::int AS controversy_count,
         (SELECT json_build_object('title', c.title, 'level', c.level)
          FROM controversies c WHERE c.politician_id = p.id

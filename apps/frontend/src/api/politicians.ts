@@ -3,7 +3,7 @@ import type { FeedType, Level, VerdictKind } from '../types'
 
 // ── Leaders ──
 export const getPoliticians = async (filters?: {
-  search?: string; country?: string; party?: string; position?: string
+  search?: string; country?: string; party?: string; position?: string; category?: string
   min_age?: number; max_age?: number; min_truth?: number; max_truth?: number
   page?: number; limit?: number; sort?: 'name' | 'score_asc' | 'score_desc' | 'newest'
 }) => {

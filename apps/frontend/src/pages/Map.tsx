@@ -47,7 +47,7 @@ export default function MapPage() {
         ))}
       </div>
 
-      <MapContainer center={[56.1304, -106.3468]} zoom={4} style={{ height: '100%', width: '100%' }}>
+      <MapContainer center={[25, 10]} zoom={2} minZoom={2} worldCopyJump style={{ height: '100%', width: '100%' }}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

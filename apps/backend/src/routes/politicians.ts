@@ -5,6 +5,8 @@ import { notifyPoliticianUpdate } from '../services/notify'
 import { loadScoreConfig, recalculateScore } from '../services/score'
 import { getVerdictAggregate } from '../services/verdicts'
 
+export const CATEGORIES = ['world_leader', 'politician', 'business', 'media', 'judiciary', 'religious', 'international', 'military', 'other']
+
 const VERDICT_JSON = `
   (SELECT json_build_object(
      'total', COUNT(*),
@@ -22,7 +24,7 @@ const TOP_CONTROVERSY_JSON = `
    LIMIT 1) AS top_controversy`
 
 const CARD_COLUMNS = `
-  p.id, p.name, p.party, p.region, p.position, p.country, p.age, p.bio, p.photo_url,
+  p.id, p.name, p.party, p.region, p.position, p.country, p.category, p.age, p.bio, p.photo_url,
   p.aliases, p.truth_score, p.latitude, p.longitude, p.created_at,
   (SELECT COUNT(*) FROM controversies c WHERE c.politician_id = p.id)::int AS controversy_count,
   ${VERDICT_JSON},
@@ -38,7 +40,7 @@ export async function politiciansRoutes(server: FastifyInstance) {
   const admin = { onRequest: [requireAdmin] }
 
   server.get('/', async (request) => {
-    const { search, country, party, position, min_age, max_age, min_truth, max_truth, page, limit, sort } = request.query as any
+    const { search, country, party, position, category, min_age, max_age, min_truth, max_truth, page, limit, sort } = request.query as any
 
     const pageNum = Math.max(1, Number(page) || 1)
     const limitNum = Math.min(1000, Math.max(1, Number(limit) || 20))
@@ -56,6 +58,7 @@ export async function politiciansRoutes(server: FastifyInstance) {
     if (country) { where += ` AND p.country ILIKE $${i}`; params.push(`%${country}%`); i++ }
     if (party) { where += ` AND p.party ILIKE $${i}`; params.push(`%${party}%`); i++ }
     if (position) { where += ` AND p.position ILIKE $${i}`; params.push(`%${position}%`); i++ }
+    if (category && CATEGORIES.includes(category)) { where += ` AND p.category = $${i}`; params.push(category); i++ }
     if (min_age) { where += ` AND p.age >= $${i}`; params.push(Number(min_age)); i++ }
     if (max_age) { where += ` AND p.age <= $${i}`; params.push(Number(max_age)); i++ }
     if (min_truth) { where += ` AND p.truth_score >= $${i}`; params.push(Number(min_truth)); i++ }
@@ -87,15 +90,17 @@ export async function politiciansRoutes(server: FastifyInstance) {
   })
 
   server.get('/meta', async () => {
-    const [{ rows: countries }, { rows: parties }, { rows: positions }] = await Promise.all([
+    const [{ rows: countries }, { rows: parties }, { rows: positions }, { rows: categories }] = await Promise.all([
       db.query(`SELECT DISTINCT country FROM politicians WHERE country IS NOT NULL AND country <> '' ORDER BY country`),
       db.query(`SELECT DISTINCT party FROM politicians WHERE party IS NOT NULL AND party <> '' ORDER BY party`),
       db.query(`SELECT DISTINCT position FROM politicians WHERE position IS NOT NULL AND position <> '' ORDER BY position`),
+      db.query(`SELECT category, COUNT(*)::int AS count FROM politicians GROUP BY category`),
     ])
     return {
       countries: countries.map(r => r.country),
       parties: parties.map(r => r.party),
       positions: positions.map(r => r.position),
+      categories: CATEGORIES.map(c => ({ key: c, count: categories.find(r => r.category === c)?.count || 0 })),
     }
   })
 
@@ -133,15 +138,16 @@ export async function politiciansRoutes(server: FastifyInstance) {
   })
 
   server.post('/', admin, async (request, reply) => {
-    const { name, party, region, position, bio, country, age, latitude, longitude, photo_url, aliases } = request.body as any
+    const { name, party, region, position, bio, country, category, age, latitude, longitude, photo_url, aliases } = request.body as any
     if (!name || !String(name).trim()) return reply.status(400).send({ error: 'Name required.' })
 
     const { rows } = await db.query(
-      `INSERT INTO politicians (name, party, region, position, bio, country, age, latitude, longitude, photo_url, aliases, truth_score, score_history)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 90, '[]') RETURNING *`,
+      `INSERT INTO politicians (name, party, region, position, bio, country, category, age, latitude, longitude, photo_url, aliases, truth_score, score_history)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 90, '[]') RETURNING *`,
       [
         String(name).trim(), party || null, region || null, position || null, bio || null,
-        country || 'Canada',
+        country || null,
+        CATEGORIES.includes(category) ? category : 'politician',
         age ? Number(age) : null,
         latitude ? Number(latitude) : null,
         longitude ? Number(longitude) : null,
@@ -167,7 +173,7 @@ export async function politiciansRoutes(server: FastifyInstance) {
 
   server.put('/:id', admin, async (request, reply) => {
     const { id } = request.params as { id: string }
-    const { name, party, region, position, bio, country, age, latitude, longitude, photo_url, aliases } = request.body as any
+    const { name, party, region, position, bio, country, category, age, latitude, longitude, photo_url, aliases } = request.body as any
 
     const { rows: existing } = await db.query('SELECT * FROM politicians WHERE id = $1', [id])
     if (existing.length === 0) return reply.status(404).send({ error: 'No such leader.' })
@@ -176,11 +182,12 @@ export async function politiciansRoutes(server: FastifyInstance) {
     const { rows } = await db.query(
       `UPDATE politicians SET
         name=$1, party=$2, region=$3, position=$4, bio=$5,
-        country=$6, age=$7, latitude=$8, longitude=$9, photo_url=$10, aliases=$11
-       WHERE id=$12 RETURNING *`,
+        country=$6, category=$7, age=$8, latitude=$9, longitude=$10, photo_url=$11, aliases=$12
+       WHERE id=$13 RETURNING *`,
       [
         name, party || null, region || null, position || null, bio || null,
-        country || 'Canada',
+        country || null,
+        CATEGORIES.includes(category) ? category : prev.category,
         age ? Number(age) : null,
         latitude ? Number(latitude) : null,
         longitude ? Number(longitude) : null,

@@ -7,11 +7,11 @@ import client, { errorMessage } from '../api/client'
 import AIAnalyzer from '../components/AIAnalyzer'
 import LevelBadge from '../components/LevelBadge'
 import { Empty, Loading } from '../components/States'
-import { LEVELS, proleTag, timeAgo } from '../lib/format'
+import { CATEGORIES, LEVELS, proleTag, timeAgo } from '../lib/format'
 import type { Level } from '../types'
 
 const emptyForm = {
-  name: '', party: '', region: '', position: '', bio: '', country: 'Canada',
+  name: '', party: '', region: '', position: '', bio: '', country: '', category: 'politician',
   age: '', latitude: '', longitude: '', photo_url: '', aliases: '',
 }
 
@@ -184,7 +184,7 @@ export default function Admin() {
     setEditing(p.id)
     setForm({
       name: p.name || '', party: p.party || '', region: p.region || '', position: p.position || '',
-      bio: p.bio || '', country: p.country || 'Canada', age: p.age || '', latitude: p.latitude || '',
+      bio: p.bio || '', country: p.country || '', category: p.category || 'politician', age: p.age || '', latitude: p.latitude || '',
       longitude: p.longitude || '', photo_url: p.photo_url || '', aliases: (p.aliases || []).join(', '),
     })
     document.getElementById('leader-form')?.scrollIntoView({ behavior: 'smooth' })
@@ -235,8 +235,14 @@ export default function Admin() {
           <div className="section-title"><h2>{editing ? 'Edit leader' : 'Add leader'}</h2>{editing && <span className="mono tiny dim">{editing}</span>}</div>
           <div className="grid-2" style={{ gap: '0.75rem' }}>
             {field('name', 'Name')}
+            <div className="field">
+              <label className="label">Category</label>
+              <select className="select" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+                {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </div>
             {field('position', 'Position', 'text', 'Prime Minister, CEO, Cardinal, Judge')}
-            {field('party', 'Party / organisation')}
+            {field('party', 'Party / organisation', 'text', 'Party, company, church, court')}
             {field('region', 'Region')}
             {field('country', 'Country')}
             {field('age', 'Age', 'number')}

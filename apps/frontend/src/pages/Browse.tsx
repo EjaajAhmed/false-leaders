@@ -4,12 +4,14 @@ import { useSearchParams } from 'react-router-dom'
 import { getPoliticians, getPoliticiansMeta } from '../api/politicians'
 import LeaderCard from '../components/LeaderCard'
 import { Empty, Loading } from '../components/States'
+import { CATEGORIES } from '../lib/format'
 
 type Sort = 'name' | 'score_asc' | 'score_desc' | 'newest'
 
 export default function Browse() {
   const [params, setParams] = useSearchParams()
   const [search, setSearch] = useState(params.get('q') || '')
+  const [category, setCategory] = useState(params.get('category') || '')
   const [country, setCountry] = useState('')
   const [party, setParty] = useState('')
   const [position, setPosition] = useState('')
@@ -27,19 +29,26 @@ export default function Browse() {
     setCountry(''); setParty(''); setPosition(''); setMinAge(''); setMaxAge(''); setMinTruth(''); setMaxTruth('')
     setPage(1)
   }
-  const onSearch = (v: string) => {
-    setSearch(v); setPage(1)
-    setParams(v ? { q: v } : {}, { replace: true })
+  const syncParams = (q: string, c: string) => {
+    const next: Record<string, string> = {}
+    if (q) next.q = q
+    if (c) next.category = c
+    setParams(next, { replace: true })
   }
+  const onSearch = (v: string) => { setSearch(v); setPage(1); syncParams(v, category) }
+  const onCategory = (c: string) => { setCategory(c); setPage(1); syncParams(search, c) }
   const set = (setter: (v: string) => void) => (v: string) => { setter(v); setPage(1) }
 
+  const { data: meta } = useQuery({ queryKey: ['politicians-meta'], queryFn: getPoliticiansMeta })
+
   const { data, isLoading } = useQuery({
-    queryKey: ['politicians', search, country, party, position, minAge, maxAge, minTruth, maxTruth, sort, page],
+    queryKey: ['politicians', search, category, country, party, position, minAge, maxAge, minTruth, maxTruth, sort, page],
     queryFn: () => getPoliticians({
       search: search || undefined,
       country: country || undefined,
       party: party || undefined,
       position: position || undefined,
+      category: category || undefined,
       min_age: minAge ? Number(minAge) : undefined,
       max_age: maxAge ? Number(maxAge) : undefined,
       min_truth: minTruth ? Number(minTruth) : undefined,
@@ -48,7 +57,6 @@ export default function Browse() {
     }),
     placeholderData: prev => prev,
   })
-  const { data: meta } = useQuery({ queryKey: ['politicians-meta'], queryFn: getPoliticiansMeta })
 
   const leaders = data?.politicians || []
   const totalPages = data?.totalPages || 1
@@ -60,6 +68,15 @@ export default function Browse() {
         <p className="eyebrow">Files</p>
         <h1>Browse</h1>
         <p>Every leader on record. <span className="mono">{total.toLocaleString()}</span> and counting.</p>
+      </div>
+
+      <div className="chips" style={{ marginBottom: '1rem' }}>
+        <button className={`chip${!category ? ' is-active' : ''}`} onClick={() => onCategory('')}>All</button>
+        {CATEGORIES.filter(c => (meta?.categories?.find((m: any) => m.key === c.value)?.count || 0) > 0).map(c => (
+          <button key={c.value} className={`chip${category === c.value ? ' is-active' : ''}`} onClick={() => onCategory(c.value)}>
+            {c.plural} <span style={{ opacity: 0.6, marginLeft: '0.3rem' }}>{meta?.categories?.find((m: any) => m.key === c.value)?.count}</span>
+          </button>
+        ))}
       </div>
 
       <div className="row" style={{ gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>

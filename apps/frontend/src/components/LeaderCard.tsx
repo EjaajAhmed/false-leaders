@@ -3,7 +3,7 @@ import type { Leader } from '../types'
 import ScoreRing from './ScoreRing'
 import VerdictBar from './VerdictBar'
 import LevelBadge from './LevelBadge'
-import { leaderMeta } from '../lib/format'
+import { categoryLabel, leaderMeta } from '../lib/format'
 
 export default function LeaderCard({ leader }: { leader: Leader }) {
   const score = leader.truth_score == null ? null : Number(leader.truth_score)
@@ -15,7 +15,7 @@ export default function LeaderCard({ leader }: { leader: Leader }) {
           <div className="leader-card__name truncate" style={{ minWidth: 0 }}>{leader.name}</div>
           {leader.top_controversy && <LevelBadge level={leader.top_controversy.level} />}
         </div>
-        <div className="leader-card__meta truncate">{leaderMeta(leader) || 'Unlisted position'}{leader.country && leader.country !== 'Canada' ? ` · ${leader.country}` : ''}</div>
+        <div className="leader-card__meta truncate"><span className="mono tiny" style={{ color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase', marginRight: '0.5rem' }}>{categoryLabel(leader.category)}</span>{leaderMeta(leader) || 'Unlisted position'}</div>
         <div style={{ marginTop: '0.65rem' }}>
           <VerdictBar counts={leader.verdict_counts} />
         </div>

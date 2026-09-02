@@ -1,5 +1,6 @@
 export type Level = 'confirmed' | 'likely' | 'maybe' | 'speculative'
 export type VerdictKind = 'guilty' | 'suspicious' | 'unclear' | 'clean'
+export type Category = 'world_leader' | 'politician' | 'business' | 'media' | 'judiciary' | 'religious' | 'international' | 'military' | 'other'
 export type FeedType = 'score_change' | 'leak' | 'controversy' | 'controversy_escalated' | 'verdict_shift'
 
 export interface VerdictCounts {
@@ -29,6 +30,7 @@ export interface Leader {
   bio?: string | null
   photo_url?: string | null
   country?: string | null
+  category?: Category | string | null
   age?: number | null
   aliases?: string[]
   truth_score?: number | string | null

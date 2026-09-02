@@ -58,7 +58,7 @@ function Hero({ leaders }: { leaders: number }) {
           <strong>{count.toLocaleString()}</strong> leaders under watch
         </p>
         <p className="muted" style={{ maxWidth: '52ch', marginTop: '1.25rem', fontSize: '0.95rem' }}>
-          Politicians, executives, judges, moguls. Every score is earned, every verdict is public, and every leak is anonymous.
+          Heads of state, executives, judges, moguls, clerics. Every score is earned, every verdict is public, and every leak is anonymous.
         </p>
         <div className="hero__actions">
           <Link to="/browse" className="btn btn--gold">Open the files</Link>

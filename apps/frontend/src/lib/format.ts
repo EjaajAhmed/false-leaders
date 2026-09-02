@@ -1,4 +1,20 @@
-import type { Level, VerdictKind, FeedEvent } from '../types'
+import type { Category, Level, VerdictKind, FeedEvent } from '../types'
+
+export const CATEGORIES: { value: Category; label: string; plural: string }[] = [
+  { value: 'world_leader', label: 'World leader', plural: 'World leaders' },
+  { value: 'politician', label: 'Politician', plural: 'Politicians' },
+  { value: 'business', label: 'Business', plural: 'Business' },
+  { value: 'media', label: 'Media', plural: 'Media' },
+  { value: 'judiciary', label: 'Judiciary', plural: 'Judiciary' },
+  { value: 'religious', label: 'Religious', plural: 'Religious' },
+  { value: 'international', label: 'International', plural: 'International' },
+  { value: 'military', label: 'Military', plural: 'Military' },
+  { value: 'other', label: 'Other', plural: 'Other' },
+]
+
+export function categoryLabel(c: string | null | undefined): string {
+  return CATEGORIES.find(x => x.value === c)?.label ?? 'Figure'
+}
 
 export function scoreColor(score: number | null | undefined): string {
   if (score == null || isNaN(Number(score))) return 'var(--dim)'
@@ -59,7 +75,8 @@ export function formatMoney(n: number): string {
 }
 
 export function leaderMeta(l: { position?: string | null; party?: string | null; region?: string | null; country?: string | null }): string {
-  return [l.position, l.party, l.region].filter(Boolean).join(' · ')
+  const party = l.party && l.party !== 'Independent' && l.party !== 'Monarchy' ? l.party : null
+  return [l.position, party, l.country].filter(Boolean).join(' · ')
 }
 
 export function proleTag(n: number | null | undefined): string {

@@ -6,16 +6,16 @@ import { Empty, Loading } from '../components/States'
 import { compact, scoreColor } from '../lib/format'
 
 const TABS: { key: LeaderboardTab; label: string; blurb: string; empty: string }[] = [
-  { key: 'condemned', label: 'Most Condemned', blurb: 'Lowest TruthScore on record.', empty: 'No one has been scored. Suspicious in itself.' },
+  { key: 'watched', label: 'Most Watched', blurb: 'Most Wikipedia page views in the last 30 days.', empty: 'No attention data yet.' },
+  { key: 'condemned', label: 'Most Condemned', blurb: 'Lowest TruthScore on record.', empty: 'No one has been condemned yet. Cast a verdict.' },
   { key: 'drop', label: 'Biggest Drop', blurb: 'Largest TruthScore fall in the last 7 days.', empty: 'No scores have fallen this week. Give it time.' },
   { key: 'discussed', label: 'Most Discussed', blurb: 'Most comments and verdicts this week.', empty: 'Nobody is talking. Yet.' },
   { key: 'leaked', label: 'Most Leaked', blurb: 'Most leak submissions, all time.', empty: 'No leaks on file. That doesn\'t mean there\'s nothing to find.' },
-  { key: 'watched', label: 'Most Watched', blurb: 'Most Wikipedia page views in the last 30 days.', empty: 'No attention data yet.' },
 ]
 
 export default function Leaderboard() {
   const [params, setParams] = useSearchParams()
-  const current = (TABS.find(t => t.key === params.get('tab'))?.key || 'condemned') as LeaderboardTab
+  const current = (TABS.find(t => t.key === params.get('tab'))?.key || 'watched') as LeaderboardTab
   const tab = TABS.find(t => t.key === current)!
   const { data, isLoading } = useQuery({ queryKey: ['leaderboard', current, 25], queryFn: () => getLeaderboard(current, 25) })
 
@@ -50,7 +50,7 @@ export default function Leaderboard() {
           <Link key={p.id} to={`/leaders/${p.id}`} className="lb-row">
             <span className="lb-row__rank">{String(i + 1).padStart(2, '0')}</span>
             <div style={{ minWidth: 0, display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              {p.photo_url && <img className="photo photo--row" src={p.photo_url} alt="" loading="lazy" />}
+              {p.photo_url ? <img className="photo photo--row" src={p.photo_url} alt="" loading="lazy" /> : <div className="photo photo--row" />}
               <div style={{ minWidth: 0 }}>
               <div className="lb-row__name truncate">{p.name}</div>
               <div className="lb-row__meta truncate">{[p.position, p.party].filter(Boolean).join(' · ')}</div>

@@ -134,7 +134,7 @@ export default function Register() {
               </Link>
               <div>
                 <div style={{ width: '40px', height: '2px', background: '#c9a84c', marginBottom: '1.5rem' }} />
-                <p style={{ margin: 0 }}><Stamp word="ENLIST" style={{ fontSize: 'clamp(2.6rem, 5vw, 4.2rem)', color: '#f5f0e8' }} /></p>
+                <p style={{ margin: 0 }}><Stamp style={{ fontSize: 'clamp(2.6rem, 5vw, 4.2rem)', color: '#f5f0e8' }} /></p>
               </div>
               <p className="eyebrow" style={{ margin: 0 }}>FalseLeaders · Rate, investigate and judge the people in power.</p>
             </div>

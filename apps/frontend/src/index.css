@@ -459,12 +459,13 @@ strong { font-weight: 600; }
 /* Map page */
 .map-page { height: 100vh; width: 100%; position: relative; }
 
-/* Stamp: ! WORD ! */
-.stamp { display: inline-flex; align-items: baseline; gap: 0.18em; font-family: var(--font-display); font-weight: 900; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1; white-space: nowrap; }
+/* Stamp: ! WORD !  (marks stationary, word centred in a slot sized to the widest word) */
+.stamp { display: inline-grid; grid-template-columns: auto auto auto; align-items: baseline; column-gap: 0.22em; font-family: var(--font-display); font-weight: 900; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1; white-space: nowrap; }
 .stamp__bang { color: var(--gold); }
-.stamp__word { transition: opacity 0.26s ease, filter 0.26s ease; }
+.stamp__slot { display: grid; justify-items: center; }
+.stamp__word { grid-area: 1 / 1; transition: opacity 0.26s ease, filter 0.26s ease; }
 .stamp--out .stamp__word { opacity: 0; filter: blur(6px); }
-.stamp--small { font-family: var(--font-mono); font-weight: 600; font-size: 0.62rem; letter-spacing: 0.22em; gap: 0.4em; }
+.stamp--small { font-family: var(--font-mono); font-weight: 600; font-size: 0.6rem; letter-spacing: 0.22em; column-gap: 0.5em; }
 
 /* Portraits: noir treatment */
 .photo { display: block; object-fit: cover; background: var(--elevated); border: 1px solid var(--border-strong); filter: grayscale(1) contrast(1.08); flex-shrink: 0; }
@@ -506,7 +507,7 @@ strong { font-weight: 600; }
 }
 .hero__inner { max-width: 1120px; margin: 0 auto; width: 100%; will-change: transform; }
 .hero__title {
-  font-size: clamp(3rem, 9vw, 7.5rem);
+  font-size: clamp(3rem, 15vw, 7.5rem);
   line-height: 0.98;
   letter-spacing: -0.02em;
   margin: 1.25rem 0 2rem;

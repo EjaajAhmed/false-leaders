@@ -44,7 +44,7 @@ export default function MobileAuthLanding() {
           {/* Middle — Quote */}
           <div>
             <div style={{ width: '40px', height: '2px', background: '#c9a84c', marginBottom: '1.5rem' }} />
-            <p style={{ margin: 0 }}><Stamp cycle={['EXPOSED', 'JUDGED', 'WATCHED']} style={{ fontSize: 'clamp(2.8rem, 13vw, 3.8rem)', color: '#f5f0e8' }} /></p>
+            <p style={{ margin: 0 }}><Stamp style={{ fontSize: 'clamp(2.8rem, 15vw, 4.2rem)', color: '#f5f0e8' }} /></p>
             <p className="eyebrow" style={{ margin: '1.25rem 0 0', color: 'rgba(245,240,232,0.6)' }}>
               Rate, investigate and judge the people in power.
             </p>

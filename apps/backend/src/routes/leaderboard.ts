@@ -12,6 +12,7 @@ export async function leaderboardRoutes(server: FastifyInstance) {
               (SELECT COUNT(*) FROM controversies c WHERE c.politician_id = p.id)::int AS controversy_count
        FROM politicians p
        WHERE p.truth_score IS NOT NULL
+         AND p.truth_score < (SELECT COALESCE(MAX(value), 90) FROM truth_score_config WHERE key = 'base_score')
        ORDER BY p.truth_score ASC, p.name ASC
        LIMIT $1`,
       [limit]

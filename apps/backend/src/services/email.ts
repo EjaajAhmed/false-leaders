@@ -106,7 +106,7 @@ export async function sendAppNewsEmail(
         <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 2rem; color: #1a1a1a;">
           <div style="text-align: center; margin-bottom: 2rem;">
             <h1 style="font-size: 1.4rem; color: #1a1a1a; margin: 0;">FalseLeaders</h1>
-            <p style="color: #aaa; font-size: 0.8rem; margin: 0.25rem 0 0;">Rate, investigate and judge the people in power.</p>
+            <p style="color: #aaa; font-size: 0.8rem; margin: 0.25rem 0 0;">! POWER ! WRATH ! GREED !</p>
           </div>
           <h2 style="font-size: 1.1rem; margin: 0 0 0.5rem;">Hey @${username},</h2>
           <p style="color: #555; margin: 0 0 1.5rem; white-space: pre-line;">${message}</p>
@@ -142,7 +142,7 @@ export async function sendWelcomeEmail(to: string, username: string, verificatio
         <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 2rem; color: #1a1a1a;">
           <div style="text-align: center; margin-bottom: 2rem;">
             <h1 style="font-size: 1.4rem; color: #1a1a1a; margin: 0;">FalseLeaders</h1>
-            <p style="color: #aaa; font-size: 0.8rem; margin: 0.25rem 0 0;">Rate, investigate and judge the people in power.</p>
+            <p style="color: #aaa; font-size: 0.8rem; margin: 0.25rem 0 0;">! POWER ! WRATH ! GREED !</p>
           </div>
           <h2 style="font-size: 1.1rem; margin: 0 0 0.5rem;">Welcome, @${username}</h2>
           <p style="color: #555; margin: 0 0 1.5rem;">Verify your email to submit verdicts, leaks and intelligence.</p>

@@ -6,7 +6,7 @@ import FeedList from '../components/FeedList'
 import LeaderCard from '../components/LeaderCard'
 import Reveal from '../components/Reveal'
 import { Loading } from '../components/States'
-import { scoreColor } from '../lib/format'
+import { compact, scoreColor } from '../lib/format'
 import { ARCHIVED } from '../config'
 import Stamp from '../components/Stamp'
 
@@ -55,7 +55,7 @@ function Hero({ leaders }: { leaders: number }) {
       <div className="hero__inner" ref={inner}>
         <div className="hero__rule" />
         <p className="eyebrow eyebrow--gold" style={{ marginTop: '1.25rem' }}>FalseLeaders · Civic intelligence</p>
-        <h1 className="hero__title"><Stamp cycle={['EXPOSED', 'JUDGED', 'WATCHED', 'ACCOUNTABLE']} /></h1>
+        <h1 className="hero__title"><Stamp /></h1>
         <p className="hero__counter">
           <strong>{count.toLocaleString()}</strong> leaders under watch
         </p>
@@ -80,7 +80,7 @@ function Snapshot({ title, to, query, render }: { title: string; to: string; que
         <Link to={to} className="eyebrow" style={{ whiteSpace: 'nowrap' }}>Full board →</Link>
       </div>
       {query.isLoading && <Loading />}
-      {query.data && query.data.length === 0 && <p className="dim small" style={{ padding: '0.5rem 0' }}>No movement recorded this week.</p>}
+      {query.data && query.data.length === 0 && <p className="dim small" style={{ padding: '0.5rem 0' }}>Nothing to rank yet.</p>}
       {query.data?.slice(0, 5).map(render)}
     </div>
   )
@@ -90,7 +90,7 @@ export default function Home() {
   const stats = useQuery({ queryKey: ['stats'], queryFn: getStats })
   const feed = useQuery({ queryKey: ['feed', 'home'], queryFn: () => getFeed({ limit: 12 }), refetchInterval: 30000 })
   const condemned = useQuery({ queryKey: ['leaderboard', 'condemned', 5], queryFn: () => getLeaderboard('condemned', 5) })
-  const drop = useQuery({ queryKey: ['leaderboard', 'drop', 5], queryFn: () => getLeaderboard('drop', 5) })
+  const watched = useQuery({ queryKey: ['leaderboard', 'watched', 5], queryFn: () => getLeaderboard('watched', 5) })
   const featured = useQuery({ queryKey: ['featured'], queryFn: getFeatured })
 
   return (
@@ -114,6 +114,24 @@ export default function Home() {
             <p className="eyebrow" style={{ marginBottom: '0.25rem' }}>Leaderboards</p>
             <div className="stack" style={{ gap: '2rem' }}>
               <Snapshot
+                title="Most Watched"
+                to="/leaderboard?tab=watched"
+                query={watched}
+                render={(p, i) => (
+                  <Link key={p.id} to={`/leaders/${p.id}`} className="lb-row">
+                    <span className="lb-row__rank">{String(i + 1).padStart(2, '0')}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="lb-row__name truncate">{p.name}</div>
+                      <div className="lb-row__meta truncate">{p.position}</div>
+                    </div>
+                    <div>
+                      <div className="lb-row__value">{compact(p.attention)}</div>
+                      <div className="lb-row__sub">views · 30d</div>
+                    </div>
+                  </Link>
+                )}
+              />
+              <Snapshot
                 title="Most Condemned"
                 to="/leaderboard?tab=condemned"
                 query={condemned}
@@ -125,24 +143,6 @@ export default function Home() {
                       <div className="lb-row__meta truncate">{p.position}</div>
                     </div>
                     <div className="lb-row__value" style={{ color: scoreColor(Number(p.truth_score)) }}>{Math.round(Number(p.truth_score))}</div>
-                  </Link>
-                )}
-              />
-              <Snapshot
-                title="Biggest Drop"
-                to="/leaderboard?tab=drop"
-                query={drop}
-                render={(p, i) => (
-                  <Link key={p.id} to={`/leaders/${p.id}`} className="lb-row">
-                    <span className="lb-row__rank">{String(i + 1).padStart(2, '0')}</span>
-                    <div style={{ minWidth: 0 }}>
-                      <div className="lb-row__name truncate">{p.name}</div>
-                      <div className="lb-row__meta truncate">{p.position}</div>
-                    </div>
-                    <div>
-                      <div className="lb-row__value delta-down">{p.delta}</div>
-                      <div className="lb-row__sub">7 days</div>
-                    </div>
                   </Link>
                 )}
               />

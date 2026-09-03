@@ -2,37 +2,42 @@ import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 
 interface Props {
-  word?: string
-  cycle?: string[]
+  words?: string[]
   interval?: number
   className?: string
   style?: CSSProperties
 }
 
-/** Single-word stamp: ! WORD ! */
-export default function Stamp({ word, cycle, interval = 2600, className = '', style }: Props) {
-  const words = cycle && cycle.length ? cycle : [word || '']
+export const STAMP_WORDS = ['POWER', 'WRATH', 'GREED']
+
+/**
+ * ! WORD !  — the marks never move: every word is laid out in the same slot
+ * (hidden), so the slot is as wide as the widest word and the current word is centred in it.
+ */
+export default function Stamp({ words = STAMP_WORDS, interval = 2600, className = '', style }: Props) {
   const [index, setIndex] = useState(0)
   const [visible, setVisible] = useState(true)
 
   useEffect(() => {
     if (words.length < 2) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      const t = setInterval(() => setIndex(i => (i + 1) % words.length), interval)
-      return () => clearInterval(t)
-    }
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const t = setInterval(() => {
+      if (reduce) { setIndex(i => (i + 1) % words.length); return }
       setVisible(false)
       setTimeout(() => { setIndex(i => (i + 1) % words.length); setVisible(true) }, 260)
     }, interval)
     return () => clearInterval(t)
-  }, [words.length, interval])
+  }, [words, interval])
 
   return (
     <span className={`stamp${visible ? '' : ' stamp--out'} ${className}`} style={style} aria-live="polite">
-      <span className="stamp__bang">!</span>
-      <span className="stamp__word">{words[index]}</span>
-      <span className="stamp__bang">!</span>
+      <span className="stamp__bang" aria-hidden="true">!</span>
+      <span className="stamp__slot">
+        {words.map((w, i) => (
+          <span key={w} className="stamp__word" style={{ visibility: i === index ? 'visible' : 'hidden' }} aria-hidden={i !== index}>{w}</span>
+        ))}
+      </span>
+      <span className="stamp__bang" aria-hidden="true">!</span>
     </span>
   )
 }

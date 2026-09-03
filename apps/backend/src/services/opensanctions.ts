@@ -19,8 +19,9 @@ export const entityUrl = (id: string) => `https://www.opensanctions.org/entities
  * retaliation (Russia, China, Belarus, Iran, Venezuela and others list Western politicians); those listings are
  * shown with their issuing authority but not scored. Dataset codes are OpenSanctions' own.
  */
-export const SCORED_DATASET_PREFIXES = ['un_', 'eu_', 'us_', 'gb_', 'ca_', 'au_', 'ch_', 'jp_', 'nz_']
-export const SCORED_AUTHORITY_LABEL = 'UN, EU, US, UK, Canada, Australia, Switzerland, Japan and New Zealand'
+const EU_MEMBERS = ['at', 'be', 'bg', 'hr', 'cy', 'cz', 'dk', 'ee', 'fi', 'fr', 'de', 'gr', 'hu', 'ie', 'it', 'lv', 'lt', 'lu', 'mt', 'nl', 'pl', 'pt', 'ro', 'sk', 'si', 'es', 'se']
+export const SCORED_DATASET_PREFIXES = ['un_', 'eu_', ...EU_MEMBERS.map(c => `${c}_`), 'us_', 'gb_', 'ca_', 'au_', 'ch_', 'jp_', 'nz_', 'kr_', 'no_']
+export const SCORED_AUTHORITY_LABEL = 'the UN, the EU and its member states, the US, UK, Canada, Australia, Switzerland, Japan, New Zealand, South Korea and Norway'
 export const isScoredDataset = (datasets: string[]) => datasets.some(d => SCORED_DATASET_PREFIXES.some(p => d.startsWith(p)))
 
 async function streamLines(url: string, onLine: (line: string) => void): Promise<number> {
@@ -35,8 +36,8 @@ async function streamLines(url: string, onLine: (line: string) => void): Promise
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()
 const yearOf = (d?: string) => (d && /^\d{4}/.test(d) ? Number(d.slice(0, 4)) : null)
 
-interface Leader { id: string; name: string; aliases: string[]; year: number | null; country: string | null; qid: string | null }
-interface Match { leader: Leader; entityId: string; tier: 'wikidata' | 'name+birth' | 'tokens+birth' | 'name+country'; topics: string[]; sourceUrls: string[]; datasets: string[] }
+interface Leader { id: string; name: string; aliases: string[]; year: number | null; country: string | null; qid: string | null; head: boolean }
+interface Match { leader: Leader; entityId: string; tier: 'wikidata' | 'name+birth' | 'tokens+birth' | 'tokens+country' | 'name+country'; topics: string[]; sourceUrls: string[]; datasets: string[] }
 
 const RELATIONS: Record<string, [string, string]> = {
   Family: ['person', 'relative'], Associate: ['person', 'associate'], Ownership: ['owner', 'asset'],
@@ -46,9 +47,9 @@ const RELATIONS: Record<string, [string, string]> = {
 
 export async function syncOpenSanctions(log: (m: string) => void = () => undefined) {
   const { rows } = await db.query(
-    `SELECT id, name, aliases, EXTRACT(YEAR FROM born)::int AS year, country_code, wikidata_id FROM politicians WHERE wikidata_id IS NOT NULL`
+    `SELECT id, name, aliases, EXTRACT(YEAR FROM born)::int AS year, country_code, wikidata_id, category FROM politicians WHERE wikidata_id IS NOT NULL`
   )
-  const leaders: Leader[] = rows.map(r => ({ id: r.id, name: r.name, aliases: r.aliases || [], year: r.year, country: r.country_code ? r.country_code.toLowerCase() : null, qid: r.wikidata_id }))
+  const leaders: Leader[] = rows.map(r => ({ id: r.id, name: r.name, aliases: r.aliases || [], year: r.year, country: r.country_code ? r.country_code.toLowerCase() : null, qid: r.wikidata_id, head: r.category === 'world_leader' }))
   const byQid = new Map(leaders.map(l => [l.qid!, l]))
   const byYear = new Map<number, Leader[]>()
   for (const l of leaders) if (l.year) byYear.set(l.year, [...(byYear.get(l.year) || []), l])
@@ -80,15 +81,21 @@ export async function syncOpenSanctions(log: (m: string) => void = () => undefin
         if (found) break
       }
     }
-    // Token tier: every token of the leader's name appears in one of the entity's names, and the birth year matches.
+    // Token tier: every token of one of the leader's names appears in one of the entity's names, and the birth year matches.
+    const tokenHit = (l: Leader, nameTokens: Set<string>[]) =>
+      [l.name, ...l.aliases].some(n => { const toks = norm(n).split(' ').filter(t => t.length > 1); return toks.length >= 2 && nameTokens.some(set => toks.every(t => set.has(t))) })
     if (!found) {
       const nameTokens = names.map(n => new Set(norm(n).split(' ')))
       for (const y of years) {
-        for (const l of byYear.get(y) || []) {
-          const toks = norm(l.name).split(' ').filter(t => t.length > 1)
-          if (toks.length >= 2 && nameTokens.some(set => toks.every(t => set.has(t)))) { found = l; tier = 'tokens+birth'; break }
-        }
+        for (const l of byYear.get(y) || []) if (tokenHit(l, nameTokens)) { found = l; tier = 'tokens+birth'; break }
         if (found) break
+      }
+      // Heads of state or government only: tokens + nationality when the record carries no birth date.
+      if (!found && !years.length && countries.length) {
+        for (const l of leaders) {
+          if (!l.head || !l.country || !countries.includes(iso2[l.country] || '')) continue
+          if (tokenHit(l, nameTokens)) { found = l; tier = 'tokens+country'; break }
+        }
       }
     }
     if (found && tier) {

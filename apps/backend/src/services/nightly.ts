@@ -4,6 +4,7 @@ import { syncWikidata } from './wikidata'
 import { syncCountry } from './worldbank'
 import { enrichLeader } from './enrich'
 import { importAllGovernance } from './governance'
+import { syncMedia } from './gdelt'
 
 // Wikidata: refresh identity and office history for anyone not synced in 7 days.
 registerJob('wikidata', async (log) => {
@@ -70,4 +71,26 @@ registerJob('governance', async (log) => {
   return { results: await importAllGovernance(log) }
 })
 
-export const NIGHTLY_ORDER = ['wikidata', 'worldbank', 'governance', 'wikipedia']
+// GDELT: main-view leaders (world leaders + top figures) whose coverage is older than a day.
+// ~50 s per leader at GDELT's rate, so the run is capped and ordered by attention.
+registerJob('gdelt', async (log) => {
+  const { rows } = await db.query(
+    `SELECT p.id, p.name FROM politicians p
+     LEFT JOIN media_summary m ON m.politician_id = p.id
+     WHERE p.wikidata_id IS NOT NULL
+       AND (p.category = 'world_leader' OR p.id IN (SELECT id FROM politicians WHERE category NOT IN ('world_leader', 'politician') ORDER BY prominence DESC LIMIT 50))
+       AND (m.fetched_at IS NULL OR m.fetched_at < NOW() - INTERVAL '1 day')
+     ORDER BY p.attention DESC, p.prominence DESC LIMIT 150`
+  )
+  let ok = 0, failed = 0, spikes = 0
+  for (const [i, r] of rows.entries()) {
+    try {
+      const res = await syncMedia(r.id)
+      if (res) { ok++; spikes += res.spikes } else failed++
+    } catch (err: any) { failed++; log(`${r.name}: ${err?.message || err}`) }
+    if ((i + 1) % 10 === 0) log(`${i + 1}/${rows.length} ok ${ok} failed ${failed} spikes ${spikes}`)
+  }
+  return { total: rows.length, ok, failed, new_spikes: spikes }
+})
+
+export const NIGHTLY_ORDER = ['wikidata', 'worldbank', 'governance', 'gdelt', 'wikipedia']

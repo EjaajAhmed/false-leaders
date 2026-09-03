@@ -15,6 +15,7 @@ import { Redacted } from '../components/Redaction'
 import CareerLedger, { careerHeadline, usePositions } from '../components/leader/CareerLedger'
 import WatchSection, { useWatch, watchHeadline } from '../components/leader/WatchSection'
 import GovernanceSection, { governanceHeadline, useGovernance } from '../components/leader/GovernanceSection'
+import MediaSection, { mediaHeadline, useMedia } from '../components/leader/MediaSection'
 import VerdictsTab from '../components/leader/VerdictsTab'
 import LeaksTab from '../components/leader/LeaksTab'
 import Discussion from '../components/leader/Discussion'
@@ -88,6 +89,7 @@ export default function Leader() {
   const positions = usePositions(id!)
   const watch = useWatch(id!)
   const governance = useGovernance(id!)
+  const media = useMedia(id!)
   const verdicts = useQuery({ queryKey: ['verdicts', id], queryFn: () => getVerdicts(id!) })
   const leaks = useQuery({ queryKey: ['leaks', id], queryFn: () => getLeaks(id!) })
   const news = useQuery({ queryKey: ['news', id], queryFn: () => getLeaderNews(id!), staleTime: 10 * 60 * 1000 })
@@ -134,6 +136,7 @@ export default function Leader() {
   const career = careerHeadline(positions.data, leader.position)
   const onWatch = watchHeadline(watch.data)
   const gov = governanceHeadline(governance.data)
+  const med = mediaHeadline(media.data)
   const agg = verdicts.data?.aggregate
   const verdictHeadline = agg?.total ? `${agg.percentages[agg.dominant]}% ${verdictLabel(agg.dominant)}` : 'No verdicts yet'
   const verdictSummary = agg?.total ? `${agg.total} member verdict${agg.total === 1 ? '' : 's'}. Community score ${agg.score} of 100. Opinions of site members, not findings of fact.` : 'No member has submitted a verdict. Verdicts are opinions of site members, not findings of fact.'
@@ -177,6 +180,10 @@ export default function Leader() {
 
       <Section id="governance" label={`Governance trajectory · ${leader.country || 'country'}`} headline={gov.headline} summary={gov.summary} open={focus === 'governance'}>
         <GovernanceSection leaderId={leader.id} />
+      </Section>
+
+      <Section id="media" label="Media tone and coverage" headline={med.headline} summary={med.summary} open={focus === 'media'}>
+        <MediaSection leaderId={leader.id} isAdmin={!!user?.is_admin} />
       </Section>
 
       <Section id="profile" label="Profile" headline={leader.born ? `Born ${year(leader.born)}${leader.country ? ` · ${leader.country}` : ''}` : leader.country || 'Profile'} summary={firstSentence(leader.summary) || leader.bio || 'No summary on file.'} open={focus === 'profile'}>

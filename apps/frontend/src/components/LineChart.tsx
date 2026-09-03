@@ -10,6 +10,9 @@ interface Props {
   baseline?: number
   marker?: { x: number; label: string }
   yFormat?: (v: number) => string
+  xFormat?: (x: number) => string
+  /** x positions to flag on the highlighted series (drawn as red squares) */
+  marks?: number[]
   caption: string
   ariaLabel: string
 }
@@ -19,7 +22,7 @@ import { useCallback, useEffect, useState } from 'react'
 const TONES = ['rgba(240,227,190,0.95)', 'rgba(240,227,190,0.6)', 'rgba(240,227,190,0.38)', 'rgba(240,227,190,0.22)']
 
 /** Monochrome line chart. Red is reserved for the highlighted series. Direct labels, no legend needed. */
-export default function LineChart({ series, baseline, marker, yFormat = v => String(Math.round(v)), caption, ariaLabel }: Props) {
+export default function LineChart({ series, baseline, marker, yFormat = v => String(Math.round(v)), xFormat = x => String(x), marks = [], caption, ariaLabel }: Props) {
   // Narrow screens get a smaller drawing box so labels stay legible at 375px.
   const [el, setEl] = useState<HTMLElement | null>(null)
   const [narrow, setNarrow] = useState(false)
@@ -47,7 +50,8 @@ export default function LineChart({ series, baseline, marker, yFormat = v => Str
   const sy = (y: number) => PAD.t + (1 - (y - yMin) / (yMax - yMin)) * (H - PAD.t - PAD.b)
   const ticks = [yMin + padY, (yMin + yMax) / 2, yMax - padY]
   const years = Array.from(new Set(xs)).sort((a, b) => a - b)
-  const xTicks = years.length > 8 ? years.filter((_, i) => i % Math.ceil(years.length / 6) === 0 || i === years.length - 1) : years
+  const step = years.length > 8 ? Math.ceil(years.length / (narrow ? 4 : 6)) : 1
+  const xTicks = years.filter((_, i) => i % step === 0 || i === years.length - 1)
   let toneIdx = 0
 
   // Avoid overlapping end labels
@@ -75,12 +79,18 @@ export default function LineChart({ series, baseline, marker, yFormat = v => Str
           </g>
         )}
         {xTicks.map(x => (
-          <text key={x} x={sx(x)} y={H - 8} fontSize={FS} fill="#A89D83" textAnchor="middle" fontFamily="JetBrains Mono, monospace">{x}</text>
+          <text key={x} x={sx(x)} y={H - 8} fontSize={FS} fill="#A89D83" textAnchor="middle" fontFamily="JetBrains Mono, monospace">{xFormat(x)}</text>
         ))}
         {series.map(s => {
           const color = s.highlight ? '#8E2020' : TONES[Math.min(toneIdx++, TONES.length - 1)]
           const d = s.points.map((p, i) => `${i ? 'L' : 'M'}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`).join(' ')
           return <path key={s.key} d={d} fill="none" stroke={color} strokeWidth={s.highlight ? 2.2 : 1.6} strokeLinejoin="round" />
+        })}
+        {marks.map(mx => {
+          const hs = series.find(s => s.highlight) || series[0]
+          const pt = hs?.points.find(p => p.x === mx)
+          if (!pt) return null
+          return <rect key={`m${mx}`} x={sx(pt.x) - 4} y={sy(pt.y) - 4} width={8} height={8} fill="#8E2020" />
         })}
         {ends.map((e, i) => (
           <text key={e.s.key} x={W - PAD.r + 8} y={labelY[i]} fontSize={FS} fill={e.s.highlight ? '#c8684e' : '#F0E3BE'} dominantBaseline="middle" fontFamily="JetBrains Mono, monospace">

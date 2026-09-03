@@ -160,30 +160,9 @@ export async function enrichLeader(id: string, opts: { force?: boolean } = {}): 
   return { matched: true, title, attention }
 }
 
-// ── Headlines (GDELT, no key; hard limit of one request per 5 seconds) ──
-let gdeltChain: Promise<unknown> = Promise.resolve()
-let gdeltLast = 0
-const GDELT_GAP_MS = 5200
+import { gdeltFetch } from './gdelt'
 
-function gdeltFetch(url: string): Promise<any | null> {
-  const run = async () => {
-    const wait = gdeltLast + GDELT_GAP_MS - Date.now()
-    if (wait > 0) await sleep(wait)
-    gdeltLast = Date.now()
-    try {
-      const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(20000) })
-      const text = await res.text()
-      if (!res.ok || !text.trim().startsWith('{')) return undefined // rate-limited or error: do not cache
-      return JSON.parse(text)
-    } catch {
-      return undefined
-    }
-  }
-  const p = gdeltChain.then(run, run)
-  gdeltChain = p.catch(() => undefined)
-  return p
-}
-
+// ── Headlines (GDELT, shared throttled queue) ──
 export interface Headline { title: string; url: string; source: string; date: string; image?: string | null }
 
 const NEWS_TTL_MS = 6 * 60 * 60 * 1000
@@ -201,9 +180,7 @@ export async function getHeadlines(id: string): Promise<{ items: Headline[]; fet
   if (rows.length === 0) return { items: [], fetched_at: new Date().toISOString() }
 
   const query = `"${rows[0].name}" sourcelang:english`
-  const data = await gdeltFetch(
-    `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=artlist&maxrecords=12&format=json&sort=datedesc&timespan=30d`
-  )
+  const data = await gdeltFetch({ query, mode: 'artlist', maxrecords: '12', sort: 'datedesc', timespan: '30d' })
   if (data === undefined) {
     // Throttled or unreachable: serve whatever is cached, otherwise nothing, without poisoning the cache.
     return { items: cached[0]?.items || [], fetched_at: cached[0]?.fetched_at || new Date().toISOString(), stale: true } as any

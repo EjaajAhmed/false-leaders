@@ -26,7 +26,8 @@
     "leaflet": "^1.9.4",
     "pg": "^8.11.3",
     "redis": "^4.6.13",
-    "resend": "^3.2.0"
+    "resend": "^3.2.0",
+    "undici": "^7.29.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getPoliticians, getLeakQueue, setLeakStatus, getProposalQueue, reviewProposal } from '../api/politicians'
+import { getPoliticians, getLeakQueue, setLeakStatus, getProposalQueue, reviewProposal, getSpikeQueue, reviewSpike } from '../api/politicians'
 import client, { errorMessage } from '../api/client'
 import AIAnalyzer from '../components/AIAnalyzer'
 import LevelBadge from '../components/LevelBadge'
@@ -63,6 +63,42 @@ function LeakQueue() {
                 </div>
               </div>
             )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SpikeQueue() {
+  const qc = useQueryClient()
+  const { data, isLoading } = useQuery({ queryKey: ['spike-queue'], queryFn: () => getSpikeQueue('draft') })
+  const [edits, setEdits] = useState<Record<string, string>>({})
+  const mutate = useMutation({ mutationFn: reviewSpike, onSuccess: () => qc.invalidateQueries({ queryKey: ['spike-queue'] }), onError: e => alert(errorMessage(e)) })
+  return (
+    <div className="card" id="spikes">
+      <div className="section-title"><h2>Coverage spike captions</h2><span className="mono tiny dim">{data?.length || 0} drafts</span></div>
+      <p className="help" style={{ marginBottom: '1rem' }}>Drafted by the analyser from that day's headlines. Nothing publishes without a person approving it. Edit the text if it overstates anything.</p>
+      {isLoading && <Loading />}
+      {!isLoading && data?.length === 0 && <Empty text="No drafts waiting." />}
+      <div className="stack">
+        {data?.map((sp: any) => (
+          <div key={sp.id} className="post">
+            <div className="post__head">
+              <div className="post__who">
+                <Link to={`/leaders/${sp.leader_id}?tab=media`} className="post__name">{sp.leader_name}</Link>
+                <span className="post__time">{sp.day} · {sp.articles} articles · {sp.ratio}×</span>
+              </div>
+              <a href={sp.source_url} target="_blank" rel="noopener noreferrer" className="mono tiny muted">GDELT</a>
+            </div>
+            <textarea className="textarea" rows={2} style={{ marginTop: '0.6rem' }} value={edits[sp.id] ?? sp.summary ?? ''} onChange={e => setEdits({ ...edits, [sp.id]: e.target.value })} maxLength={300} />
+            <div className="stack" style={{ gap: '0.25rem', marginTop: '0.5rem' }}>
+              {(sp.headlines || []).slice(0, 4).map((h: any, i: number) => <a key={i} href={h.url} target="_blank" rel="noopener noreferrer" className="tiny muted">{h.title} · {h.source}</a>)}
+            </div>
+            <div className="post__foot">
+              <button className="btn btn--gold btn--sm" disabled={mutate.isPending} onClick={() => mutate.mutate({ id: sp.id, status: 'published', summary: edits[sp.id] ?? sp.summary })}>Publish</button>
+              <button className="btn btn--ghost btn--sm btn--danger" disabled={mutate.isPending} onClick={() => mutate.mutate({ id: sp.id, status: 'dismissed' })}>Dismiss</button>
+            </div>
           </div>
         ))}
       </div>
@@ -204,7 +240,7 @@ export default function Admin() {
         <p className="eyebrow">Restricted</p>
         <h1>Admin</h1>
         <div className="chips" style={{ marginTop: '0.75rem' }}>
-          {[['#leaks', 'Leak queue'], ...(ARCHIVED.controversies ? [] : [['#proposals', 'Proposals']]), ['#weights', 'Weights'], ['#leader-form', 'Leaders'], ['#broadcast', 'Broadcast']].map(([href, label]) => (
+          {[['#leaks', 'Leak queue'], ['#spikes', 'Spike captions'], ...(ARCHIVED.controversies ? [] : [['#proposals', 'Proposals']]), ['#weights', 'Weights'], ['#leader-form', 'Leaders'], ['#broadcast', 'Broadcast']].map(([href, label]) => (
             <a key={href} href={href} className="chip">{label}</a>
           ))}
         </div>
@@ -212,6 +248,7 @@ export default function Admin() {
 
       <div className="stack" style={{ gap: '1.5rem' }}>
         <LeakQueue />
+        <SpikeQueue />
         {!ARCHIVED.controversies && <ProposalQueue />}
 
         <div className="card" id="weights">

@@ -1,4 +1,7 @@
 import 'dotenv/config'
+import dns from 'dns'
+// Some data hosts (GDELT) advertise IPv6 endpoints that time out; prefer IPv4 like curl does.
+dns.setDefaultResultOrder('ipv4first')
 import '../services/nightly'
 import { db } from './client'
 import { runJob } from '../services/jobs'

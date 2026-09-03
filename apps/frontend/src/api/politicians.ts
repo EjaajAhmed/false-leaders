@@ -22,6 +22,10 @@ export const syncLeader = async (id: string) => (await client.post(`/politicians
 export const getLeaderPositions = async (id: string) => (await client.get(`/politicians/${id}/positions`)).data
 export const getLeaderWatch = async (id: string) => (await client.get(`/politicians/${id}/watch`)).data
 export const getLeaderGovernance = async (id: string) => (await client.get(`/politicians/${id}/governance`)).data
+export const getLeaderMedia = async (id: string) => (await client.get(`/politicians/${id}/media`)).data
+export const syncLeaderMedia = async (id: string) => (await client.post(`/politicians/${id}/media/sync`)).data
+export const getSpikeQueue = async (status = 'draft') => (await client.get('/admin/spikes', { params: { status } })).data
+export const reviewSpike = async ({ id, ...data }: { id: string; status: string; summary?: string }) => (await client.patch(`/admin/spikes/${id}`, data)).data
 export const getLeaderSources = async (id: string) => (await client.get(`/politicians/${id}/sources`)).data
 export const getScoreEvents = async (id: string) => (await client.get(`/politicians/${id}/score-events`)).data
 

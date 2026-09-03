@@ -33,12 +33,15 @@ registerJob('worldbank', async (log) => {
      ) ORDER BY 1`
   )
   let total = 0
+  let failed = 0
   for (const r of rows) {
-    const res = await syncCountry(r.country_code)
-    total += res.rows
-    log(`${r.country_code}: ${res.rows} rows`)
+    let res: { rows: number } | null = null
+    for (let attempt = 0; attempt < 3 && !res; attempt++) {
+      try { res = await syncCountry(r.country_code) } catch (err: any) { log(`${r.country_code}: ${err?.message || err} (attempt ${attempt + 1})`); await sleep(2000 * (attempt + 1)) }
+    }
+    if (res) { total += res.rows; log(`${r.country_code}: ${res.rows} rows`) } else failed++
   }
-  return { countries: rows.length, rows: total }
+  return { countries: rows.length, rows: total, failed }
 })
 
 // Wikipedia: attention (page views) and summaries, monthly-ish.

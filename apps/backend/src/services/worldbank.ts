@@ -10,7 +10,7 @@ export const WB_INDICATORS: Record<string, { label: string; unit: string; kind: 
 }
 
 // Wikidata ISO3 codes that differ from World Bank codes
-const WB_CODE: Record<string, string> = { XKX: 'XKX', ROU: 'ROU', TLS: 'TLS', COD: 'COD', PSE: 'PSE' }
+const WB_CODE: Record<string, string> = { XKS: 'XKX', XKX: 'XKX' }
 
 function apiUrl(code: string, indicator: string) {
   return `https://api.worldbank.org/v2/country/${code}/indicator/${indicator}?format=json&per_page=80&date=1990:2030`

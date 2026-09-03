@@ -32,6 +32,11 @@ export interface Leader {
   country?: string | null
   category?: Category | string | null
   prominence?: number
+  attention?: number
+  wiki_url?: string | null
+  summary?: string | null
+  born?: string | null
+  net_worth?: number | string | null
   age?: number | null
   aliases?: string[]
   truth_score?: number | string | null

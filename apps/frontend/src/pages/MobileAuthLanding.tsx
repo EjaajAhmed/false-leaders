@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import AuthSlideshow from '../components/AuthSlideshow'
+import Stamp from '../components/Stamp'
 
 export default function MobileAuthLanding() {
   const navigate = useNavigate()
@@ -8,7 +9,7 @@ export default function MobileAuthLanding() {
     width: '100%',
     padding: '1rem',
     border: primary ? 'none' : '1px solid rgba(201,168,76,0.5)',
-    borderRadius: '10px',
+    borderRadius: 0,
     fontSize: '1rem',
     fontFamily: 'sans-serif',
     fontWeight: primary ? 700 : 500,
@@ -43,18 +44,9 @@ export default function MobileAuthLanding() {
           {/* Middle — Quote */}
           <div>
             <div style={{ width: '40px', height: '2px', background: '#c9a84c', marginBottom: '1.5rem' }} />
-            <p style={{
-              fontSize: '3.5rem',
-              color: '#f5f0e8',
-              lineHeight: 1.15,
-              margin: 0,
-              fontFamily: '"Playfair Display", Georgia, serif',
-              fontWeight: 900,
-            }}>
-              No one is coming to save us.
-            </p>
-            <p style={{ color: 'rgba(245,240,232,0.5)', fontSize: '0.85rem', margin: '1.25rem 0 0', fontFamily: 'sans-serif', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              {/*Insert Slogan*/}
+            <p style={{ margin: 0 }}><Stamp cycle={['EXPOSED', 'JUDGED', 'WATCHED']} style={{ fontSize: 'clamp(2.8rem, 13vw, 3.8rem)', color: '#f5f0e8' }} /></p>
+            <p className="eyebrow" style={{ margin: '1.25rem 0 0', color: 'rgba(245,240,232,0.6)' }}>
+              Rate, investigate and judge the people in power.
             </p>
           </div>
 

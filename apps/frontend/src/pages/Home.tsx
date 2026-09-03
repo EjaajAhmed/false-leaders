@@ -8,6 +8,7 @@ import Reveal from '../components/Reveal'
 import { Loading } from '../components/States'
 import { scoreColor } from '../lib/format'
 import { ARCHIVED } from '../config'
+import Stamp from '../components/Stamp'
 
 function useCountUp(target: number, duration = 1800) {
   const [value, setValue] = useState(0)
@@ -54,12 +55,12 @@ function Hero({ leaders }: { leaders: number }) {
       <div className="hero__inner" ref={inner}>
         <div className="hero__rule" />
         <p className="eyebrow eyebrow--gold" style={{ marginTop: '1.25rem' }}>FalseLeaders · Civic intelligence</p>
-        <h1 className="hero__title">The Proles are <em>watching.</em></h1>
+        <h1 className="hero__title"><Stamp cycle={['EXPOSED', 'JUDGED', 'WATCHED', 'ACCOUNTABLE']} /></h1>
         <p className="hero__counter">
           <strong>{count.toLocaleString()}</strong> leaders under watch
         </p>
         <p className="muted" style={{ maxWidth: '52ch', marginTop: '1.25rem', fontSize: '0.95rem' }}>
-          Heads of state, executives, judges, moguls, clerics. Every score is earned, every verdict is public, and every leak is anonymous.
+          Rate, investigate and judge the people in power. Heads of state, executives, judges, moguls, clerics. Every score is earned, every verdict is public, every leak is anonymous.
         </p>
         <div className="hero__actions">
           <Link to="/browse" className="btn btn--gold">Open the files</Link>
@@ -170,7 +171,7 @@ export default function Home() {
               ...(ARCHIVED.controversies ? [] : [['Controversies', stats.data?.controversies]]),
               ['Verdicts', stats.data?.verdicts],
               ['Leaks', stats.data?.leaks],
-              ['Proles', stats.data?.proles],
+              ['Members', stats.data?.proles],
             ].map(([label, v]) => (
               <div key={String(label)} className="stat">
                 <div className="stat__value">{v == null ? '—' : Number(v).toLocaleString()}</div>

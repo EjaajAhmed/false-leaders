@@ -3,7 +3,7 @@ import type { Leader } from '../types'
 import ScoreRing from './ScoreRing'
 import VerdictBar from './VerdictBar'
 import LevelBadge from './LevelBadge'
-import { categoryLabel, leaderMeta, verdictLabel } from '../lib/format'
+import { categoryLabel, compact, leaderMeta, verdictLabel } from '../lib/format'
 import { ARCHIVED } from '../config'
 
 function dominant(c?: Leader['verdict_counts'] | null) {
@@ -16,7 +16,10 @@ export default function LeaderCard({ leader }: { leader: Leader }) {
   const score = leader.truth_score == null ? null : Number(leader.truth_score)
   return (
     <Link to={`/leaders/${leader.id}`} className="leader-card">
-      <ScoreRing value={score} size="sm" />
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+        {leader.photo_url ? <img className="photo photo--card" src={leader.photo_url} alt="" loading="lazy" /> : <div className="photo photo--card" />}
+        <ScoreRing value={score} size="sm" />
+      </div>
       <div style={{ minWidth: 0 }}>
         <div className="row row--between" style={{ alignItems: 'flex-start', gap: '0.5rem' }}>
           <div className="leader-card__name truncate" style={{ minWidth: 0 }}>{leader.name}</div>
@@ -37,7 +40,7 @@ export default function LeaderCard({ leader }: { leader: Leader }) {
               {leader.top_controversy ? leader.top_controversy.title : <span className="dim">No controversies on file</span>}
             </div>
           )}
-          <span className="mono tiny dim" style={{ flexShrink: 0 }}>{ARCHIVED.controversies ? `${leader.leak_count ?? 0} leak${(leader.leak_count ?? 0) === 1 ? '' : 's'}` : `${leader.controversy_count ?? 0} on file`}</span>
+          <span className="mono tiny dim" style={{ flexShrink: 0 }} title="Wikipedia page views, last 30 days">{Number(leader.attention) > 0 ? `${compact(leader.attention)} watching` : ARCHIVED.controversies ? `${leader.leak_count ?? 0} leak${(leader.leak_count ?? 0) === 1 ? '' : 's'}` : `${leader.controversy_count ?? 0} on file`}</span>
         </div>
       </div>
     </Link>

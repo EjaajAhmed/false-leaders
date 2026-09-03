@@ -2,10 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { register } from '../api/auth'
 import AuthSlideshow from '../components/AuthSlideshow'
-
-const QUOTES = [
-  { text: "They think that we are stupid.", author: "" }
-]
+import Stamp from '../components/Stamp'
 
 export default function Register() {
   const [email, setEmail] = useState('')
@@ -14,7 +11,6 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [quote] = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)])
   const [mounted, setMounted] = useState(false)
   const navigate = useNavigate()
 
@@ -52,11 +48,7 @@ export default function Register() {
   }
 
   const formPanel = (
-    <div style={{
-      width: '100%', maxWidth: '480px', background: '#0d0d0d',
-      display: 'flex', flexDirection: 'column', justifyContent: 'center',
-      padding: '3rem', position: 'relative', boxSizing: 'border-box', minHeight: '100vh',
-    }}>
+    <div className="auth-form">
       <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem' }}>
         <Link to="/" style={{ color: '#555', fontSize: '0.8rem', textDecoration: 'none', fontFamily: 'sans-serif', letterSpacing: '0.04em' }}>
           Continue as guest
@@ -65,14 +57,14 @@ export default function Register() {
 
       <button
         onClick={() => navigate('/welcome')}
-        className="mobile-back-btn"
-        style={{ position: 'absolute', top: '1.5rem', left: '1.5rem', background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '1.2rem', padding: 0, display: 'none' }}
+        className="auth-back"
+        style={{ position: 'absolute', top: '1.5rem', left: '1.5rem', background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '1.2rem', padding: 0 }}
       >
         ←
       </button>
 
       <div style={{ opacity: mounted ? 1 : 0, transform: mounted ? 'translateY(0)' : 'translateY(16px)', transition: 'all 0.6s ease 0.2s' }}>
-        <h1 style={{ color: '#f5f0e8', fontSize: '2rem', margin: '0 0 0.5rem', fontWeight: 400, letterSpacing: '-0.01em', fontFamily: 'Georgia, serif' }}>
+        <h1 style={{ color: '#f5f0e8', fontSize: '2rem', margin: '0 0 0.5rem', fontWeight: 900, letterSpacing: '-0.01em', fontFamily: '"Playfair Display", Georgia, serif' }}>
           Create account
         </h1>
         <p style={{ color: '#555', fontSize: '0.9rem', margin: '0 0 2.5rem', fontFamily: 'sans-serif' }}>
@@ -130,16 +122,8 @@ export default function Register() {
 
   return (
     <>
-      <style>{`
-        @media (max-width: 768px) {
-          .auth-left-panel { display: none !important; }
-          .auth-right-panel { min-height: 100dvh !important; width: 100% !important; max-width: 100% !important; }
-          .mobile-back-btn { display: block !important; }
-        }
-      `}</style>
-
-      <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'Georgia, serif' }}>
-        <div className="auth-left-panel" style={{ flex: 1 }}>
+      <div className="auth-page" style={{ fontFamily: 'Georgia, serif' }}>
+        <div className="auth-left">
           <AuthSlideshow style={{ height: '100vh', position: 'sticky', top: 0 }}>
             <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '3rem' }}>
               <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -150,24 +134,14 @@ export default function Register() {
               </Link>
               <div>
                 <div style={{ width: '40px', height: '2px', background: '#c9a84c', marginBottom: '1.5rem' }} />
-                {quote.author === '' ? (
-                  <p style={{ fontSize: '4.2rem', color: '#f5f0e8', lineHeight: 1.3, margin: '0 0 1.5rem', fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 900, maxWidth: '420px' }}>
-                    {quote.text}
-                  </p>
-                ) : (
-                  <>
-                    <p style={{ fontSize: '1.6rem', color: '#f5f0e8', lineHeight: 1.5, margin: '0 0 1rem', fontFamily: 'Georgia, serif', fontStyle: 'italic', maxWidth: '420px' }}>"{quote.text}"</p>
-                    <p style={{ color: '#c9a84c', fontSize: '0.85rem', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>— {quote.author}</p>
-                  </>
-                )}
+                <p style={{ margin: 0 }}><Stamp word="ENLIST" style={{ fontSize: 'clamp(2.6rem, 5vw, 4.2rem)', color: '#f5f0e8' }} /></p>
               </div>
-              {/*Insert Slogan Below*/}
-              <p style={{ color: '#555', fontSize: '0.8rem', margin: 0 }}></p>
+              <p className="eyebrow" style={{ margin: 0 }}>FalseLeaders · Rate, investigate and judge the people in power.</p>
             </div>
           </AuthSlideshow>
         </div>
 
-        <div className="auth-right-panel" style={{ width: '480px', minWidth: '480px' }}>
+        <div className="auth-right">
           {formPanel}
         </div>
       </div>

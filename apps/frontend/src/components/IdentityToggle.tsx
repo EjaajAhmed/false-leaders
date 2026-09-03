@@ -28,7 +28,7 @@ export default function IdentityToggle({ anonymous, onChange, locked = false }: 
         <span className={`switch__label${anonymous ? ' is-current' : ''}`}>{prole}</span>
       </button>
       {anonymous ? (
-        <div className="notice">Posting anonymously. Your identity is protected from other Proles.</div>
+        <div className="notice">Posting anonymously. Your username will not be shown.</div>
       ) : (
         <div className="help">Posting as @{user.username}. Switch to post as {prole}.</div>
       )}

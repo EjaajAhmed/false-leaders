@@ -4,6 +4,7 @@ import { authenticate, requireAdmin } from '../middleware/auth'
 import { notifyPoliticianUpdate } from '../services/notify'
 import { loadScoreConfig, recalculateScore } from '../services/score'
 import { getVerdictAggregate } from '../services/verdicts'
+import { enrichLeader, getHeadlines } from '../services/enrich'
 
 export const CATEGORIES = ['world_leader', 'politician', 'business', 'media', 'judiciary', 'religious', 'international', 'military', 'other']
 
@@ -48,7 +49,7 @@ export function viewCondition(view: string | undefined): string | null {
 
 const CARD_COLUMNS = `
   p.id, p.name, p.party, p.region, p.position, p.country, p.category, p.prominence, p.age, p.bio, p.photo_url,
-  p.aliases, p.truth_score, p.latitude, p.longitude, p.created_at,
+  p.attention, p.wiki_url, p.aliases, p.truth_score, p.latitude, p.longitude, p.created_at,
   (SELECT COUNT(*) FROM controversies c WHERE c.politician_id = p.id)::int AS controversy_count,
   (SELECT COUNT(*) FROM leaks l WHERE l.politician_id = p.id AND l.status IN ('visible', 'escalated'))::int AS leak_count,
   ${VERDICT_JSON},
@@ -141,7 +142,7 @@ export async function politiciansRoutes(server: FastifyInstance) {
     if (country) { params.push(`%${country}%`); where += ` AND p.country ILIKE $${params.length}` }
     const { rows } = await db.query(
       `SELECT p.id, p.name, p.position, p.party, p.country, p.category, p.prominence, p.truth_score, p.latitude, p.longitude,
-              LEFT(p.bio, 140) AS bio,
+              p.photo_url, p.attention, LEFT(p.bio, 140) AS bio,
               ${VERDICT_JSON}
        FROM politicians p ${where}
        ORDER BY p.prominence DESC, p.name ASC
@@ -184,6 +185,20 @@ export async function politiciansRoutes(server: FastifyInstance) {
     }
   })
 
+  // Recent headlines (GDELT), cached server-side
+  server.get('/:id/news', async (request) => {
+    const { id } = request.params as { id: string }
+    return getHeadlines(id)
+  })
+
+  // Re-run Wikipedia/Wikidata enrichment for one leader
+  server.post('/:id/enrich', admin, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const result = await enrichLeader(id, { force: true })
+    if (!result.matched) return reply.status(404).send({ error: 'No Wikipedia match found.' })
+    return result
+  })
+
   server.post('/', admin, async (request, reply) => {
     const { name, party, region, position, bio, country, category, prominence, age, latitude, longitude, photo_url, aliases } = request.body as any
     if (!name || !String(name).trim()) return reply.status(400).send({ error: 'Name required.' })
@@ -204,6 +219,7 @@ export async function politiciansRoutes(server: FastifyInstance) {
       ]
     )
     await recalculateScore(rows[0].id)
+    enrichLeader(rows[0].id).catch(() => undefined)
     return reply.status(201).send(rows[0])
   })
 

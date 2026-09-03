@@ -9,9 +9,9 @@ import IdentityToggle from '../IdentityToggle'
 import { Empty, Loading } from '../States'
 import { useAuth } from '../../context/AuthContext'
 import { usePostAsProle } from '../../lib/identity'
-import { getComments, postComment, deleteComment } from '../../api/politicians'
+import { getComments, postComment, deleteComment, getLeaderNews } from '../../api/politicians'
 import { errorMessage } from '../../api/client'
-import { proleTag, scoreLabel, timeAgo, verdictLabel } from '../../lib/format'
+import { compact, formatDate, proleTag, scoreLabel, timeAgo, verdictLabel } from '../../lib/format'
 import { ARCHIVED } from '../../config'
 
 function Discussion({ leaderId }: { leaderId: string }) {
@@ -77,6 +77,26 @@ function Discussion({ leaderId }: { leaderId: string }) {
   )
 }
 
+function Headlines({ leaderId }: { leaderId: string }) {
+  const { data, isLoading } = useQuery({ queryKey: ['news', leaderId], queryFn: () => getLeaderNews(leaderId), staleTime: 10 * 60 * 1000 })
+  return (
+    <div className="card">
+      <div className="row row--between" style={{ marginBottom: '0.25rem' }}>
+        <span className="eyebrow">Latest headlines · 30 days</span>
+        {data?.fetched_at && <span className="mono tiny dim">via GDELT</span>}
+      </div>
+      {isLoading && <Loading />}
+      {!isLoading && !data?.items?.length && <p className="dim small" style={{ padding: '0.75rem 0' }}>Nothing indexed in the last 30 days.</p>}
+      {data?.items?.map((h, i) => (
+        <div key={i} className="headline">
+          <div className="headline__meta">{h.date}<br />{h.source}</div>
+          <a className="headline__title" href={h.url} target="_blank" rel="noopener noreferrer">{h.title}</a>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function OverviewTab({ leader, onGoTo }: { leader: LeaderDetail; onGoTo: (tab: any) => void }) {
   const score = Number(leader.truth_score)
   const verdict = leader.verdicts
@@ -110,16 +130,19 @@ export default function OverviewTab({ leader, onGoTo }: { leader: LeaderDetail; 
             </div>
             <VerdictBar counts={verdict?.counts} size="lg" legend />
           </div>
+
+          <Headlines leaderId={leader.id} />
         </div>
 
         <div className="stack" style={{ gap: '1.25rem' }}>
           <div className="grid-2" style={{ gap: '0.75rem', gridTemplateColumns: '1fr 1fr' }}>
             {([
+              ['Watching · 30d', Number(leader.attention) > 0 ? compact(leader.attention) : '—', null],
               ['Controversies', leader.stats?.controversies, 'controversies'],
               ['Verdicts', leader.stats?.verdicts, 'verdicts'],
               ['Leaks', leader.stats?.leaks, 'leaks'],
               ['Discussion', leader.stats?.comments, null],
-            ] as [string, number | undefined, string | null][]).filter(([, , target]) => !(target && (ARCHIVED as Record<string, boolean>)[target])).map(([label, v, target]) => (
+            ] as [string, number | string | undefined, string | null][]).filter(([, , target]) => !(target && (ARCHIVED as Record<string, boolean>)[target])).map(([label, v, target]) => (
               <button key={String(label)} className="stat" style={{ textAlign: 'left', cursor: target ? 'pointer' : 'default', border: '1px solid var(--border)' }} onClick={() => target && onGoTo(target)}>
                 <div className="stat__value">{v ?? 0}</div>
                 <div className="stat__label eyebrow">{label}</div>
@@ -129,13 +152,23 @@ export default function OverviewTab({ leader, onGoTo }: { leader: LeaderDetail; 
 
           <div className="card">
             <p className="eyebrow" style={{ marginBottom: '0.6rem' }}>Dossier</p>
-            {leader.bio ? (
-              <p style={{ lineHeight: 1.65, color: '#c9c3b7' }}>{leader.bio}</p>
-            ) : (
+            {leader.bio && <p style={{ lineHeight: 1.6, color: 'var(--text)', fontWeight: 500 }}>{leader.bio}</p>}
+            {leader.summary ? (
+              <p style={{ lineHeight: 1.65, color: '#b9b3a7', marginTop: leader.bio ? '0.75rem' : 0, fontSize: '0.9rem' }}>{leader.summary}</p>
+            ) : !leader.bio ? (
               <p className="dim">No biography on file. Someone should fix that.</p>
+            ) : null}
+            {leader.wiki_url && (
+              <p className="mono tiny dim" style={{ marginTop: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                Source · <a href={leader.wiki_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--muted)', borderBottom: '1px solid var(--border-strong)' }}>Wikipedia</a> · CC BY-SA
+              </p>
             )}
             <dl style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.35rem 1rem', fontSize: '0.82rem' }}>
-              {[['Position', leader.position], ['Party', leader.party], ['Region', leader.region], ['Country', leader.country], ['Age', leader.age]].filter(([, v]) => v).map(([k, v]) => (
+              {[
+                ['Position', leader.position], ['Party', leader.party], ['Region', leader.region], ['Country', leader.country],
+                ['Born', leader.born ? formatDate(leader.born) : null], ['Age', leader.age],
+                ['Net worth', leader.net_worth ? `$${compact(leader.net_worth)}` : null],
+              ].filter(([, v]) => v).map(([k, v]) => (
                 <div key={String(k)} style={{ display: 'contents' }}>
                   <dt className="eyebrow" style={{ paddingTop: '0.15rem' }}>{k}</dt>
                   <dd className="mono small">{String(v)}</dd>

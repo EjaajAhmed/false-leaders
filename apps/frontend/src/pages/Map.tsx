@@ -79,6 +79,7 @@ export default function MapPage() {
           <Marker key={p.id} position={[Number(p.latitude), Number(p.longitude)]} icon={createIcon(Number(p.truth_score ?? 90))}>
             <Popup minWidth={220} maxWidth={280}>
               <div className="row row--between" style={{ alignItems: 'flex-start', gap: '0.75rem' }}>
+                {p.photo_url && <img className="photo photo--popup" src={p.photo_url} alt="" />}
                 <div style={{ minWidth: 0 }}>
                   <p className="display" style={{ fontSize: '1rem', lineHeight: 1.2 }}>{p.name}</p>
                   <p className="mono tiny" style={{ color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '0.2rem' }}>{categoryLabel(p.category)}</p>

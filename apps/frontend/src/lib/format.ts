@@ -70,6 +70,16 @@ export function formatDate(date: string | Date): string {
   return new Date(date).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: '2-digit' })
 }
 
+export function compact(n: number | string | null | undefined): string {
+  const v = Number(n)
+  if (!v || isNaN(v)) return '0'
+  if (v >= 1e12) return `${(v / 1e12).toFixed(1).replace(/\.0$/, '')}T`
+  if (v >= 1e9) return `${(v / 1e9).toFixed(1).replace(/\.0$/, '')}B`
+  if (v >= 1e6) return `${(v / 1e6).toFixed(1).replace(/\.0$/, '')}M`
+  if (v >= 1e3) return `${Math.round(v / 1e3)}K`
+  return String(Math.round(v))
+}
+
 export function formatMoney(n: number): string {
   return '$' + Math.round(n).toLocaleString('en-CA')
 }

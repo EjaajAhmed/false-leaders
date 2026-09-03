@@ -41,7 +41,7 @@ export default function Navbar() {
       <aside className="sidebar">
         <Link to="/" className="sidebar__brand">
           <div className="sidebar__brand-name">FalseLeaders</div>
-          <div className="sidebar__brand-tag">The Proles are watching</div>
+          <div className="sidebar__brand-tag">! Accountable !</div>
         </Link>
 
         <nav className="sidebar__links">

@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 import { scoreDaysAgo } from '../services/score'
 
-const LEADER_COLS = 'p.id, p.name, p.party, p.region, p.position, p.country, p.category, p.truth_score'
+const LEADER_COLS = 'p.id, p.name, p.party, p.region, p.position, p.country, p.category, p.truth_score, p.photo_url'
 
 export async function leaderboardRoutes(server: FastifyInstance) {
   server.get('/condemned', async (request) => {
@@ -55,6 +55,15 @@ export async function leaderboardRoutes(server: FastifyInstance) {
     return rows
       .map(r => ({ ...r, activity: r.comments_week + r.verdicts_week }))
       .filter(r => r.activity > 0)
+  })
+
+  server.get('/watched', async (request) => {
+    const limit = Math.min(100, Number((request.query as any).limit) || 25)
+    const { rows } = await db.query(
+      `SELECT ${LEADER_COLS}, p.attention FROM politicians p WHERE p.attention > 0 ORDER BY p.attention DESC, p.name ASC LIMIT $1`,
+      [limit]
+    )
+    return rows
   })
 
   server.get('/leaked', async (request) => {

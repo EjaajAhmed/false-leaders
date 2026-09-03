@@ -136,7 +136,7 @@ export default function Profile() {
           <p className="eyebrow eyebrow--gold">Anonymous identity</p>
           <h2 className="mono" style={{ fontSize: '1.6rem', margin: '0.5rem 0 0.25rem', color: 'var(--gold)', fontWeight: 600 }}>{proleTag(user.prole_number)}</h2>
           <p className="muted small">Assigned on registration. Permanent.</p>
-          <p className="help" style={{ marginTop: '0.75rem' }}>Never linked to your username in public. Every leak, and anything you post as Prole, carries this number.</p>
+          <p className="help" style={{ marginTop: '0.75rem' }}>Never linked to your username in public. Leaks, and anything you choose to post anonymously, carry this number.</p>
         </div>
       </div>
 

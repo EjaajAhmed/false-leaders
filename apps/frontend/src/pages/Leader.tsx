@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
-import { useQuery, useMutation } from '@tanstack/react-query'
-import { getPolitician, getGrafts, addBookmark, removeBookmark, checkBookmark } from '../api/politicians'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { getPolitician, getGrafts, addBookmark, removeBookmark, checkBookmark, enrichLeader } from '../api/politicians'
 import { useAuth } from '../context/AuthContext'
 import type { LeaderDetail } from '../types'
 import { Loading } from '../components/States'
@@ -89,7 +89,10 @@ export default function Leader() {
   const tab = (TABS.find(t => t.key === params.get('tab'))?.key || 'overview') as TabKey
   const setTab = (k: TabKey) => setParams(k === 'overview' ? {} : { tab: k }, { replace: true })
 
+  const { user } = useAuth()
+  const qc = useQueryClient()
   const { data: leader, isLoading, isError } = useQuery<LeaderDetail>({ queryKey: ['politician', id], queryFn: () => getPolitician(id!) })
+  const reenrich = useMutation({ mutationFn: () => enrichLeader(id!), onSuccess: () => qc.invalidateQueries({ queryKey: ['politician', id] }) })
 
   if (isLoading) return <div className="page"><Loading /></div>
   if (isError || !leader) {
@@ -108,6 +111,7 @@ export default function Leader() {
     <div className="page">
       <header style={{ marginBottom: '1.5rem' }}>
         <div className="row row--between row--wrap" style={{ alignItems: 'flex-start', gap: '1rem' }}>
+          {leader.photo_url && <img className="photo photo--hero" src={leader.photo_url} alt={leader.name} />}
           <div style={{ minWidth: 0, flex: 1 }}>
             <p className="eyebrow">Case file · {categoryLabel(leader.category)}{leader.country ? ` · ${leader.country}` : ''}</p>
             <h1 style={{ fontSize: 'clamp(2rem, 4.5vw, 3.4rem)', margin: '0.4rem 0 0.5rem' }}>{leader.name}</h1>
@@ -123,6 +127,7 @@ export default function Leader() {
               <div className="mono tiny" style={{ color: scoreColor(score), letterSpacing: '0.12em', textTransform: 'uppercase' }}>{scoreLabel(score)}</div>
             </div>
             <SaveButton leaderId={leader.id} />
+            {user?.is_admin && <button className="btn btn--ghost btn--sm" onClick={() => reenrich.mutate()} disabled={reenrich.isPending} title="Refresh from Wikipedia">{reenrich.isPending ? 'Fetching' : 'Refresh data'}</button>}
           </div>
         </div>
       </header>

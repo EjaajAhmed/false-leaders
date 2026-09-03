@@ -32,7 +32,7 @@ function LeakQueue() {
     <div className="card" id="leaks">
       <div className="section-title"><h2>Leak queue</h2><span className="mono tiny dim">{data?.length || 0} awaiting</span></div>
       {isLoading && <Loading />}
-      {!isLoading && data?.length === 0 && <Empty text="Queue is empty. The Proles are quiet." />}
+      {!isLoading && data?.length === 0 && <Empty text="Queue is empty." />}
       <div className="stack">
         {data?.map((l: any) => (
           <div key={l.id} className="post">
@@ -273,9 +273,9 @@ export default function Admin() {
           <div className="section-title"><h2>Broadcast</h2></div>
           <div className="stack">
             <input className="input" placeholder="Subject" value={broadcastSubject} onChange={e => setBroadcastSubject(e.target.value)} />
-            <textarea className="textarea" placeholder="Dispatch to every Prole" value={broadcastMessage} onChange={e => setBroadcastMessage(e.target.value)} rows={3} />
+            <textarea className="textarea" placeholder="Message to all members" value={broadcastMessage} onChange={e => setBroadcastMessage(e.target.value)} rows={3} />
             <div className="row">
-              <button className="btn" onClick={() => { if (confirm('Send to every Prole?')) broadcast.mutate() }} disabled={!broadcastSubject.trim() || !broadcastMessage.trim() || broadcast.isPending}>{broadcast.isPending ? 'Sending' : 'Send to all'}</button>
+              <button className="btn" onClick={() => { if (confirm('Send to all members?')) broadcast.mutate() }} disabled={!broadcastSubject.trim() || !broadcastMessage.trim() || broadcast.isPending}>{broadcast.isPending ? 'Sending' : 'Send to all'}</button>
               {broadcast.isSuccess && <span className="mono tiny" style={{ color: 'var(--gold)' }}>Sent.</span>}
             </div>
           </div>

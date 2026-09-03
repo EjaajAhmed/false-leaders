@@ -16,6 +16,9 @@ export const getMapLeaders = async (params: { view?: string; country?: string })
   return res.data
 }
 
+export const getLeaderNews = async (id: string) => (await client.get(`/politicians/${id}/news`)).data as { items: { title: string; url: string; source: string; date: string }[]; fetched_at: string }
+export const enrichLeader = async (id: string) => (await client.post(`/politicians/${id}/enrich`)).data
+
 export const getPoliticiansMeta = async () => {
   const res = await client.get('/politicians/meta')
   return res.data
@@ -35,7 +38,7 @@ export const getFeed = async (params?: { type?: FeedType | 'controversy'; before
   return res.data as { events: any[]; hasMore: boolean }
 }
 
-export type LeaderboardTab = 'condemned' | 'drop' | 'discussed' | 'leaked'
+export type LeaderboardTab = 'condemned' | 'drop' | 'discussed' | 'leaked' | 'watched'
 export const getLeaderboard = async (tab: LeaderboardTab, limit = 25) => {
   const res = await client.get(`/leaderboard/${tab}`, { params: { limit } })
   return res.data

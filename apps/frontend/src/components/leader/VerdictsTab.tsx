@@ -58,7 +58,7 @@ export default function VerdictsTab({ leaderId }: { leaderId: string }) {
 
       {!user && (
         <div className="notice notice--plain" style={{ marginBottom: '1.5rem' }}>
-          <Link to="/login" style={{ color: 'var(--gold)' }}>Sign in</Link> to submit a verdict. One per Prole per leader.
+          <Link to="/login" style={{ color: 'var(--gold)' }}>Sign in</Link> to submit a verdict. One per account, per leader.
         </div>
       )}
       {user && !verified && <div className="notice" style={{ marginBottom: '1.5rem' }}>Verify your email to submit a verdict.</div>}
@@ -87,7 +87,7 @@ export default function VerdictsTab({ leaderId }: { leaderId: string }) {
       )}
 
       {isLoading && <Loading />}
-      {!isLoading && verdicts.length === 0 && <Empty text="No verdicts submitted. The Proles haven't spoken yet." />}
+      {!isLoading && verdicts.length === 0 && <Empty text="No verdicts submitted. Nobody has judged them yet." />}
 
       <div className="stack">
         {verdicts.map((v: any) => (

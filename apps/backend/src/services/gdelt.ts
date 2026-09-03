@@ -40,7 +40,12 @@ export function gdeltFetch(params: Record<string, string>): Promise<any | null |
         if (debug) console.log(`[gdelt] ${line}`)
         gdeltTrace?.(line)
         if (res.ok && text.trim().startsWith('{')) { gapMs = Math.max(MIN_GAP, Math.round(gapMs * 0.8)); return JSON.parse(text) }
-        if (res.status === 429 || /limit requests/i.test(text)) { gapMs = Math.min(MAX_GAP, gapMs * 2); continue }
+        if (res.status === 429 || /limit requests/i.test(text)) {
+          // Already at the maximum gap and still throttled: the IP is in a penalty window. Stop hammering.
+          if (gapMs >= MAX_GAP) return undefined
+          gapMs = Math.min(MAX_GAP, gapMs * 2)
+          continue
+        }
         return null
       } catch (err: any) {
         last = Date.now()

@@ -78,7 +78,8 @@ export default function InfluenceTab({ politicianId }: { politicianId: string })
 
           <div style={{ height: 360, border: '1px solid var(--border-strong)', marginBottom: '1.25rem' }}>
             <MapContainer center={[25, 10]} zoom={2} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
-              <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <TileLayer attribution='Tiles &copy; Esri' url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}" maxZoom={16} />
+              <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}" maxZoom={16} />
               {withCoords.map((inf: any) => {
                 const [lat, lng] = COUNTRY_COORDS[inf.country]
                 const score = Number(inf.influence_score)

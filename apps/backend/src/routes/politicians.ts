@@ -42,7 +42,7 @@ export function viewCondition(view: string | undefined): string | null {
     case 'main': return MAIN_VIEW_SQL
     case 'world_leader': return `p.category = 'world_leader'`
     case 'figures': return `p.category NOT IN ('world_leader', 'politician')`
-    case 'politician': return `p.category = 'politician'`
+    case 'politician': return `p.category IN ('world_leader', 'politician')`
     default: return null
   }
 }

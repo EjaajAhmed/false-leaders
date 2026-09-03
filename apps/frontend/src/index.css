@@ -634,8 +634,8 @@ strong { font-weight: 600; }
 /* ───────────── Leaflet dark overrides ───────────── */
 
 .leaflet-container { background: #0a0a0a; font-family: var(--font-body); }
-/* Darken standard OSM tiles to match the palette */
-.leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.62) contrast(1.15) saturate(0.25) sepia(0.25); }
+/* Esri dark canvas: nudge toward the palette */
+.leaflet-tile-pane { filter: brightness(0.85) contrast(1.1) saturate(0.6) sepia(0.15); }
 .leaflet-popup-content-wrapper, .leaflet-popup-tip {
   background: #111; color: var(--text);
   border-radius: 0; border: 1px solid var(--border-strong); box-shadow: none;

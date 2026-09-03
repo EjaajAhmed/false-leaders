@@ -19,6 +19,9 @@ let chain: Promise<unknown> = Promise.resolve()
 let last = 0
 let gapMs = 12000
 const MIN_GAP = 12000, MAX_GAP = 120000
+/** Optional sink for per-request diagnostics (set by callers that want a trace). */
+export let gdeltTrace: ((m: string) => void) | null = null
+export function setGdeltTrace(fn: ((m: string) => void) | null) { gdeltTrace = fn }
 
 export function gdeltFetch(params: Record<string, string>): Promise<any | null | undefined> {
   const url = `${API}?${new URLSearchParams({ format: 'json', ...params }).toString()}`
@@ -28,18 +31,23 @@ export function gdeltFetch(params: Record<string, string>): Promise<any | null |
       // The gap is measured from the END of the previous request: GDELT counts a slow query as in-flight time.
       const wait = last + gapMs - Date.now()
       if (wait > 0) await sleep(wait)
+      const t0 = Date.now()
       try {
         const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(50000), dispatcher: agent } as any)
         const text = await res.text()
         last = Date.now()
-        if (debug) console.log(`[gdelt] ${res.status} ${params.mode} gap=${gapMs / 1000}s ${JSON.stringify(text.slice(0, 60))}`)
+        const line = `${res.status} ${params.mode} ${Math.round((Date.now() - t0) / 1000)}s gap=${gapMs / 1000}s ${JSON.stringify(text.slice(0, 60))}`
+        if (debug) console.log(`[gdelt] ${line}`)
+        gdeltTrace?.(line)
         if (res.ok && text.trim().startsWith('{')) { gapMs = Math.max(MIN_GAP, Math.round(gapMs * 0.8)); return JSON.parse(text) }
         if (res.status === 429 || /limit requests/i.test(text)) { gapMs = Math.min(MAX_GAP, gapMs * 2); continue }
         return null
       } catch (err: any) {
         last = Date.now()
         gapMs = Math.min(MAX_GAP, Math.round(gapMs * 1.5))
-        if (debug) console.log(`[gdelt] error ${params.mode} ${err?.cause?.code || err?.message || err}`)
+        const line = `error ${params.mode} ${Math.round((Date.now() - t0) / 1000)}s ${err?.cause?.code || err?.message || err}`
+        if (debug) console.log(`[gdelt] ${line}`)
+        gdeltTrace?.(line)
       }
     }
     return undefined // gave up: caller must not cache

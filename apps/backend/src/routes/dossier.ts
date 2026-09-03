@@ -4,7 +4,7 @@ import { requireAdmin } from '../middleware/auth'
 import { getPositions, syncWikidata } from '../services/wikidata'
 import { getWatch, syncCountry } from '../services/worldbank'
 import { getGovernance } from '../services/governance'
-import { getMedia, syncMedia } from '../services/gdelt'
+import { getMedia, syncMedia, setGdeltTrace } from '../services/gdelt'
 import { optionalAuth } from '../middleware/auth'
 import { getScoreEvents, getSources } from '../services/provenance'
 import { lastRuns, listJobs, runJob } from '../services/jobs'
@@ -32,11 +32,25 @@ export async function dossierRoutes(server: FastifyInstance) {
     return getMedia(id, !!(request as any).user?.is_admin)
   })
 
+  // Runs in the background; progress and every GDELT response land in ingest_runs (job = media:<name>).
   server.post('/:id/media/sync', { onRequest: [requireAdmin] }, async (request, reply) => {
     const { id } = request.params as { id: string }
-    const r = await syncMedia(id, { deep: true })
-    if (!r) return reply.status(502).send({ error: 'GDELT unavailable.' })
-    return r
+    const { rows } = await db.query('SELECT name FROM politicians WHERE id = $1', [id])
+    if (rows.length === 0) return reply.status(404).send({ error: 'No such leader.' })
+    const { rows: run } = await db.query(`INSERT INTO ingest_runs (job) VALUES ($1) RETURNING id`, [`media:${rows[0].name}`])
+    const lines: string[] = []
+    ;(async () => {
+      setGdeltTrace(m => lines.push(`${new Date().toISOString().slice(11, 19)} ${m}`))
+      try {
+        const r = await syncMedia(id, { deep: true })
+        await db.query(`UPDATE ingest_runs SET finished_at = NOW(), status = $2, detail = $3 WHERE id = $1`, [run[0].id, r ? 'ok' : 'failed', JSON.stringify({ result: r, log: lines })])
+      } catch (err: any) {
+        await db.query(`UPDATE ingest_runs SET finished_at = NOW(), status = 'failed', detail = $2 WHERE id = $1`, [run[0].id, JSON.stringify({ error: err?.message, log: lines })])
+      } finally {
+        setGdeltTrace(null)
+      }
+    })()
+    return reply.status(202).send({ started: true, run_id: run[0].id })
   })
 
   server.get('/:id/sources', async (request) => {

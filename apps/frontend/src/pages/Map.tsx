@@ -39,7 +39,7 @@ export default function MapPage() {
   const withCoords = data || []
 
   return (
-    <div style={{ height: '100vh', width: '100%', position: 'relative' }}>
+    <div className="map-page">
       {isLoading && (
         <div className="loading" style={{ position: 'absolute', top: '1rem', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, background: 'rgba(10,10,10,0.9)', border: '1px solid var(--border-strong)', padding: '0.6rem 1rem' }}>
           <span className="spinner" /><span>Decrypting</span>
@@ -63,7 +63,7 @@ export default function MapPage() {
         </div>
       </div>
 
-      <div className="map-legend" style={{ top: 'auto', bottom: '1.5rem' }}>
+      <div className="map-legend map-legend--bottom" style={{ top: 'auto', bottom: '1.5rem' }}>
         <div className="eyebrow">TruthScore</div>
         {[['Clean · 75–90', COLORS.clean], ['Watch list · 50–74', COLORS.watch], ['Warning · 25–49', COLORS.warn], ['Condemned · 1–24', COLORS.condemned]].map(([label, color]) => (
           <div key={label} className="map-legend__item"><span className="map-legend__swatch" style={{ background: color }} />{label}</div>

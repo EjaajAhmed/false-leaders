@@ -86,7 +86,7 @@ export default function OverviewTab({ leader, onGoTo }: { leader: LeaderDetail; 
 
   return (
     <div>
-      <div className="grid-2" style={{ gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr)' }}>
+      <div className="overview-grid">
         <div className="stack" style={{ gap: '1.25rem' }}>
           <div className="card" style={{ display: 'flex', justifyContent: 'space-around', gap: '1rem', padding: '1.75rem 1rem', flexWrap: 'wrap' }}>
             <ScoreRing value={score} size="lg" label="TruthScore" sublabel={scoreLabel(score)} />

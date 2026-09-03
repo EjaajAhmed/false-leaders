@@ -116,7 +116,7 @@ export default function Leader() {
               <p className="mono tiny dim" style={{ marginTop: '0.4rem', letterSpacing: '0.08em' }}>a.k.a. {leader.aliases.join(' · ')}</p>
             )}
           </div>
-          <div className="row" style={{ gap: '1rem', alignItems: 'center' }}>
+          <div className="row" style={{ gap: '1rem', alignItems: 'center', flexShrink: 0 }}>
             <div style={{ textAlign: 'right' }}>
               <div className="eyebrow">TruthScore</div>
               <div className="mono" style={{ fontSize: '1.6rem', fontWeight: 600, lineHeight: 1.1, color: scoreColor(score) }}>{score}</div>

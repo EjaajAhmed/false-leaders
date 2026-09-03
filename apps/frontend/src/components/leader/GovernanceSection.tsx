@@ -28,7 +28,7 @@ export function governanceHeadline(g: any) {
   const dem = withTerm.find((x: any) => x.s.code === 'VDEM_LIBDEM') || withTerm[0]
   const fell = withTerm.filter((x: any) => x.c.delta < 0).length
   const headline = `${dem.s.short} ${signed(dem.c.delta, dem.s.decimals)} ${dem.c.sinceTerm ? `since ${dem.c.from}` : `since ${dem.c.from} (earliest available)`}`
-  const rest = withTerm.filter((x: any) => x !== dem).map((x: any) => `${x.s.short.toLowerCase()} ${signed(x.c.delta, x.s.decimals)}`)
+  const rest = withTerm.filter((x: any) => x !== dem).map((x: any) => `${x.s.short.toLowerCase()} ${signed(x.c.delta, x.s.decimals)}${x.c.sinceTerm ? '' : ` (from ${x.c.from}, when the index begins)`}`)
   const summary = `${fell} of ${withTerm.length} indices fell over the period${rest.length ? `: ${rest.join(', ')}` : ''}. Higher is better on all of them. They measure ${g.country} as a whole and do not isolate one person's effect.`
   return { headline, summary }
 }

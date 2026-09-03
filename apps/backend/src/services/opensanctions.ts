@@ -14,6 +14,15 @@ const DATASETS = {
 export const LICENSE = 'OpenSanctions, CC BY-NC 4.0 (source records carry their own terms)'
 export const entityUrl = (id: string) => `https://www.opensanctions.org/entities/${encodeURIComponent(id)}/`
 
+/**
+ * Only listings from these authorities move the TruthScore. Several states sanction foreign officials as
+ * retaliation (Russia, China, Belarus, Iran, Venezuela and others list Western politicians); those listings are
+ * shown with their issuing authority but not scored. Dataset codes are OpenSanctions' own.
+ */
+export const SCORED_DATASET_PREFIXES = ['un_', 'eu_', 'us_', 'gb_', 'ca_', 'au_', 'ch_', 'jp_', 'nz_']
+export const SCORED_AUTHORITY_LABEL = 'UN, EU, US, UK, Canada, Australia, Switzerland, Japan and New Zealand'
+export const isScoredDataset = (datasets: string[]) => datasets.some(d => SCORED_DATASET_PREFIXES.some(p => d.startsWith(p)))
+
 async function streamLines(url: string, onLine: (line: string) => void): Promise<number> {
   const res = await fetch(url, { headers: { 'User-Agent': UA }, dispatcher: agent } as any)
   if (!res.ok || !res.body) throw new Error(`HTTP ${res.status} for ${url}`)
@@ -27,7 +36,7 @@ const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,
 const yearOf = (d?: string) => (d && /^\d{4}/.test(d) ? Number(d.slice(0, 4)) : null)
 
 interface Leader { id: string; name: string; aliases: string[]; year: number | null; country: string | null; qid: string | null }
-interface Match { leader: Leader; entityId: string; tier: 'wikidata' | 'name+birth' | 'name+country'; topics: string[]; sourceUrls: string[]; datasets: string[] }
+interface Match { leader: Leader; entityId: string; tier: 'wikidata' | 'name+birth' | 'tokens+birth' | 'name+country'; topics: string[]; sourceUrls: string[]; datasets: string[] }
 
 const RELATIONS: Record<string, [string, string]> = {
   Family: ['person', 'relative'], Associate: ['person', 'associate'], Ownership: ['owner', 'asset'],
@@ -41,6 +50,8 @@ export async function syncOpenSanctions(log: (m: string) => void = () => undefin
   )
   const leaders: Leader[] = rows.map(r => ({ id: r.id, name: r.name, aliases: r.aliases || [], year: r.year, country: r.country_code ? r.country_code.toLowerCase() : null, qid: r.wikidata_id }))
   const byQid = new Map(leaders.map(l => [l.qid!, l]))
+  const byYear = new Map<number, Leader[]>()
+  for (const l of leaders) if (l.year) byYear.set(l.year, [...(byYear.get(l.year) || []), l])
   const byName = new Map<string, Leader[]>()
   for (const l of leaders) for (const n of [l.name, ...l.aliases]) { const k = norm(n); if (k.length > 5) byName.set(k, [...(byName.get(k) || []), l]) }
   // ISO3 -> ISO2 is needed to compare with OpenSanctions country codes; derive from the sanctions file's own nationality data is impossible, so use a small table.
@@ -65,6 +76,17 @@ export async function syncOpenSanctions(log: (m: string) => void = () => undefin
         for (const l of cands) {
           if (l.year && years.length) { if (years.includes(l.year)) { found = l; tier = 'name+birth'; break } }
           else if (!years.length && l.country && countries.includes(iso2[l.country] || '')) { found = l; tier = 'name+country'; break }
+        }
+        if (found) break
+      }
+    }
+    // Token tier: every token of the leader's name appears in one of the entity's names, and the birth year matches.
+    if (!found) {
+      const nameTokens = names.map(n => new Set(norm(n).split(' ')))
+      for (const y of years) {
+        for (const l of byYear.get(y) || []) {
+          const toks = norm(l.name).split(' ').filter(t => t.length > 1)
+          if (toks.length >= 2 && nameTokens.some(set => toks.every(t => set.has(t)))) { found = l; tier = 'tokens+birth'; break }
         }
         if (found) break
       }
@@ -125,16 +147,16 @@ export async function syncOpenSanctions(log: (m: string) => void = () => undefin
           for (const s of recs) {
             const p = s.properties || {}
             await client.query(
-              `INSERT INTO flags (politician_id, kind, entity_id, authority, program, reason, start_date, listing_date, dataset, match_tier, source_url)
-               VALUES ($1, 'sanction', $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+              `INSERT INTO flags (politician_id, kind, entity_id, authority, program, reason, start_date, listing_date, dataset, match_tier, source_url, scored)
+               VALUES ($1, 'sanction', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
               [l.id, m.entityId, p.authority?.[0] || null, p.program?.[0] || p.programId?.[0] || null, p.reason?.[0] || p.summary?.[0] || null,
-               p.startDate?.[0]?.slice(0, 10) || null, p.listingDate?.[0]?.slice(0, 10) || null, (s.datasets || [])[0] || null, m.tier, p.sourceUrl?.[0] || src]
+               p.startDate?.[0]?.slice(0, 10) || null, p.listingDate?.[0]?.slice(0, 10) || null, (s.datasets || [])[0] || null, m.tier, p.sourceUrl?.[0] || src, isScoredDataset(s.datasets || [])]
             )
           }
         } else if (m.topics.includes('sanction')) {
           await client.query(
-            `INSERT INTO flags (politician_id, kind, entity_id, authority, program, dataset, match_tier, source_url) VALUES ($1, 'sanction', $2, $3, NULL, $4, $5, $6)`,
-            [l.id, m.entityId, m.datasets.join(', ') || null, m.datasets[0] || null, m.tier, src]
+            `INSERT INTO flags (politician_id, kind, entity_id, authority, program, dataset, match_tier, source_url, scored) VALUES ($1, 'sanction', $2, $3, NULL, $4, $5, $6, $7)`,
+            [l.id, m.entityId, m.datasets.join(', ') || null, m.datasets[0] || null, m.tier, src, isScoredDataset(m.datasets)]
           )
         }
         for (const t of m.topics.filter(t => t.startsWith('crime'))) {
@@ -197,8 +219,8 @@ async function isoMap(): Promise<Record<string, string>> {
 export async function getFlags(politicianId: string) {
   const [{ rows: p }, { rows: flags }, { rows: edges }] = await Promise.all([
     db.query('SELECT opensanctions_id, opensanctions_checked_at FROM politicians WHERE id = $1', [politicianId]),
-    db.query(`SELECT kind, entity_id, authority, program, reason, start_date::text, listing_date::text, dataset, match_tier, source_url, fetched_at FROM flags WHERE politician_id = $1 ORDER BY kind, listing_date DESC NULLS LAST`, [politicianId]),
+    db.query(`SELECT kind, entity_id, authority, program, reason, start_date::text, listing_date::text, dataset, match_tier, source_url, scored, fetched_at FROM flags WHERE politician_id = $1 ORDER BY kind, scored DESC, listing_date DESC NULLS LAST`, [politicianId]),
     db.query(`SELECT relation, role, other_id, other_name, other_schema, other_topics, source_url FROM network_edges WHERE politician_id = $1 ORDER BY relation, other_name LIMIT 60`, [politicianId]),
   ])
-  return { opensanctions_id: p[0]?.opensanctions_id || null, checked_at: p[0]?.opensanctions_checked_at || null, flags, edges }
+  return { opensanctions_id: p[0]?.opensanctions_id || null, checked_at: p[0]?.opensanctions_checked_at || null, flags, edges, scored_authorities: SCORED_AUTHORITY_LABEL }
 }

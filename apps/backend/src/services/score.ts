@@ -120,7 +120,7 @@ export async function recalculateScore(
     ),
     db.query(
       `SELECT COUNT(DISTINCT COALESCE(authority, dataset, entity_id))::int AS authorities, MIN(entity_id) AS entity_id
-       FROM flags WHERE politician_id = $1 AND kind = 'sanction'`,
+       FROM flags WHERE politician_id = $1 AND kind = 'sanction' AND scored`,
       [politicianId]
     ),
   ])

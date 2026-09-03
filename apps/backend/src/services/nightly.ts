@@ -99,7 +99,7 @@ registerJob('gdelt', async (log) => {
 // OpenSanctions: two bulk files (~700 MB) streamed; weekly is enough.
 registerJob('opensanctions', async (log) => {
   const { rows } = await db.query(`SELECT MAX(opensanctions_checked_at) AS last FROM politicians`)
-  if (rows[0]?.last && Date.now() - new Date(rows[0].last).getTime() < 6 * 86400000) { log('fresh; skipped'); return { skipped: true } }
+  if (process.env.FORCE !== '1' && rows[0]?.last && Date.now() - new Date(rows[0].last).getTime() < 6 * 86400000) { log('fresh; skipped'); return { skipped: true } }
   return syncOpenSanctions(log)
 })
 

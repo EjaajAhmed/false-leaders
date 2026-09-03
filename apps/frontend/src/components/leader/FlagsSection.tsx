@@ -16,12 +16,21 @@ export function flagsHeadline(f: any) {
   const sanctions = flags.filter(x => x.kind === 'sanction')
   const crime = flags.filter(x => x.kind === 'crime')
   const pep = flags.some(x => x.kind === 'pep')
-  const authorities = new Set(sanctions.map(x => x.authority || x.dataset).filter(Boolean))
+  const scored = sanctions.filter(x => x.scored)
+  const unscored = sanctions.filter(x => !x.scored)
+  const authorities = new Set(scored.map(x => x.authority || x.dataset).filter(Boolean))
+  const otherAuth = new Set(unscored.map(x => x.authority || x.dataset).filter(Boolean))
   const checked = f.checked_at ? `checked ${formatDate(f.checked_at)}` : 'not yet checked'
-  if (sanctions.length) {
+  if (scored.length) {
     return {
       headline: `Sanctioned · ${authorities.size} authorit${authorities.size === 1 ? 'y' : 'ies'}`,
-      summary: `${sanctions.length} sanctions listing${sanctions.length === 1 ? '' : 's'} in OpenSanctions (${[...authorities].slice(0, 4).join(', ')}${authorities.size > 4 ? '…' : ''}). ${f.edges?.length ? `${f.edges.length} connected entities on record. ` : ''}Listings are decisions of the issuing governments; they are not court findings. OpenSanctions ${checked}.`,
+      summary: `${scored.length} listing${scored.length === 1 ? '' : 's'} by ${[...authorities].slice(0, 4).join(', ')}${authorities.size > 4 ? ' and others' : ''}${unscored.length ? `, plus ${unscored.length} by other states not counted toward the score` : ''}. ${f.edges?.length ? `${f.edges.length} connected entities on record. ` : ''}Listings are decisions of the issuing governments, not court findings. OpenSanctions ${checked}.`,
+    }
+  }
+  if (unscored.length) {
+    return {
+      headline: `Listed by ${[...otherAuth].slice(0, 2).join(' and ') || 'other states'} · not scored`,
+      summary: `${unscored.length} listing${unscored.length === 1 ? '' : 's'} by governments outside the set that counts toward the score (${f.scored_authorities}). Several states list foreign officials as retaliation, so these are shown for completeness only. OpenSanctions ${checked}.`,
     }
   }
   if (crime.length) return { headline: 'Flagged in crime-related lists', summary: `${crime.length} record${crime.length === 1 ? '' : 's'} with a crime-related topic in OpenSanctions. Details and sources below. OpenSanctions ${checked}.` }
@@ -48,13 +57,14 @@ export default function FlagsSection({ leaderId, name }: { leaderId: string; nam
       )}
       {sanctions.length > 0 && (
         <table className="datatable" style={{ marginTop: 0 }}>
-          <thead><tr><th>Authority</th><th>Programme</th><th>Listed</th><th>Source</th></tr></thead>
+          <thead><tr><th>Authority</th><th>Programme</th><th>Listed</th><th>Scored</th><th>Source</th></tr></thead>
           <tbody>
             {sanctions.map((s, i) => (
               <tr key={i}>
                 <td>{s.authority || s.dataset || '—'}{s.reason ? <div className="tiny muted" style={{ marginTop: '0.2rem', maxWidth: '40ch' }}>{s.reason.slice(0, 220)}{s.reason.length > 220 ? '…' : ''}</div> : null}</td>
                 <td className="small">{s.program || '—'}</td>
                 <td className="mono small">{s.listing_date || s.start_date || '—'}</td>
+                <td className="mono tiny" title={s.scored ? 'Counts toward the TruthScore' : 'Shown but not scored'}>{s.scored ? 'yes' : 'no'}</td>
                 <td><a href={s.source_url} target="_blank" rel="noopener noreferrer" className="mono tiny" style={{ borderBottom: '1px solid var(--border-strong)' }}>Open</a></td>
               </tr>
             ))}
@@ -73,7 +83,7 @@ export default function FlagsSection({ leaderId, name }: { leaderId: string; nam
       )}
       {edges.length > 0 && <NetworkGraph name={name} edges={edges} entityUrl={entityUrl} />}
       <p className="section__caption">
-        Source: <a href={f.opensanctions_id ? entityUrl(f.opensanctions_id) : 'https://www.opensanctions.org/'} target="_blank" rel="noopener noreferrer" style={{ borderBottom: '1px solid var(--border-strong)' }}>OpenSanctions</a> (CC BY-NC 4.0, aggregating official sanctions lists and PEP data), {f.checked_at ? `checked ${formatDate(f.checked_at)}` : 'not yet checked'}. Matches are by Wikidata identifier where available, otherwise by name and birth date; the match tier is recorded with each flag.
+        Source: <a href={f.opensanctions_id ? entityUrl(f.opensanctions_id) : 'https://www.opensanctions.org/'} target="_blank" rel="noopener noreferrer" style={{ borderBottom: '1px solid var(--border-strong)' }}>OpenSanctions</a> (CC BY-NC 4.0, aggregating official sanctions lists and PEP data), {f.checked_at ? `checked ${formatDate(f.checked_at)}` : 'not yet checked'}. Matches are by Wikidata identifier where available, otherwise by name and birth date; the match tier is recorded with each flag. Only listings by {f.scored_authorities} count toward the score.
       </p>
     </div>
   )

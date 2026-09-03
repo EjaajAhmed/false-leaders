@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { resendVerification } from '../api/auth'
 import { proleTag } from '../lib/format'
 import Stamp from './Stamp'
+import Logo from './Logo'
 
 const DESKTOP = [
   { to: '/', label: 'Home' },
@@ -41,7 +42,8 @@ export default function Navbar() {
     <>
       <aside className="sidebar">
         <Link to="/" className="sidebar__brand">
-          <div className="sidebar__brand-name">FalseLeaders</div>
+          <Logo />
+          <div className="sidebar__brand-name" style={{ marginTop: '0.6rem' }}>FalseLeaders</div>
           <div className="sidebar__brand-tag"><Stamp className="stamp--small" /></div>
         </Link>
 

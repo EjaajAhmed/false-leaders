@@ -20,6 +20,9 @@ import { leaderLeakRoutes, leaksRoutes } from './routes/leaks'
 import { leaderProposalRoutes, proposalsRoutes } from './routes/proposals'
 import { feedRoutes } from './routes/feed'
 import { leaderboardRoutes } from './routes/leaderboard'
+import { adminRoutes, dossierRoutes } from './routes/dossier'
+import { NIGHTLY_ORDER } from './services/nightly'
+import { startScheduler } from './services/jobs'
 
 const server = Fastify({ logger: true })
 
@@ -90,6 +93,8 @@ server.register(analyzeRoutes, { prefix: '/politicians' })
 server.register(leaderVerdictRoutes, { prefix: '/politicians' })
 server.register(leaderLeakRoutes, { prefix: '/politicians' })
 server.register(leaderProposalRoutes, { prefix: '/politicians' })
+server.register(dossierRoutes, { prefix: '/politicians' })
+server.register(adminRoutes, { prefix: '/admin' })
 server.register(verdictsRoutes, { prefix: '/verdicts' })
 server.register(leaksRoutes, { prefix: '/leaks' })
 server.register(proposalsRoutes, { prefix: '/controversy-proposals' })
@@ -112,6 +117,7 @@ const start = async () => {
   try {
     await server.listen({ port: Number(process.env.PORT) || 8080, host: '0.0.0.0' })
     console.log(`Server running on port ${process.env.PORT || 8080}`)
+    startScheduler(NIGHTLY_ORDER)
   } catch (err) {
     server.log.error(err)
     process.exit(1)

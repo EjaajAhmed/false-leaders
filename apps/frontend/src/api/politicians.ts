@@ -18,6 +18,11 @@ export const getMapLeaders = async (params: { view?: string; country?: string })
 
 export const getLeaderNews = async (id: string) => (await client.get(`/politicians/${id}/news`)).data as { items: { title: string; url: string; source: string; date: string }[]; fetched_at: string }
 export const enrichLeader = async (id: string) => (await client.post(`/politicians/${id}/enrich`)).data
+export const syncLeader = async (id: string) => (await client.post(`/politicians/${id}/sync`)).data
+export const getLeaderPositions = async (id: string) => (await client.get(`/politicians/${id}/positions`)).data
+export const getLeaderWatch = async (id: string) => (await client.get(`/politicians/${id}/watch`)).data
+export const getLeaderSources = async (id: string) => (await client.get(`/politicians/${id}/sources`)).data
+export const getScoreEvents = async (id: string) => (await client.get(`/politicians/${id}/score-events`)).data
 
 export const getPoliticiansMeta = async () => {
   const res = await client.get('/politicians/meta')

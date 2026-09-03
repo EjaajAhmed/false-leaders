@@ -37,6 +37,11 @@ export interface Leader {
   summary?: string | null
   born?: string | null
   net_worth?: number | string | null
+  wikidata_id?: string | null
+  country_code?: string | null
+  current_office?: string | null
+  term_start?: string | null
+  term_end?: string | null
   age?: number | null
   aliases?: string[]
   truth_score?: number | string | null

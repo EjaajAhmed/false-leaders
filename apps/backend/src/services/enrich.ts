@@ -1,4 +1,5 @@
 import { db } from '../db/client'
+import { LICENSES, recordSource } from './provenance'
 
 const UA = 'FalseLeaders/1.0 (https://falseleaders.com; noreply@falseleaders.com)'
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
@@ -145,6 +146,16 @@ export async function enrichLeader(id: string, opts: { force?: boolean } = {}): 
      WHERE id = $8`,
     [title, summary?.content_urls?.desktop?.page || null, summary?.extract || null, photo, born, netWorth, attention, id]
   )
+
+  const pageUrl = summary?.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`
+  const wp = { name: 'Wikipedia', url: pageUrl, license: LICENSES.wikipedia }
+  if (summary?.extract) await recordSource(id, 'summary', { chars: summary.extract.length }, wp)
+  if (photo) await recordSource(id, 'portrait', photo, { name: 'Wikipedia / Wikimedia Commons', url: pageUrl, license: 'See file page on Commons' })
+  await recordSource(id, 'attention', attention, {
+    name: 'Wikimedia Pageviews API', license: LICENSES.wikidata,
+    url: `https://pageviews.wmcloud.org/?project=en.wikipedia.org&pages=${encodeURIComponent(title.replace(/ /g, '_'))}`,
+  })
+  if (netWorth != null && summary?.wikibase_item) await recordSource(id, 'net_worth', netWorth, { name: 'Wikidata', url: `https://www.wikidata.org/wiki/${summary.wikibase_item}`, license: LICENSES.wikidata })
 
   return { matched: true, title, attention }
 }

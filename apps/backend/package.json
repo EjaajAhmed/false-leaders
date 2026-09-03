@@ -8,7 +8,9 @@
     "migrate": "tsx src/db/migrate.ts",
     "seed": "tsx src/db/seed.ts",
     "recalc": "tsx src/db/recalc.ts",
-    "enrich": "tsx src/db/enrich.ts"
+    "enrich": "tsx src/db/enrich.ts",
+    "job": "tsx src/db/job.ts",
+    "dedupe": "tsx src/db/dedupe.ts"
   },
   "engines": {
     "node": ">=20"

@@ -1,5 +1,8 @@
 import { db } from '../db/client'
 import { emitFeedEvent } from './feed'
+import { recordScoreEvent } from './provenance'
+
+const SITE = process.env.FRONTEND_URL || 'https://falseleaders.com'
 
 type Config = Record<string, number>
 
@@ -30,20 +33,25 @@ export interface LeakTally { counted: number }
  * leak_upvote_threshold upvotes deduct leak_weight each, capped at leak_max_penalty.
  * Floor 1. Never zero.
  */
-export function computeScore(cfg: Config, verdicts: VerdictTally, leaks: LeakTally): number {
-  let score = cfg.base_score ?? 90
+export interface ScoreComponents { verdicts: number; leaks: number }
 
+/** Deductions by component, each rounded to two decimals so the ledger is stable. */
+export function computeComponents(cfg: Config, verdicts: VerdictTally, leaks: LeakTally): ScoreComponents {
+  let verdictDeduction = 0
   const minCount = cfg.verdict_min_count ?? 3
   if (verdicts.total >= minCount && verdicts.total > 0) {
     const confidence = Math.min(1, verdicts.total / Math.max(1, cfg.verdict_confidence_n ?? 25))
     const guiltyShare = verdicts.guilty / verdicts.total
     const suspiciousShare = verdicts.suspicious / verdicts.total
-    score -= (guiltyShare * (cfg.verdict_guilty_weight ?? 60) + suspiciousShare * (cfg.verdict_suspicious_weight ?? 30)) * confidence
+    verdictDeduction = (guiltyShare * (cfg.verdict_guilty_weight ?? 60) + suspiciousShare * (cfg.verdict_suspicious_weight ?? 30)) * confidence
   }
+  const leakDeduction = Math.min(cfg.leak_max_penalty ?? 20, leaks.counted * (cfg.leak_weight ?? 2))
+  return { verdicts: Math.round(verdictDeduction * 100) / 100, leaks: Math.round(leakDeduction * 100) / 100 }
+}
 
-  const leakPenalty = Math.min(cfg.leak_max_penalty ?? 20, leaks.counted * (cfg.leak_weight ?? 2))
-  score -= leakPenalty
-
+export function computeScore(cfg: Config, verdicts: VerdictTally, leaks: LeakTally): number {
+  const c = computeComponents(cfg, verdicts, leaks)
+  const score = (cfg.base_score ?? 90) - c.verdicts - c.leaks
   return Math.max(1, Math.min(100, Math.round(score)))
 }
 
@@ -86,7 +94,7 @@ export async function recalculateScore(
   const config = cfg ?? await loadScoreConfig()
 
   const { rows } = await db.query(
-    'SELECT id, name, truth_score, score_history FROM politicians WHERE id = $1',
+    'SELECT id, name, truth_score, score_history, score_components FROM politicians WHERE id = $1',
     [politicianId]
   )
   if (rows.length === 0) return null
@@ -109,9 +117,28 @@ export async function recalculateScore(
     ),
   ])
 
-  const score = computeScore(config, v[0], l[0])
+  const components = computeComponents(config, v[0], l[0])
+  const score = Math.max(1, Math.min(100, Math.round((config.base_score ?? 90) - components.verdicts - components.leaks)))
   const previous = leader.truth_score == null ? null : Math.round(Number(leader.truth_score))
   const changed = previous !== score
+
+  // Ledger: one event per component whose deduction moved. Every event carries the source it was computed from.
+  const prevComponents: Partial<ScoreComponents> = leader.score_components || {}
+  const sources: Record<keyof ScoreComponents, string> = {
+    verdicts: `${SITE}/leaders/${politicianId}?tab=verdicts`,
+    leaks: `${SITE}/leaders/${politicianId}?tab=leaks`,
+  }
+  const details: Record<keyof ScoreComponents, Record<string, unknown>> = {
+    verdicts: { total: v[0].total, guilty: v[0].guilty, suspicious: v[0].suspicious, unclear: v[0].unclear, clean: v[0].clean },
+    leaks: { counted_leaks: l[0].counted, upvote_threshold: config.leak_upvote_threshold ?? 3 },
+  }
+  for (const key of ['verdicts', 'leaks'] as (keyof ScoreComponents)[]) {
+    const before = Number(prevComponents[key] ?? 0)
+    const after = components[key]
+    if (Math.abs(after - before) < 0.005) continue
+    await recordScoreEvent(politicianId, key, Math.round((before - after) * 100) / 100, sources[key],
+      { deduction_before: before, deduction_after: after, ...details[key] }, { before: previous, after: score })
+  }
 
   const history: ScoreHistoryPoint[] = Array.isArray(leader.score_history) ? leader.score_history : []
   const last = history[history.length - 1]
@@ -129,10 +156,10 @@ export async function recalculateScore(
 
   const historyChanged = nextHistory !== history
 
-  if (changed || historyChanged) {
+  if (changed || historyChanged || JSON.stringify(prevComponents) !== JSON.stringify(components)) {
     await db.query(
-      'UPDATE politicians SET truth_score = $1, score_history = $2 WHERE id = $3',
-      [score, JSON.stringify(nextHistory), politicianId]
+      'UPDATE politicians SET truth_score = $1, score_history = $2, score_components = $3 WHERE id = $4',
+      [score, JSON.stringify(nextHistory), JSON.stringify(components), politicianId]
     )
   }
 

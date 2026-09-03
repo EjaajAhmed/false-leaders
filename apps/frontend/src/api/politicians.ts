@@ -21,6 +21,7 @@ export const enrichLeader = async (id: string) => (await client.post(`/politicia
 export const syncLeader = async (id: string) => (await client.post(`/politicians/${id}/sync`)).data
 export const getLeaderPositions = async (id: string) => (await client.get(`/politicians/${id}/positions`)).data
 export const getLeaderWatch = async (id: string) => (await client.get(`/politicians/${id}/watch`)).data
+export const getLeaderGovernance = async (id: string) => (await client.get(`/politicians/${id}/governance`)).data
 export const getLeaderSources = async (id: string) => (await client.get(`/politicians/${id}/sources`)).data
 export const getScoreEvents = async (id: string) => (await client.get(`/politicians/${id}/score-events`)).data
 

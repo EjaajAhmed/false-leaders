@@ -14,6 +14,7 @@ import VerdictBar from '../components/VerdictBar'
 import { Redacted } from '../components/Redaction'
 import CareerLedger, { careerHeadline, usePositions } from '../components/leader/CareerLedger'
 import WatchSection, { useWatch, watchHeadline } from '../components/leader/WatchSection'
+import GovernanceSection, { governanceHeadline, useGovernance } from '../components/leader/GovernanceSection'
 import VerdictsTab from '../components/leader/VerdictsTab'
 import LeaksTab from '../components/leader/LeaksTab'
 import Discussion from '../components/leader/Discussion'
@@ -86,6 +87,7 @@ export default function Leader() {
   const { data: leader, isLoading, isError } = useQuery<LeaderDetail>({ queryKey: ['politician', id], queryFn: () => getPolitician(id!) })
   const positions = usePositions(id!)
   const watch = useWatch(id!)
+  const governance = useGovernance(id!)
   const verdicts = useQuery({ queryKey: ['verdicts', id], queryFn: () => getVerdicts(id!) })
   const leaks = useQuery({ queryKey: ['leaks', id], queryFn: () => getLeaks(id!) })
   const news = useQuery({ queryKey: ['news', id], queryFn: () => getLeaderNews(id!), staleTime: 10 * 60 * 1000 })
@@ -131,6 +133,7 @@ export default function Leader() {
   const former = political && !!leader.term_end
   const career = careerHeadline(positions.data, leader.position)
   const onWatch = watchHeadline(watch.data)
+  const gov = governanceHeadline(governance.data)
   const agg = verdicts.data?.aggregate
   const verdictHeadline = agg?.total ? `${agg.percentages[agg.dominant]}% ${verdictLabel(agg.dominant)}` : 'No verdicts yet'
   const verdictSummary = agg?.total ? `${agg.total} member verdict${agg.total === 1 ? '' : 's'}. Community score ${agg.score} of 100. Opinions of site members, not findings of fact.` : 'No member has submitted a verdict. Verdicts are opinions of site members, not findings of fact.'
@@ -170,6 +173,10 @@ export default function Leader() {
 
       <Section id="watch" label={`On their watch · ${leader.country || 'country'}`} headline={onWatch.headline} summary={onWatch.summary} open={focus === 'watch'}>
         <WatchSection leaderId={leader.id} />
+      </Section>
+
+      <Section id="governance" label={`Governance trajectory · ${leader.country || 'country'}`} headline={gov.headline} summary={gov.summary} open={focus === 'governance'}>
+        <GovernanceSection leaderId={leader.id} />
       </Section>
 
       <Section id="profile" label="Profile" headline={leader.born ? `Born ${year(leader.born)}${leader.country ? ` · ${leader.country}` : ''}` : leader.country || 'Profile'} summary={firstSentence(leader.summary) || leader.bio || 'No summary on file.'} open={focus === 'profile'}>

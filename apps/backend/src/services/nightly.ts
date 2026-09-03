@@ -3,6 +3,7 @@ import { registerJob, sleep } from './jobs'
 import { syncWikidata } from './wikidata'
 import { syncCountry } from './worldbank'
 import { enrichLeader } from './enrich'
+import { importAllGovernance } from './governance'
 
 // Wikidata: refresh identity and office history for anyone not synced in 7 days.
 registerJob('wikidata', async (log) => {
@@ -59,4 +60,14 @@ registerJob('wikipedia', async (log) => {
   return { total: rows.length, matched }
 })
 
-export const NIGHTLY_ORDER = ['wikidata', 'worldbank', 'wikipedia']
+// Governance indices: yearly bulk CSVs, refreshed when older than 30 days.
+registerJob('governance', async (log) => {
+  const { rows } = await db.query(
+    `SELECT MIN(fetched_at) AS oldest FROM country_indicators WHERE indicator IN ('VDEM_LIBDEM', 'FH_POLRIGHTS', 'FH_CIVLIBS', 'RSF_PRESS', 'TI_CPI')`
+  )
+  const oldest = rows[0]?.oldest ? new Date(rows[0].oldest) : null
+  if (oldest && Date.now() - oldest.getTime() < 30 * 86400000) { log('fresh; skipped'); return { skipped: true } }
+  return { results: await importAllGovernance(log) }
+})
+
+export const NIGHTLY_ORDER = ['wikidata', 'worldbank', 'governance', 'wikipedia']

@@ -3,6 +3,7 @@ import { db } from '../db/client'
 import { requireAdmin } from '../middleware/auth'
 import { getPositions, syncWikidata } from '../services/wikidata'
 import { getWatch, syncCountry } from '../services/worldbank'
+import { getGovernance } from '../services/governance'
 import { getScoreEvents, getSources } from '../services/provenance'
 import { lastRuns, listJobs, runJob } from '../services/jobs'
 
@@ -17,6 +18,11 @@ export async function dossierRoutes(server: FastifyInstance) {
   server.get('/:id/watch', async (request) => {
     const { id } = request.params as { id: string }
     return getWatch(id)
+  })
+
+  server.get('/:id/governance', async (request) => {
+    const { id } = request.params as { id: string }
+    return getGovernance(id)
   })
 
   server.get('/:id/sources', async (request) => {

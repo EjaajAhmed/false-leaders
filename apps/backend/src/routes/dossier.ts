@@ -62,6 +62,20 @@ export async function dossierRoutes(server: FastifyInstance) {
 
 // Mounted under /admin
 export async function adminRoutes(server: FastifyInstance) {
+  // Diagnostic: one raw GDELT request from this server, bypassing the queue, so throttling can be seen from production.
+  server.get('/gdelt-probe', { onRequest: [requireAdmin] }, async (request) => {
+    const { mode = 'timelinevolraw', timespan = '30d', query = '"Keir Starmer" sourcelang:english' } = request.query as any
+    const url = `https://api.gdeltproject.org/api/v2/doc/doc?${new URLSearchParams({ format: 'json', query, mode, timespan }).toString()}`
+    const t0 = Date.now()
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': 'FalseLeaders/1.0 (https://falseleaders.com; noreply@falseleaders.com)' }, signal: AbortSignal.timeout(60000) })
+      const text = await res.text()
+      return { status: res.status, ms: Date.now() - t0, head: text.slice(0, 200), url }
+    } catch (err: any) {
+      return { error: err?.message, cause: err?.cause?.code || err?.cause?.message, ms: Date.now() - t0, url }
+    }
+  })
+
   server.get('/spikes', { onRequest: [requireAdmin] }, async (request) => {
     const { status } = request.query as any
     const s = ['draft', 'published', 'dismissed'].includes(status) ? status : 'draft'

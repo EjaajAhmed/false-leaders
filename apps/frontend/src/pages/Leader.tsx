@@ -16,6 +16,7 @@ import CareerLedger, { careerHeadline, usePositions } from '../components/leader
 import WatchSection, { useWatch, watchHeadline } from '../components/leader/WatchSection'
 import GovernanceSection, { governanceHeadline, useGovernance } from '../components/leader/GovernanceSection'
 import MediaSection, { mediaHeadline, useMedia } from '../components/leader/MediaSection'
+import FlagsSection, { flagsHeadline, useFlags } from '../components/leader/FlagsSection'
 import VerdictsTab from '../components/leader/VerdictsTab'
 import LeaksTab from '../components/leader/LeaksTab'
 import Discussion from '../components/leader/Discussion'
@@ -90,6 +91,7 @@ export default function Leader() {
   const watch = useWatch(id!)
   const governance = useGovernance(id!)
   const media = useMedia(id!)
+  const flags = useFlags(id!)
   const verdicts = useQuery({ queryKey: ['verdicts', id], queryFn: () => getVerdicts(id!) })
   const leaks = useQuery({ queryKey: ['leaks', id], queryFn: () => getLeaks(id!) })
   const news = useQuery({ queryKey: ['news', id], queryFn: () => getLeaderNews(id!), staleTime: 10 * 60 * 1000 })
@@ -137,6 +139,7 @@ export default function Leader() {
   const onWatch = watchHeadline(watch.data)
   const gov = governanceHeadline(governance.data)
   const med = mediaHeadline(media.data)
+  const flg = flagsHeadline(flags.data)
   const agg = verdicts.data?.aggregate
   const verdictHeadline = agg?.total ? `${agg.percentages[agg.dominant]}% ${verdictLabel(agg.dominant)}` : 'No verdicts yet'
   const verdictSummary = agg?.total ? `${agg.total} member verdict${agg.total === 1 ? '' : 's'}. Community score ${agg.score} of 100. Opinions of site members, not findings of fact.` : 'No member has submitted a verdict. Verdicts are opinions of site members, not findings of fact.'
@@ -169,6 +172,10 @@ export default function Leader() {
           <ScoreStamp score={score} onClick={() => setPanel('score')} />
         </div>
       </header>
+
+      <Section id="flags" label="Flags · sanctions and exposure" headline={flg.headline} summary={flg.summary} open={focus === 'flags'} defaultOpen={(flags.data?.flags || []).some((x: any) => x.kind === 'sanction')}>
+        <FlagsSection leaderId={leader.id} name={leader.name} />
+      </Section>
 
       <Section id="career" label="Office" headline={career.headline} summary={career.summary} defaultOpen={!!focus && focus === 'career'} open={focus === 'career'}>
         <CareerLedger leaderId={leader.id} />

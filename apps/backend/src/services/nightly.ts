@@ -5,6 +5,7 @@ import { syncCountry } from './worldbank'
 import { enrichLeader } from './enrich'
 import { importAllGovernance } from './governance'
 import { syncMedia } from './gdelt'
+import { syncOpenSanctions } from './opensanctions'
 
 // Wikidata: refresh identity and office history for anyone not synced in 7 days.
 registerJob('wikidata', async (log) => {
@@ -95,4 +96,11 @@ registerJob('gdelt', async (log) => {
   return { total: rows.length, ok, failed, new_spikes: spikes }
 })
 
-export const NIGHTLY_ORDER = ['wikidata', 'worldbank', 'governance', 'gdelt', 'wikipedia']
+// OpenSanctions: two bulk files (~700 MB) streamed; weekly is enough.
+registerJob('opensanctions', async (log) => {
+  const { rows } = await db.query(`SELECT MAX(opensanctions_checked_at) AS last FROM politicians`)
+  if (rows[0]?.last && Date.now() - new Date(rows[0].last).getTime() < 6 * 86400000) { log('fresh; skipped'); return { skipped: true } }
+  return syncOpenSanctions(log)
+})
+
+export const NIGHTLY_ORDER = ['wikidata', 'worldbank', 'governance', 'opensanctions', 'gdelt', 'wikipedia']

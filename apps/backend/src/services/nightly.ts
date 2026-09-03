@@ -80,12 +80,14 @@ registerJob('gdelt', async (log) => {
      WHERE p.wikidata_id IS NOT NULL
        AND (p.category = 'world_leader' OR p.id IN (SELECT id FROM politicians WHERE category NOT IN ('world_leader', 'politician') ORDER BY prominence DESC LIMIT 50))
        AND (m.fetched_at IS NULL OR m.fetched_at < NOW() - INTERVAL '1 day')
-     ORDER BY p.attention DESC, p.prominence DESC LIMIT 150`
+     ORDER BY m.fetched_at ASC NULLS FIRST, p.attention DESC LIMIT 100`
   )
+  const { rows: top } = await db.query(`SELECT id FROM politicians WHERE wikidata_id IS NOT NULL ORDER BY attention DESC LIMIT 30`)
+  const deep = new Set(top.map((t: any) => t.id))
   let ok = 0, failed = 0, spikes = 0
   for (const [i, r] of rows.entries()) {
     try {
-      const res = await syncMedia(r.id)
+      const res = await syncMedia(r.id, { deep: deep.has(r.id) })
       if (res) { ok++; spikes += res.spikes } else failed++
     } catch (err: any) { failed++; log(`${r.name}: ${err?.message || err}`) }
     if ((i + 1) % 10 === 0) log(`${i + 1}/${rows.length} ok ${ok} failed ${failed} spikes ${spikes}`)

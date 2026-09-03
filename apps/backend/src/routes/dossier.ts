@@ -34,7 +34,7 @@ export async function dossierRoutes(server: FastifyInstance) {
 
   server.post('/:id/media/sync', { onRequest: [requireAdmin] }, async (request, reply) => {
     const { id } = request.params as { id: string }
-    const r = await syncMedia(id)
+    const r = await syncMedia(id, { deep: true })
     if (!r) return reply.status(502).send({ error: 'GDELT unavailable.' })
     return r
   })

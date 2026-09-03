@@ -100,7 +100,7 @@ Caption:`
 
 export interface MediaSync { articles_30d: number; spikes: number; sample: number }
 
-export async function syncMedia(politicianId: string): Promise<MediaSync | null> {
+export async function syncMedia(politicianId: string, opts: { deep?: boolean } = {}): Promise<MediaSync | null> {
   const { rows } = await db.query('SELECT id, name, country FROM politicians WHERE id = $1', [politicianId])
   const p = rows[0]
   if (!p) return null
@@ -125,9 +125,9 @@ export async function syncMedia(politicianId: string): Promise<MediaSync | null>
   const articles30 = last30.reduce((s, x) => s + x.value, 0)
   const negative30 = last30.reduce((s, x) => s + (negBy.get(x.day) || 0), 0)
 
-  // Home vs abroad over 30 days (abroad = all − home)
+  // Home vs abroad tone over 30 days (abroad = all − home). Two extra requests, so only for the most-watched leaders.
   let homeArticles: number | null = null, homeNegative: number | null = null
-  if (home) {
+  if (home && opts.deep) {
     const h = await gdeltFetch({ query: `${q} sourcecountry:${home}`, mode: 'timelinevolraw', timespan: '30d' })
     const hn = await gdeltFetch({ query: `${q} sourcecountry:${home} tone<${NEG_TONE}`, mode: 'timelinevolraw', timespan: '30d' })
     if (h && hn) {
@@ -160,6 +160,7 @@ export async function syncMedia(politicianId: string): Promise<MediaSync | null>
   const spikes = detectSpikes(allPts)
   let newSpikes = 0
   for (const s of spikes) {
+    if (newSpikes >= 2) break
     const { rows: existing } = await db.query('SELECT 1 FROM coverage_spikes WHERE politician_id = $1 AND day = $2', [politicianId, s.day])
     if (existing.length) continue
     const d = s.day.replace(/-/g, '')

@@ -67,8 +67,18 @@ export async function lastRuns(limit = 20) {
   return rows
 }
 
+/** Runs left in 'running' by a restart or redeploy can never finish; mark them so the log stays honest. */
+export async function sweepStaleRuns() {
+  try {
+    await db.query(`UPDATE ingest_runs SET status = 'aborted', finished_at = NOW(), detail = detail || '{"error":"process restarted"}'::jsonb WHERE status = 'running'`)
+  } catch (err: any) {
+    console.error('sweepStaleRuns:', err?.message)
+  }
+}
+
 /** Nightly at 03:10 UTC: run every registered job in order. */
 export function startScheduler(order: string[]) {
+  sweepStaleRuns()
   if (process.env.DISABLE_SCHEDULER === '1') return
   const schedule = () => {
     const now = new Date()

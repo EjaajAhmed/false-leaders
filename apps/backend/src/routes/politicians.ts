@@ -65,7 +65,7 @@ export async function politiciansRoutes(server: FastifyInstance) {
   const admin = { onRequest: [requireAdmin] }
 
   server.get('/', async (request) => {
-    const { search, country, party, position, category, view, min_age, max_age, min_truth, max_truth, page, limit, sort } = request.query as any
+    const { search, country, party, position, category, view, min_age, max_age, min_truth, max_truth, page, limit, sort, include_unlinked } = request.query as any
 
     const pageNum = Math.max(1, Number(page) || 1)
     const limitNum = Math.min(1000, Math.max(1, Number(limit) || 20))
@@ -74,6 +74,7 @@ export async function politiciansRoutes(server: FastifyInstance) {
     let where = `FROM politicians p WHERE 1=1`
     const params: any[] = []
     let i = 1
+    if (include_unlinked !== '1') where += ' AND p.wikidata_id IS NOT NULL'
 
     if (search) {
       where += ` AND (p.name ILIKE $${i} OR p.party ILIKE $${i} OR p.region ILIKE $${i} OR p.position ILIKE $${i} OR array_to_string(p.aliases, ' ') ILIKE $${i})`
@@ -136,7 +137,7 @@ export async function politiciansRoutes(server: FastifyInstance) {
   server.get('/map', async (request) => {
     const { view, country } = request.query as any
     const params: any[] = []
-    let where = 'WHERE p.latitude IS NOT NULL AND p.longitude IS NOT NULL'
+    let where = 'WHERE p.latitude IS NOT NULL AND p.longitude IS NOT NULL AND p.wikidata_id IS NOT NULL'
     const viewSql = viewCondition(view || 'main')
     if (viewSql) where += ` AND ${viewSql}`
     if (country) { params.push(`%${country}%`); where += ` AND p.country ILIKE $${params.length}` }

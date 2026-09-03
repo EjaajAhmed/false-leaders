@@ -131,7 +131,7 @@ export default function Admin() {
 
   useEffect(() => { if (!user) navigate('/login') }, [user, navigate])
 
-  const { data } = useQuery({ queryKey: ['politicians-admin'], queryFn: () => getPoliticians({ limit: 1000 }), enabled: !!user?.is_admin })
+  const { data } = useQuery({ queryKey: ['politicians-admin'], queryFn: () => getPoliticians({ limit: 1000, include_unlinked: '1' } as any), enabled: !!user?.is_admin })
   const { data: configData } = useQuery({
     queryKey: ['truth-score-config'],
     queryFn: async () => (await client.get('/config/truth-score')).data,

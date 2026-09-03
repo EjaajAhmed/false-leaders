@@ -11,7 +11,8 @@ async function sparql(query: string): Promise<any[]> {
 }
 
 const qidOf = (uri?: string) => (uri ? uri.replace(/^.*\/(Q\d+)$/, '$1') : null)
-const dateOf = (v?: string) => (v ? v.slice(0, 10) : null)
+// Wikidata can return an unknown-value node instead of a date; only accept real ISO dates.
+const dateOf = (v?: string) => (v && /^[+-]?\d{4}-\d{2}-\d{2}/.test(v) ? v.replace(/^\+/, '').slice(0, 10) : null)
 
 // Head-of-government style offices outrank seats, memberships and party roles when picking the current office.
 const OFFICE_RANK = [

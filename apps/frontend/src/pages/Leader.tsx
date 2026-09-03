@@ -110,6 +110,18 @@ export default function Leader() {
     )
   }
 
+  if (!leader.wikidata_id && !user?.is_admin) {
+    return (
+      <div className="page page--narrow" style={{ paddingTop: '5rem' }}>
+        <p className="eyebrow">Case file · withheld</p>
+        <h1 style={{ fontSize: '2.2rem', margin: '0.5rem 0 1rem' }}>{leader.name}</h1>
+        <div className="redact-rule" style={{ marginBottom: '1rem' }} />
+        <p className="muted" style={{ maxWidth: '58ch' }}>No Wikidata record is linked to this person, so nothing on this page could be traced to a source. Pages are only published for people with a verifiable public record.</p>
+        <Link to="/browse" className="btn" style={{ marginTop: '1.5rem' }}>Back to browse</Link>
+      </div>
+    )
+  }
+
   const score = Number(leader.truth_score)
   const political = POLITICAL.has(String(leader.category))
   const office = political && leader.current_office ? leader.current_office : leader.position

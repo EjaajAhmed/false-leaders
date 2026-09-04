@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { getStats, getFeed, getLeaderboard, getFeatured } from '../api/politicians'
+import { getStats, getFeed, getLeaderboard, getFeatured, getThreads } from '../api/politicians'
+import ThreadRow from '../components/forum/ThreadRow'
 import FeedList from '../components/FeedList'
 import LeaderCard from '../components/LeaderCard'
 import Reveal from '../components/Reveal'
@@ -92,6 +93,7 @@ export default function Home() {
   const condemned = useQuery({ queryKey: ['leaderboard', 'condemned', 5], queryFn: () => getLeaderboard('condemned', 5) })
   const watched = useQuery({ queryKey: ['leaderboard', 'watched', 5], queryFn: () => getLeaderboard('watched', 5) })
   const featured = useQuery({ queryKey: ['featured'], queryFn: getFeatured })
+  const threads = useQuery({ queryKey: ['threads', 'home'], queryFn: () => getThreads({ sort: 'active', limit: 6 }), refetchInterval: 60000 })
 
   return (
     <div>
@@ -149,6 +151,20 @@ export default function Home() {
             </div>
           </Reveal>
         </div>
+
+        <Reveal style={{ marginTop: '3.5rem' }}>
+          <div className="section-title">
+            <div>
+              <p className="eyebrow">Forum</p>
+              <h2>Active threads</h2>
+            </div>
+            <Link to="/forum" className="eyebrow">All boards →</Link>
+          </div>
+          {threads.isLoading && <Loading />}
+          <div className="stack" style={{ gap: '0.5rem' }}>
+            {threads.data?.threads?.map((t: any) => <ThreadRow key={t.id} t={t} />)}
+          </div>
+        </Reveal>
 
         <Reveal style={{ marginTop: '3.5rem' }}>
           <div className="section-title">

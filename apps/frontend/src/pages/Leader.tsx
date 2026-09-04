@@ -257,8 +257,8 @@ export default function Leader() {
         )) : <Redacted label="Nothing indexed" />}
       </Section>
 
-      <Section id="discussion" label="Discussion" headline={`${leader.stats?.comments || 0} entr${(leader.stats?.comments || 0) === 1 ? 'y' : 'ies'}`} summary="Member discussion. Not moderated for accuracy." open={focus === 'discussion'}>
-        <Discussion leaderId={leader.id} />
+      <Section id="discussion" label="Discussion" headline={`${(leader.stats as any)?.threads || 0} thread${((leader.stats as any)?.threads || 0) === 1 ? '' : 's'}`} summary="Forum threads about this person, anonymous by default. Member opinion, not verified." open={focus === 'discussion'}>
+        <Discussion leaderId={leader.id} leaderName={leader.name} />
       </Section>
 
       {panel === 'score' && <ScorePanel leaderId={leader.id} score={score} onClose={closePanel} />}

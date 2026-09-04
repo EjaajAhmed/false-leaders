@@ -128,6 +128,8 @@ export function feedText(e: FeedEvent): FeedText {
       return { before: `Leak escalated to controversy: ${m.title} — `, after: '', label: 'Escalation' }
     case 'verdict_shift':
       return { before: 'Community verdict on ', after: ` shifted to ${verdictLabel(m.to)}`, label: 'Verdict' }
+    case 'thread':
+      return { before: `${m.who || 'Someone'} opened a thread on `, after: `: "${m.title}"`, label: 'Forum' }
     default:
       return { before: '', after: '', label: e.type }
   }

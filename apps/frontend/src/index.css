@@ -549,6 +549,14 @@ strong { font-weight: 600; }
 .delta-down { color: #c8684e; font-family: var(--font-mono); }
 .delta-up { color: var(--text); font-family: var(--font-mono); }
 
+/* Forum */
+.thread-row { display: block; padding: 0.9rem 1rem; background: var(--surface); border: 1px solid var(--border); transition: border-color 0.15s ease, background 0.15s ease; }
+.thread-row:hover { border-color: var(--border-strong); background: var(--elevated); color: inherit; }
+.thread-row__meta { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-bottom: 0.35rem; }
+.thread-row__title { font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; line-height: 1.15; text-transform: uppercase; letter-spacing: 0.01em; }
+.thread-row__excerpt { color: var(--muted); font-size: 0.85rem; margin-top: 0.3rem; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.thread-row__foot { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; margin-top: 0.5rem; font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); }
+
 /* ───────────── Leader card ───────────── */
 
 .leader-card {

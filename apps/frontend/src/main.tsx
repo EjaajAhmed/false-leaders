@@ -15,6 +15,8 @@ import MapPage from './pages/Map'
 import Bookmarks from './pages/Bookmarks'
 import Profile from './pages/Profile'
 import Admin from './pages/Admin'
+import Forum from './pages/Forum'
+import Thread from './pages/Thread'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Verified from './pages/Verified'
@@ -78,6 +80,8 @@ function App() {
             <Route path="/politicians/:id" element={<LegacyLeaderRedirect />} />
             <Route path="/feed" element={<Feed />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/forum" element={<Forum />} />
+            <Route path="/forum/:id" element={<Thread />} />
             <Route path="/map" element={<MapPage />} />
             <Route path="/bookmarks" element={<Bookmarks />} />
             <Route path="/profile" element={<Profile />} />

@@ -8,6 +8,7 @@ import Logo from './Logo'
 const DESKTOP = [
   { to: '/', label: 'Home' },
   { to: '/browse', label: 'Browse' },
+  { to: '/forum', label: 'Forum' },
   { to: '/feed', label: 'The Wall' },
   { to: '/leaderboard', label: 'Leaderboard' },
   { to: '/map', label: 'Map' },
@@ -24,7 +25,7 @@ const Icon = {
 const MOBILE = [
   { to: '/', label: 'Home', icon: Icon.home },
   { to: '/browse', label: 'Browse', icon: Icon.browse },
-  { to: '/feed', label: 'Feed', icon: Icon.feed },
+  { to: '/forum', label: 'Forum', icon: Icon.feed },
   { to: '/leaderboard', label: 'Board', icon: Icon.board },
   { to: '/profile', label: 'Profile', icon: Icon.profile },
 ]

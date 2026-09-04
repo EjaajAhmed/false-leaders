@@ -123,8 +123,10 @@ registerJob('attention', async (log) => {
 registerJob('country', async (log) => {
   const countries = [...new Set(ADAPTERS.map(a => a.country))]
   const { rows } = await db.query(
-    `SELECT id, name FROM politicians WHERE wikidata_id IS NOT NULL AND country_code = ANY($1)
-       AND (records_synced_at IS NULL OR records_synced_at < NOW() - INTERVAL '3 days') ORDER BY attention DESC`,
+    `SELECT id, name FROM politicians p WHERE wikidata_id IS NOT NULL AND country_code = ANY($1)
+       AND (records_synced_at IS NULL OR records_synced_at < NOW() - INTERVAL '3 days'
+            OR EXISTS (SELECT 1 FROM country_records c WHERE c.politician_id = p.id AND c.status = 'error'))
+     ORDER BY attention DESC`,
     [countries]
   )
   let ok = 0, failed = 0

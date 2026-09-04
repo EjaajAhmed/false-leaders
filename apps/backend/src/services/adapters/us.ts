@@ -36,7 +36,7 @@ export const usMoney: CountryAdapter = {
       const items = [...byCommittee.values()].sort((a, b) => b.total - a.total).slice(0, 8).map(c => ({ ...c, total: Math.round(c.total), url: `https://www.fec.gov/data/committee/${c.committee_id}/` }))
       const total = items.reduce((s, c) => s + c.total, 0)
       const donorUrl = `https://www.fec.gov/data/receipts/individual-contributions/?contributor_name=${encodeURIComponent(donorName)}`
-      if (results.length === 0) return { summary: { reason: 'No federal candidate record and no itemised contributions under this name in the last two cycles.', role: 'none' }, items: [], source_name: this.name, source_url: donorUrl, license: 'Public domain (US federal data)', status: 'no_match' }
+      if (results.length === 0) return { summary: { reason: 'No federal candidate record and no itemised contributions under this name in the last two cycles.', role: 'none', api_count: data?.pagination?.count ?? null, api_results: (data?.results || []).length, sample_names: [...new Set((data?.results || []).slice(0, 5).map((r: any) => r.contributor_name))], candidates_seen: (search?.results || []).slice(0, 3).map((c: any) => `${c.name} (${c.office}, funds:${c.has_raised_funds})`) }, items: [], source_name: this.name, source_url: donorUrl, license: 'Public domain (US federal data)', status: 'no_match' }
       return {
         external_id: donorName,
         summary: { role: 'donor', cycles, contributions: results.length, total_itemised: Math.round(total), truncated: (data?.pagination?.count || 0) > results.length },

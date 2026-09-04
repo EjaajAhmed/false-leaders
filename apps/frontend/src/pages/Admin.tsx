@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getPoliticians, getLeakQueue, setLeakStatus, getProposalQueue, reviewProposal, getSpikeQueue, reviewSpike } from '../api/politicians'
+import { getPoliticians, getLeakQueue, setLeakStatus, getProposalQueue, reviewProposal, getSpikeQueue, reviewSpike, addDocument, scanContradictions, getPromiseQueue, reviewPromise, getContradictionQueue, reviewContradiction } from '../api/politicians'
 import client, { errorMessage } from '../api/client'
 import AIAnalyzer from '../components/AIAnalyzer'
 import LevelBadge from '../components/LevelBadge'
@@ -98,6 +98,88 @@ function SpikeQueue() {
             <div className="post__foot">
               <button className="btn btn--gold btn--sm" disabled={mutate.isPending} onClick={() => mutate.mutate({ id: sp.id, status: 'published', summary: edits[sp.id] ?? sp.summary })}>Publish</button>
               <button className="btn btn--ghost btn--sm btn--danger" disabled={mutate.isPending} onClick={() => mutate.mutate({ id: sp.id, status: 'dismissed' })}>Dismiss</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function PromiseDesk({ leaders }: { leaders: any[] }) {
+  const qc = useQueryClient()
+  const [doc, setDoc] = useState({ leader: '', politician_id: '', title: '', url: '', text: '', kind: 'speech', spoken_on: '' })
+  const [msg, setMsg] = useState('')
+  const [edits, setEdits] = useState<Record<string, any>>({})
+  const promises = useQuery({ queryKey: ['promise-queue'], queryFn: () => getPromiseQueue('draft') })
+  const contradictions = useQuery({ queryKey: ['contradiction-queue'], queryFn: () => getContradictionQueue('draft') })
+  const add = useMutation({
+    mutationFn: addDocument,
+    onSuccess: (r) => { setMsg(`Document saved. ${r.promises} promise draft${r.promises === 1 ? '' : 's'}, ${r.claims} claims extracted.`); qc.invalidateQueries({ queryKey: ['promise-queue'] }); setDoc(d => ({ ...d, title: '', url: '', text: '' })) },
+    onError: e => setMsg(errorMessage(e)),
+  })
+  const scan = useMutation({ mutationFn: scanContradictions, onSuccess: (r) => { setMsg(`Scan complete: ${r.found} contradiction draft${r.found === 1 ? '' : 's'} across ${r.documents} documents.`); qc.invalidateQueries({ queryKey: ['contradiction-queue'] }) }, onError: e => setMsg(errorMessage(e)) })
+  const reviewP = useMutation({ mutationFn: reviewPromise, onSuccess: () => qc.invalidateQueries({ queryKey: ['promise-queue'] }), onError: e => alert(errorMessage(e)) })
+  const reviewC = useMutation({ mutationFn: reviewContradiction, onSuccess: () => qc.invalidateQueries({ queryKey: ['contradiction-queue'] }), onError: e => alert(errorMessage(e)) })
+  const pick = (name: string) => { const l = leaders.find(x => x.name === name); setDoc(d => ({ ...d, leader: name, politician_id: l?.id || '' })) }
+  const ed = (id: string, key: string, fallback: any) => edits[id]?.[key] ?? fallback
+  const setEd = (id: string, key: string, value: any) => setEdits(e => ({ ...e, [id]: { ...(e[id] || {}), [key]: value } }))
+
+  return (
+    <div className="card" id="promises">
+      <div className="section-title"><h2>Promises and contradictions</h2><span className="mono tiny dim">{promises.data?.length || 0} promise drafts · {contradictions.data?.length || 0} contradiction drafts</span></div>
+      <p className="help" style={{ marginBottom: '1rem' }}>Add a document in the person's own words (manifesto, speech, interview). The analyser drafts promises with verbatim quotes; you decide what publishes, and a kept or broken verdict needs an evidence link.</p>
+      <div className="grid-2" style={{ gap: '0.75rem' }}>
+        <div className="field"><label className="label">Leader</label><input className="input" list="leader-names" value={doc.leader} onChange={e => pick(e.target.value)} placeholder="Start typing a name" /><datalist id="leader-names">{leaders.slice(0, 2000).map(l => <option key={l.id} value={l.name} />)}</datalist></div>
+        <div className="field"><label className="label">Kind</label><select className="select" value={doc.kind} onChange={e => setDoc({ ...doc, kind: e.target.value })}>{['manifesto', 'speech', 'interview', 'statement', 'article', 'other'].map(k => <option key={k} value={k}>{k}</option>)}</select></div>
+        <div className="field"><label className="label">Title</label><input className="input" value={doc.title} onChange={e => setDoc({ ...doc, title: e.target.value })} /></div>
+        <div className="field"><label className="label">Date spoken or published</label><input className="input" type="date" value={doc.spoken_on} onChange={e => setDoc({ ...doc, spoken_on: e.target.value })} /></div>
+      </div>
+      <div className="field" style={{ marginTop: '0.75rem' }}><label className="label">URL (fetched and stripped to text)</label><input className="input" value={doc.url} onChange={e => setDoc({ ...doc, url: e.target.value })} placeholder="https://" /></div>
+      <div className="field" style={{ marginTop: '0.75rem' }}><label className="label">Or paste the text</label><textarea className="textarea" rows={4} value={doc.text} onChange={e => setDoc({ ...doc, text: e.target.value })} /></div>
+      <div className="row row--wrap" style={{ marginTop: '0.75rem' }}>
+        <button className="btn btn--gold" disabled={!doc.politician_id || (!doc.url && doc.text.length < 200) || add.isPending} onClick={() => add.mutate({ politician_id: doc.politician_id, title: doc.title, url: doc.url || undefined, text: doc.text || undefined, kind: doc.kind, spoken_on: doc.spoken_on || undefined })}>{add.isPending ? 'Extracting' : 'Add document and extract'}</button>
+        <button className="btn" disabled={!doc.politician_id || scan.isPending} onClick={() => scan.mutate(doc.politician_id)}>{scan.isPending ? 'Scanning' : 'Scan this leader for contradictions'}</button>
+        {msg && <span className="mono tiny" style={{ color: 'var(--text)' }}>{msg}</span>}
+      </div>
+
+      <div className="section-title" style={{ marginTop: '1.5rem' }}><h3 style={{ fontSize: '1.05rem' }}>Promise drafts</h3></div>
+      {promises.isLoading && <Loading />}
+      {!promises.isLoading && promises.data?.length === 0 && <Empty text="No promise drafts." />}
+      <div className="stack">
+        {promises.data?.map((p: any) => (
+          <div key={p.id} className="post">
+            <div className="post__head"><div className="post__who"><Link to={`/leaders/${p.politician_id}?tab=promises`} className="post__name">{p.leader_name}</Link><span className="post__time">{p.promised_on || 'undated'}{p.topic ? ` · ${p.topic}` : ''}</span></div><a href={p.source_url} target="_blank" rel="noopener noreferrer" className="mono tiny muted">source</a></div>
+            <input className="input" style={{ marginTop: '0.5rem' }} value={ed(p.id, 'text', p.text)} onChange={e => setEd(p.id, 'text', e.target.value)} />
+            {p.quote && <p className="small muted" style={{ marginTop: '0.4rem', borderLeft: '2px solid var(--border-strong)', paddingLeft: '0.6rem' }}>"{p.quote}"</p>}
+            <div className="grid-3" style={{ gap: '0.5rem', marginTop: '0.6rem' }}>
+              <select className="select" value={ed(p.id, 'status', p.status)} onChange={e => setEd(p.id, 'status', e.target.value)}>{['pending', 'kept', 'broken', 'unclear'].map(s => <option key={s} value={s}>{s}</option>)}</select>
+              <input className="input" placeholder="Evidence URL (needed for kept/broken)" value={ed(p.id, 'evidence_url', p.evidence_url || '')} onChange={e => setEd(p.id, 'evidence_url', e.target.value)} />
+              <input className="input" placeholder="Evidence note" value={ed(p.id, 'evidence_note', p.evidence_note || '')} onChange={e => setEd(p.id, 'evidence_note', e.target.value)} />
+            </div>
+            <div className="post__foot">
+              <button className="btn btn--gold btn--sm" disabled={reviewP.isPending} onClick={() => reviewP.mutate({ id: p.id, review_status: 'published', status: ed(p.id, 'status', p.status), text: ed(p.id, 'text', p.text), evidence_url: ed(p.id, 'evidence_url', p.evidence_url || ''), evidence_note: ed(p.id, 'evidence_note', p.evidence_note || '') })}>Publish</button>
+              <button className="btn btn--ghost btn--sm btn--danger" disabled={reviewP.isPending} onClick={() => reviewP.mutate({ id: p.id, review_status: 'rejected' })}>Reject</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="section-title" style={{ marginTop: '1.5rem' }}><h3 style={{ fontSize: '1.05rem' }}>Contradiction drafts</h3></div>
+      {contradictions.isLoading && <Loading />}
+      {!contradictions.isLoading && contradictions.data?.length === 0 && <Empty text="No contradiction drafts." />}
+      <div className="stack">
+        {contradictions.data?.map((c: any) => (
+          <div key={c.id} className="post">
+            <div className="post__head"><div className="post__who"><Link to={`/leaders/${c.politician_id}?tab=contradictions`} className="post__name">{c.leader_name}</Link><span className="post__time">{c.topic || ''}</span></div></div>
+            <div className="grid-2" style={{ gap: '0.75rem', marginTop: '0.5rem' }}>
+              <div style={{ borderLeft: '2px solid var(--accent)', paddingLeft: '0.6rem' }}><p className="small">"{c.quote_a}"</p><p className="mono tiny muted">{c.date_a || 'undated'} · <a href={c.source_a} target="_blank" rel="noopener noreferrer">source</a></p></div>
+              <div style={{ borderLeft: '2px solid var(--accent)', paddingLeft: '0.6rem' }}><p className="small">"{c.quote_b}"</p><p className="mono tiny muted">{c.date_b || 'undated'} · <a href={c.source_b} target="_blank" rel="noopener noreferrer">source</a></p></div>
+            </div>
+            <textarea className="textarea" rows={2} style={{ marginTop: '0.5rem' }} value={ed(c.id, 'explanation', c.explanation || '')} onChange={e => setEd(c.id, 'explanation', e.target.value)} />
+            <div className="post__foot">
+              <button className="btn btn--gold btn--sm" disabled={reviewC.isPending} onClick={() => reviewC.mutate({ id: c.id, review_status: 'published', explanation: ed(c.id, 'explanation', c.explanation || '') })}>Publish</button>
+              <button className="btn btn--ghost btn--sm btn--danger" disabled={reviewC.isPending} onClick={() => reviewC.mutate({ id: c.id, review_status: 'rejected' })}>Reject</button>
             </div>
           </div>
         ))}
@@ -240,7 +322,7 @@ export default function Admin() {
         <p className="eyebrow">Restricted</p>
         <h1>Admin</h1>
         <div className="chips" style={{ marginTop: '0.75rem' }}>
-          {[['#leaks', 'Leak queue'], ['#spikes', 'Spike captions'], ...(ARCHIVED.controversies ? [] : [['#proposals', 'Proposals']]), ['#weights', 'Weights'], ['#leader-form', 'Leaders'], ['#broadcast', 'Broadcast']].map(([href, label]) => (
+          {[['#leaks', 'Leak queue'], ['#spikes', 'Spike captions'], ['#promises', 'Promises'], ...(ARCHIVED.controversies ? [] : [['#proposals', 'Proposals']]), ['#weights', 'Weights'], ['#leader-form', 'Leaders'], ['#broadcast', 'Broadcast']].map(([href, label]) => (
             <a key={href} href={href} className="chip">{label}</a>
           ))}
         </div>
@@ -249,6 +331,7 @@ export default function Admin() {
       <div className="stack" style={{ gap: '1.5rem' }}>
         <LeakQueue />
         <SpikeQueue />
+        <PromiseDesk leaders={all} />
         {!ARCHIVED.controversies && <ProposalQueue />}
 
         <div className="card" id="weights">

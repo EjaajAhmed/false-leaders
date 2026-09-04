@@ -26,6 +26,14 @@ export const getLeaderMedia = async (id: string) => (await client.get(`/politici
 export const getLeaderFlags = async (id: string) => (await client.get(`/politicians/${id}/flags`)).data
 export const getLeaderAttention = async (id: string) => (await client.get(`/politicians/${id}/attention`)).data
 export const getLeaderRecords = async (id: string) => (await client.get(`/politicians/${id}/records`)).data
+export const getLeaderPromises = async (id: string) => (await client.get(`/politicians/${id}/promises`)).data
+export const addDocument = async (data: { politician_id: string; title?: string; url?: string; text?: string; kind: string; spoken_on?: string }) => (await client.post('/admin/documents', data)).data
+export const deleteDocument = async (id: string) => (await client.delete(`/admin/documents/${id}`)).data
+export const scanContradictions = async (politicianId: string) => (await client.post(`/admin/politicians/${politicianId}/contradictions/scan`)).data
+export const getPromiseQueue = async (status = 'draft') => (await client.get('/admin/promises', { params: { status } })).data
+export const reviewPromise = async ({ id, ...data }: { id: string; review_status?: string; status?: string; text?: string; evidence_url?: string; evidence_note?: string }) => (await client.patch(`/admin/promises/${id}`, data)).data
+export const getContradictionQueue = async (status = 'draft') => (await client.get('/admin/contradictions', { params: { status } })).data
+export const reviewContradiction = async ({ id, ...data }: { id: string; review_status: string; explanation?: string }) => (await client.patch(`/admin/contradictions/${id}`, data)).data
 export const syncLeaderMedia = async (id: string) => (await client.post(`/politicians/${id}/media/sync`)).data
 export const getSpikeQueue = async (status = 'draft') => (await client.get('/admin/spikes', { params: { status } })).data
 export const reviewSpike = async ({ id, ...data }: { id: string; status: string; summary?: string }) => (await client.patch(`/admin/spikes/${id}`, data)).data

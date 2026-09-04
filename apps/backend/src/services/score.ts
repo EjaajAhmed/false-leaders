@@ -33,12 +33,14 @@ export interface LeakTally { counted: number }
  * leak_upvote_threshold upvotes deduct leak_weight each, capped at leak_max_penalty.
  * Floor 1. Never zero.
  */
-export interface ScoreComponents { verdicts: number; leaks: number; sanctions: number }
+export interface ScoreComponents { verdicts: number; leaks: number; sanctions: number; promises: number }
 
 /** Deductions by component, each rounded to two decimals so the ledger is stable. */
 export interface SanctionTally { authorities: number }
 
-export function computeComponents(cfg: Config, verdicts: VerdictTally, leaks: LeakTally, sanctions: SanctionTally = { authorities: 0 }): ScoreComponents {
+export interface PromiseTally { broken: number }
+
+export function computeComponents(cfg: Config, verdicts: VerdictTally, leaks: LeakTally, sanctions: SanctionTally = { authorities: 0 }, promises: PromiseTally = { broken: 0 }): ScoreComponents {
   let verdictDeduction = 0
   const minCount = cfg.verdict_min_count ?? 3
   if (verdicts.total >= minCount && verdicts.total > 0) {
@@ -49,12 +51,13 @@ export function computeComponents(cfg: Config, verdicts: VerdictTally, leaks: Le
   }
   const leakDeduction = Math.min(cfg.leak_max_penalty ?? 20, leaks.counted * (cfg.leak_weight ?? 2))
   const sanctionDeduction = Math.min(cfg.sanction_max_penalty ?? 30, sanctions.authorities * (cfg.sanction_weight ?? 15))
-  return { verdicts: Math.round(verdictDeduction * 100) / 100, leaks: Math.round(leakDeduction * 100) / 100, sanctions: Math.round(sanctionDeduction * 100) / 100 }
+  const promiseDeduction = Math.min(cfg.promise_max_penalty ?? 15, promises.broken * (cfg.promise_broken_weight ?? 3))
+  return { verdicts: Math.round(verdictDeduction * 100) / 100, leaks: Math.round(leakDeduction * 100) / 100, sanctions: Math.round(sanctionDeduction * 100) / 100, promises: Math.round(promiseDeduction * 100) / 100 }
 }
 
 export function computeScore(cfg: Config, verdicts: VerdictTally, leaks: LeakTally): number {
   const c = computeComponents(cfg, verdicts, leaks)
-  const score = (cfg.base_score ?? 90) - c.verdicts - c.leaks - c.sanctions
+  const score = (cfg.base_score ?? 90) - c.verdicts - c.leaks - c.sanctions - c.promises
   return Math.max(1, Math.min(100, Math.round(score)))
 }
 
@@ -103,7 +106,7 @@ export async function recalculateScore(
   if (rows.length === 0) return null
   const leader = rows[0]
 
-  const [{ rows: v }, { rows: l }, { rows: sx }] = await Promise.all([
+  const [{ rows: v }, { rows: l }, { rows: sx }, { rows: pr }] = await Promise.all([
     db.query(
       `SELECT COUNT(*)::int AS total,
               COUNT(*) FILTER (WHERE verdict = 'guilty')::int AS guilty,
@@ -123,10 +126,11 @@ export async function recalculateScore(
        FROM flags WHERE politician_id = $1 AND kind = 'sanction' AND scored`,
       [politicianId]
     ),
+    db.query(`SELECT COUNT(*)::int AS broken FROM promises WHERE politician_id = $1 AND status = 'broken' AND review_status = 'published' AND evidence_url IS NOT NULL`, [politicianId]),
   ])
 
-  const components = computeComponents(config, v[0], l[0], sx[0])
-  const score = Math.max(1, Math.min(100, Math.round((config.base_score ?? 90) - components.verdicts - components.leaks - components.sanctions)))
+  const components = computeComponents(config, v[0], l[0], sx[0], pr[0])
+  const score = Math.max(1, Math.min(100, Math.round((config.base_score ?? 90) - components.verdicts - components.leaks - components.sanctions - components.promises)))
   const previous = leader.truth_score == null ? null : Math.round(Number(leader.truth_score))
   const changed = previous !== score
 
@@ -136,13 +140,15 @@ export async function recalculateScore(
     verdicts: `${SITE}/leaders/${politicianId}?tab=verdicts`,
     leaks: `${SITE}/leaders/${politicianId}?tab=leaks`,
     sanctions: sx[0].entity_id ? `https://www.opensanctions.org/entities/${encodeURIComponent(sx[0].entity_id)}/` : `${SITE}/leaders/${politicianId}?tab=flags`,
+    promises: `${SITE}/leaders/${politicianId}?tab=promises`,
   }
   const details: Record<keyof ScoreComponents, Record<string, unknown>> = {
     verdicts: { total: v[0].total, guilty: v[0].guilty, suspicious: v[0].suspicious, unclear: v[0].unclear, clean: v[0].clean },
     leaks: { counted_leaks: l[0].counted, upvote_threshold: config.leak_upvote_threshold ?? 3 },
     sanctions: { authorities: sx[0].authorities },
+    promises: { broken_published: pr[0].broken },
   }
-  for (const key of ['verdicts', 'leaks', 'sanctions'] as (keyof ScoreComponents)[]) {
+  for (const key of ['verdicts', 'leaks', 'sanctions', 'promises'] as (keyof ScoreComponents)[]) {
     const before = Number(prevComponents[key] ?? 0)
     const after = components[key]
     if (Math.abs(after - before) < 0.005) continue

@@ -4,7 +4,7 @@ import { getScoreEvents } from '../api/politicians'
 import { Skeleton } from './Redaction'
 import { formatDate } from '../lib/format'
 
-const KIND_LABEL: Record<string, string> = { verdicts: 'Community verdicts', leaks: 'Upvoted leaks', sanctions: 'Sanctions listings (OpenSanctions)' }
+const KIND_LABEL: Record<string, string> = { verdicts: 'Community verdicts', leaks: 'Upvoted leaks', sanctions: 'Sanctions listings (OpenSanctions)', promises: 'Broken promises (published with evidence)' }
 
 export default function ScorePanel({ leaderId, score, onClose }: { leaderId: string; score: number; onClose: () => void }) {
   const { data, isLoading } = useQuery({ queryKey: ['score-events', leaderId], queryFn: () => getScoreEvents(leaderId) })
@@ -48,6 +48,7 @@ export default function ScorePanel({ leaderId, score, onClose }: { leaderId: str
                   {e.kind === 'verdicts' && `${e.detail?.total ?? 0} verdicts · ${e.detail?.guilty ?? 0} guilty · ${e.detail?.suspicious ?? 0} suspicious`}
                   {e.kind === 'leaks' && `${e.detail?.counted_leaks ?? 0} leaks with ${e.detail?.upvote_threshold ?? 3}+ upvotes`}
                   {e.kind === 'sanctions' && `${e.detail?.authorities ?? 0} sanctioning authorit${(e.detail?.authorities ?? 0) === 1 ? 'y' : 'ies'}`}
+                  {e.kind === 'promises' && `${e.detail?.broken_published ?? 0} broken promise${(e.detail?.broken_published ?? 0) === 1 ? '' : 's'} published with evidence`}
                 </div>
               </div>
               <a href={e.source_url} target="_blank" rel="noopener noreferrer">Source</a>

@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 
-const TYPES = ['score_change', 'leak', 'controversy', 'controversy_escalated', 'verdict_shift']
+const TYPES = ['score_change', 'leak', 'controversy', 'controversy_escalated', 'verdict_shift', 'thread']
 
 export async function feedRoutes(server: FastifyInstance) {
   server.get('/recent', async (request) => {

@@ -43,11 +43,15 @@ export async function leaderboardRoutes(server: FastifyInstance) {
     const limit = Math.min(100, Number((request.query as any).limit) || 25)
     const { rows } = await db.query(
       `SELECT ${LEADER_COLS},
-              (SELECT COUNT(*) FROM comments c WHERE c.politician_id = p.id AND c.created_at > NOW() - INTERVAL '7 days')::int AS comments_week,
+              ((SELECT COUNT(*) FROM comments c WHERE c.politician_id = p.id AND c.created_at > NOW() - INTERVAL '7 days')
+               + (SELECT COUNT(*) FROM threads t WHERE t.politician_id = p.id AND t.status = 'active' AND t.created_at > NOW() - INTERVAL '7 days')
+               + (SELECT COUNT(*) FROM thread_posts tp JOIN threads t ON t.id = tp.thread_id WHERE t.politician_id = p.id AND tp.created_at > NOW() - INTERVAL '7 days'))::int AS comments_week,
               (SELECT COUNT(*) FROM verdicts v WHERE v.politician_id = p.id AND v.updated_at > NOW() - INTERVAL '7 days')::int AS verdicts_week
        FROM politicians p
        ORDER BY (
          (SELECT COUNT(*) FROM comments c WHERE c.politician_id = p.id AND c.created_at > NOW() - INTERVAL '7 days') +
+         (SELECT COUNT(*) FROM threads t WHERE t.politician_id = p.id AND t.status = 'active' AND t.created_at > NOW() - INTERVAL '7 days') +
+         (SELECT COUNT(*) FROM thread_posts tp JOIN threads t ON t.id = tp.thread_id WHERE t.politician_id = p.id AND tp.created_at > NOW() - INTERVAL '7 days') +
          (SELECT COUNT(*) FROM verdicts v WHERE v.politician_id = p.id AND v.updated_at > NOW() - INTERVAL '7 days')
        ) DESC, p.name ASC
        LIMIT $1`,

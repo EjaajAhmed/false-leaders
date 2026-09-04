@@ -25,6 +25,7 @@ import { feedRoutes } from './routes/feed'
 import { leaderboardRoutes } from './routes/leaderboard'
 import { adminRoutes, dossierRoutes } from './routes/dossier'
 import { leaderPromiseRoutes, promiseAdminRoutes } from './routes/promises'
+import { forumRoutes } from './routes/forum'
 import { NIGHTLY_ORDER } from './services/nightly'
 import { startScheduler } from './services/jobs'
 
@@ -101,6 +102,7 @@ server.register(dossierRoutes, { prefix: '/politicians' })
 server.register(adminRoutes, { prefix: '/admin' })
 server.register(leaderPromiseRoutes, { prefix: '/politicians' })
 server.register(promiseAdminRoutes, { prefix: '/admin' })
+server.register(forumRoutes, { prefix: '/forum' })
 server.register(verdictsRoutes, { prefix: '/verdicts' })
 server.register(leaksRoutes, { prefix: '/leaks' })
 server.register(proposalsRoutes, { prefix: '/controversy-proposals' })

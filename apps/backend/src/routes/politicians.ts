@@ -169,6 +169,7 @@ export async function politiciansRoutes(server: FastifyInstance) {
            (SELECT COUNT(*) FROM controversies WHERE politician_id = $1)::int AS controversies,
            (SELECT COUNT(*) FROM verdicts WHERE politician_id = $1)::int AS verdicts,
            (SELECT COUNT(*) FROM leaks WHERE politician_id = $1 AND status IN ('visible', 'escalated'))::int AS leaks,
+           (SELECT COUNT(*) FROM threads WHERE politician_id = $1 AND status = 'active')::int AS threads,
            (SELECT COUNT(*) FROM comments WHERE politician_id = $1)::int AS comments`,
         [id]
       ),

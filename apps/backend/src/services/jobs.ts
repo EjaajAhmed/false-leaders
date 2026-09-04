@@ -42,6 +42,9 @@ export async function runJob(name: string): Promise<{ ok: boolean; detail: Recor
   const fn = registry.get(name)
   if (!fn) return { ok: false, detail: { error: 'unknown job' } }
   if (running.has(name)) return { ok: false, detail: { error: 'already running' } }
+  // Another instance (e.g. during a deploy overlap) may already be running this job.
+  const { rows: live } = await db.query(`SELECT 1 FROM ingest_runs WHERE job = $1 AND status = 'running' AND started_at > NOW() - INTERVAL '6 hours'`, [name])
+  if (live.length) return { ok: false, detail: { error: 'running elsewhere' } }
   running.add(name)
   const { rows } = await db.query(`INSERT INTO ingest_runs (job) VALUES ($1) RETURNING id`, [name])
   const runId = rows[0].id
@@ -70,7 +73,7 @@ export async function lastRuns(limit = 20) {
 /** Runs left in 'running' by a restart or redeploy can never finish; mark them so the log stays honest. */
 export async function sweepStaleRuns() {
   try {
-    await db.query(`UPDATE ingest_runs SET status = 'aborted', finished_at = NOW(), detail = detail || '{"error":"process restarted"}'::jsonb WHERE status = 'running'`)
+    await db.query(`UPDATE ingest_runs SET status = 'aborted', finished_at = NOW(), detail = detail || '{"error":"process restarted"}'::jsonb WHERE status = 'running' AND started_at < NOW() - INTERVAL '10 minutes'`)
   } catch (err: any) {
     console.error('sweepStaleRuns:', err?.message)
   }

@@ -11,7 +11,7 @@ export const usMoney: CountryAdapter = {
   async fetch(leader: LeaderRef) {
     const q = leader.name.replace(/\b(jr|sr|ii|iii)\.?$/i, '').trim()
     const search = await fetchJson(`https://api.open.fec.gov/v1/candidates/search/?q=${encodeURIComponent(q)}&api_key=${fecKey()}&sort=-election_years&per_page=10`, { headers: UA, retries: 2 })
-    if (search === null) throw new Error(`OpenFEC unavailable or rate-limited${process.env.FEC_API_KEY ? '' : ' (DEMO_KEY allows 40 calls per hour; set FEC_API_KEY)'}`)
+    if (search === null || search?.error) throw new Error(`OpenFEC ${search?.error?.code || 'unavailable or rate-limited'}${process.env.FEC_API_KEY ? '' : ' (DEMO_KEY allows 40 calls per hour; set FEC_API_KEY)'}`)
     const tokens = norm(leader.name).split(' ').filter(t => t.length > 1)
     const cand = (search?.results || []).find((c: any) => { const n = norm(c.name); return tokens.every(t => n.includes(t)) && c.has_raised_funds })
     const pageUrl = cand ? `https://www.fec.gov/data/candidate/${cand.candidate_id}/` : 'https://www.fec.gov/data/'
@@ -23,7 +23,7 @@ export const usMoney: CountryAdapter = {
       const cycles = [thisYear % 2 === 0 ? thisYear : thisYear + 1, (thisYear % 2 === 0 ? thisYear : thisYear + 1) - 2]
       const url = `https://api.open.fec.gov/v1/schedules/schedule_a/?contributor_name=${encodeURIComponent(donorName)}&two_year_transaction_period=${cycles[0]}&two_year_transaction_period=${cycles[1]}&sort=-contribution_receipt_amount&per_page=100&api_key=${fecKey()}`
       const data = await fetchJson(url, { headers: UA, retries: 2 })
-      if (data === null) throw new Error(`OpenFEC unavailable or rate-limited${process.env.FEC_API_KEY ? '' : ' (DEMO_KEY allows 40 calls per hour; set FEC_API_KEY)'}`)
+      if (data === null || data?.error) throw new Error(`OpenFEC ${data?.error?.code || 'unavailable or rate-limited'}${process.env.FEC_API_KEY ? '' : ' (DEMO_KEY allows 40 calls per hour; set FEC_API_KEY)'}`)
       const results: any[] = (data?.results || []).filter((r: any) => norm(r.contributor_name || '').includes(norm(last)) && norm(r.contributor_name || '').includes(norm(first)))
       const byCommittee = new Map<string, { committee: string; committee_id: string; total: number; count: number; latest: string }>()
       for (const r of results) {

@@ -18,6 +18,7 @@ import GovernanceSection, { governanceHeadline, useGovernance } from '../compone
 import MediaSection, { mediaHeadline, useMedia } from '../components/leader/MediaSection'
 import FlagsSection, { flagsHeadline, useFlags } from '../components/leader/FlagsSection'
 import AttentionSection, { attentionHeadline, useAttention } from '../components/leader/AttentionSection'
+import RecordsSection, { recordsHeadline, useRecords } from '../components/leader/RecordsSection'
 import VerdictsTab from '../components/leader/VerdictsTab'
 import LeaksTab from '../components/leader/LeaksTab'
 import Discussion from '../components/leader/Discussion'
@@ -94,6 +95,7 @@ export default function Leader() {
   const media = useMedia(id!)
   const flags = useFlags(id!)
   const attention = useAttention(id!)
+  const records = useRecords(id!)
   const verdicts = useQuery({ queryKey: ['verdicts', id], queryFn: () => getVerdicts(id!) })
   const leaks = useQuery({ queryKey: ['leaks', id], queryFn: () => getLeaks(id!) })
   const news = useQuery({ queryKey: ['news', id], queryFn: () => getLeaderNews(id!), staleTime: 10 * 60 * 1000 })
@@ -143,6 +145,7 @@ export default function Leader() {
   const med = mediaHeadline(media.data)
   const flg = flagsHeadline(flags.data)
   const att = attentionHeadline(attention.data)
+  const rec = recordsHeadline(records.data)
   const agg = verdicts.data?.aggregate
   const verdictHeadline = agg?.total ? `${agg.percentages[agg.dominant]}% ${verdictLabel(agg.dominant)}` : 'No verdicts yet'
   const verdictSummary = agg?.total ? `${agg.total} member verdict${agg.total === 1 ? '' : 's'}. Community score ${agg.score} of 100. Opinions of site members, not findings of fact.` : 'No member has submitted a verdict. Verdicts are opinions of site members, not findings of fact.'
@@ -198,6 +201,10 @@ export default function Leader() {
 
       <Section id="attention" label="Attention · Wikipedia page views" headline={att.headline} summary={att.summary} open={focus === 'attention'}>
         <AttentionSection leaderId={leader.id} />
+      </Section>
+
+      <Section id="records" label={`Votes, money, courts · ${leader.country || 'country'}`} headline={rec.headline} summary={rec.summary} open={focus === 'records'}>
+        <RecordsSection leaderId={leader.id} />
       </Section>
 
       <Section id="profile" label="Profile" headline={leader.born ? `Born ${year(leader.born)}${leader.country ? ` · ${leader.country}` : ''}` : leader.country || 'Profile'} summary={firstSentence(leader.summary) || leader.bio || 'No summary on file.'} open={focus === 'profile'}>

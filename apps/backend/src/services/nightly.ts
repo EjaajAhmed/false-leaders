@@ -7,6 +7,7 @@ import { importAllGovernance } from './governance'
 import { syncMedia } from './gdelt'
 import { syncOpenSanctions } from './opensanctions'
 import { syncAttention } from './attention'
+import { ADAPTERS, syncCountryRecords } from './adapters'
 
 // Wikidata: refresh identity and office history for anyone not synced in 7 days.
 registerJob('wikidata', async (log) => {
@@ -118,4 +119,21 @@ registerJob('attention', async (log) => {
   return { total: rows.length, ok, failed }
 })
 
-export const NIGHTLY_ORDER = ['wikidata', 'worldbank', 'governance', 'opensanctions', 'attention', 'gdelt', 'wikipedia']
+// Country adapters (votes, money, courts) for leaders in countries that have one; refreshed every 3 days.
+registerJob('country', async (log) => {
+  const countries = [...new Set(ADAPTERS.map(a => a.country))]
+  const { rows } = await db.query(
+    `SELECT id, name FROM politicians WHERE wikidata_id IS NOT NULL AND country_code = ANY($1)
+       AND (records_synced_at IS NULL OR records_synced_at < NOW() - INTERVAL '3 days') ORDER BY attention DESC`,
+    [countries]
+  )
+  let ok = 0, failed = 0
+  for (const [i, r] of rows.entries()) {
+    try { const res = await syncCountryRecords(r.id); ok += res.ok } catch (err: any) { failed++; log(`${r.name}: ${err?.message || err}`) }
+    if ((i + 1) % 50 === 0) log(`${i + 1}/${rows.length}`)
+    await sleep(400)
+  }
+  return { total: rows.length, records_ok: ok, failed }
+})
+
+export const NIGHTLY_ORDER = ['wikidata', 'worldbank', 'governance', 'opensanctions', 'attention', 'country', 'gdelt', 'wikipedia']

@@ -7,6 +7,7 @@ import { getGovernance } from '../services/governance'
 import { getMedia, syncMedia, setGdeltTrace } from '../services/gdelt'
 import { getFlags } from '../services/opensanctions'
 import { getAttention } from '../services/attention'
+import { getCountryRecords, syncCountryRecords } from '../services/adapters'
 import { optionalAuth } from '../middleware/auth'
 import { getScoreEvents, getSources } from '../services/provenance'
 import { lastRuns, listJobs, runJob } from '../services/jobs'
@@ -63,6 +64,15 @@ export async function dossierRoutes(server: FastifyInstance) {
   server.get('/:id/attention', async (request) => {
     const { id } = request.params as { id: string }
     return getAttention(id)
+  })
+
+  server.get('/:id/records', async (request) => {
+    const { id } = request.params as { id: string }
+    return getCountryRecords(id)
+  })
+  server.post('/:id/records/sync', { onRequest: [requireAdmin] }, async (request) => {
+    const { id } = request.params as { id: string }
+    return syncCountryRecords(id)
   })
 
   server.get('/:id/sources', async (request) => {

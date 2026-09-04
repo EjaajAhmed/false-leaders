@@ -116,7 +116,7 @@ export async function forumRoutes(server: FastifyInstance) {
     const { rows } = await db.query(
       `INSERT INTO thread_posts (thread_id, user_id, seq, body, is_anonymous, reply_to)
        VALUES ($1, $2, (SELECT COALESCE(MAX(seq), 0) + 1 FROM thread_posts WHERE thread_id = $1), $3, $4, $5) RETURNING id, seq, body, is_anonymous, reply_to, created_at`,
-      [id, user.id, b, anon, reply_to ? Number(reply_to) : null]
+      [id, user.id, b, anon, reply_to != null && reply_to !== "" && !isNaN(Number(reply_to)) ? Number(reply_to) : null]
     )
     await db.query(`UPDATE threads SET reply_count = reply_count + 1, last_activity = NOW() WHERE id = $1`, [id])
     if (t[0].user_id !== user.id) {

@@ -6,6 +6,7 @@ import { enrichLeader } from './enrich'
 import { importAllGovernance } from './governance'
 import { syncMedia } from './gdelt'
 import { syncOpenSanctions } from './opensanctions'
+import { syncAttention } from './attention'
 
 // Wikidata: refresh identity and office history for anyone not synced in 7 days.
 registerJob('wikidata', async (log) => {
@@ -103,4 +104,18 @@ registerJob('opensanctions', async (log) => {
   return syncOpenSanctions(log)
 })
 
-export const NIGHTLY_ORDER = ['wikidata', 'worldbank', 'governance', 'opensanctions', 'gdelt', 'wikipedia']
+// Wikipedia page views per language edition, daily for everyone with a Wikidata record.
+registerJob('attention', async (log) => {
+  const { rows } = await db.query(
+    `SELECT id, name FROM politicians WHERE wikidata_id IS NOT NULL AND (attention_synced_at IS NULL OR attention_synced_at < NOW() - INTERVAL '20 hours')
+     ORDER BY attention DESC`
+  )
+  let ok = 0, failed = 0
+  for (const [i, r] of rows.entries()) {
+    try { const res = await syncAttention(r.id); if (res) ok++; else failed++ } catch (err: any) { failed++; log(`${r.name}: ${err?.message || err}`) }
+    if ((i + 1) % 100 === 0) log(`${i + 1}/${rows.length}`)
+  }
+  return { total: rows.length, ok, failed }
+})
+
+export const NIGHTLY_ORDER = ['wikidata', 'worldbank', 'governance', 'opensanctions', 'attention', 'gdelt', 'wikipedia']

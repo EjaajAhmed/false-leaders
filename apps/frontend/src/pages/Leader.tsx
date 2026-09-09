@@ -16,7 +16,7 @@ import FlagsSection, { flagsHeadline, useFlags } from '../components/leader/Flag
 import AttentionSection, { attentionHeadline, useAttention } from '../components/leader/AttentionSection'
 import RecordsSection, { recordsHeadline, useRecords } from '../components/leader/RecordsSection'
 import { PromisesList, ContradictionsList, promisesHeadline, contradictionsHeadline, usePromises } from '../components/leader/PromisesSection'
-import RateSection, { ratingHeadline, useRating } from '../components/leader/RateSection'
+import RateSection, { RateBar, focusRateBar, ratingHeadline, useRating } from '../components/leader/RateSection'
 import ApprovalStat from '../components/leader/ApprovalStat'
 import LeaksSection from '../components/leader/LeaksSection'
 import Discussion from '../components/leader/Discussion'
@@ -85,7 +85,6 @@ export default function Leader() {
   const { user } = useAuth()
   const qc = useQueryClient()
   const [panel, setPanel] = useState<'sources' | null>(null)
-  const [rateOpen, setRateOpen] = useState(0)
   const [sticky, setSticky] = useState(false)
   const headRef = useRef<HTMLElement>(null)
   const closePanel = useCallback(() => setPanel(null), [])
@@ -153,7 +152,7 @@ export default function Leader() {
   const avg: number | null = rating.data?.average ?? leader.rating?.average ?? null
   const ratingCount = Number(rating.data?.n ?? leader.rating?.n ?? 0)
   const minVotes = Number(rating.data?.min_votes || 5)
-  const openRate = () => setRateOpen(x => x + 1)
+  const openRate = focusRateBar
   const leakCount = Number((leader.stats as any)?.leaks || 0)
   const newsCount = news.data?.items?.length || 0
 
@@ -184,6 +183,7 @@ export default function Leader() {
         </div>
       </header>
 
+      <RateBar leaderId={leader.id} leaderName={leader.name} />
       <ApprovalStat leaderId={leader.id} />
 
       <Section id="flags" label="Flags · sanctions and exposure" headline={flg.headline} summary={flg.summary} open={focus === 'flags'} defaultOpen={(flags.data?.flags || []).some((x: any) => x.kind === 'sanction')}>
@@ -232,7 +232,7 @@ export default function Leader() {
         {leader.wiki_url && <p className="section__caption">Summary adapted from <a href={leader.wiki_url} target="_blank" rel="noopener noreferrer" style={{ borderBottom: '1px solid var(--border-strong)' }}>Wikipedia</a>, CC BY-SA 4.0.</p>}
       </Section>
 
-      <Section id="rating" label="Community rating" headline={rate.headline} summary={rate.summary} open={focus === 'rating' || focus === 'verdicts' || rateOpen > 0} defaultOpen={focus === 'rating' || focus === 'verdicts'}>
+      <Section id="rating" label="Ratings · distribution and verdicts" headline={rate.headline} summary={rate.summary} open={focus === 'rating' || focus === 'verdicts'} defaultOpen={focus === 'rating' || focus === 'verdicts'}>
         <RateSection leaderId={leader.id} leaderName={leader.name} />
       </Section>
 

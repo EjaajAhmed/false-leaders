@@ -7,11 +7,12 @@ import { notifyUser } from '../services/notify'
 export const BOARDS = [
   { key: 'general', label: 'General', blurb: 'Anything about power and the people who hold it.' },
   { key: 'leaders', label: 'Leaders', blurb: 'Threads tagged to a specific leader.' },
-  { key: 'leaks', label: 'Leaks', blurb: 'Anonymous tips. Always posted as a Prole number. Unverified; post responsibly.' },
+  { key: 'leaks', label: 'Leaks', blurb: 'Tips and things you know. Unverified; post responsibly.' },
+  { key: 'verdicts', label: 'Verdicts', blurb: 'Your judgement of a leader, argued in writing.' },
   { key: 'intel', label: 'Intel', blurb: 'Documents, records, things worth digging into.' },
   { key: 'money', label: 'Money', blurb: 'Funding, contracts, conflicts of interest.' },
   { key: 'media', label: 'Media', blurb: 'Coverage, spin, who is saying what.' },
-  { key: 'site', label: 'Site', blurb: 'FalseLeaders itself: bugs, ideas, the score.' },
+  { key: 'site', label: 'Site', blurb: 'FalseLeaders itself: bugs, ideas, the ratings.' },
 ]
 const BOARD_KEYS = BOARDS.map(b => b.key)
 const MAX_TITLE = 160, MAX_BODY = 6000
@@ -53,28 +54,25 @@ export async function forumRoutes(server: FastifyInstance) {
 
   server.post('/threads', { onRequest: [requireVerified] }, async (request, reply) => {
     const user = (request as any).user
-    const { title, body, board, politician_id, is_anonymous, kind, rating } = request.body as any
-    const knd = ['discussion', 'leak', 'verdict'].includes(kind) ? kind : (board === 'leaks' ? 'leak' : 'discussion')
+    const { title, body, board, politician_id, is_anonymous } = request.body as any
     const t = String(title || '').trim(), b = String(body || '').trim()
     if (t.length < 4 || b.length < 2) return reply.status(400).send({ error: 'Title and body required.' })
     if (t.length > MAX_TITLE || b.length > MAX_BODY) return reply.status(400).send({ error: 'Too long.' })
-    let brd = knd === 'leak' ? 'leaks' : BOARD_KEYS.includes(board) ? board : 'general'
+    const brd = BOARD_KEYS.includes(board) ? board : 'general'
+    // kind is derived from the board so leak/verdict counts keep working; it grants no special behaviour.
+    const knd = brd === 'leaks' ? 'leak' : brd === 'verdicts' ? 'verdict' : 'discussion'
     let leaderName: string | null = null
     if (politician_id) {
       const { rows } = await db.query('SELECT name FROM politicians WHERE id = $1', [politician_id])
       if (!rows.length) return reply.status(400).send({ error: 'No such leader.' })
       leaderName = rows[0].name
-      if (brd === 'general') brd = 'leaders'
-    } else if (knd !== 'discussion') {
-      return reply.status(400).send({ error: 'Leak and verdict threads must be about a leader.' })
     }
     const { rows: recent } = await db.query(`SELECT 1 FROM threads WHERE user_id = $1 AND created_at > NOW() - INTERVAL '3 minutes'`, [user.id])
     if (recent.length) return reply.status(429).send({ error: 'Slow down. One new thread every few minutes.' })
-    const anon = knd === 'leak' ? true : is_anonymous !== false
-    const rt = knd === 'verdict' && Number.isInteger(Number(rating)) && Number(rating) >= 0 && Number(rating) <= 100 ? Number(rating) : null
+    const anon = is_anonymous !== false
     const { rows } = await db.query(
-      `INSERT INTO threads (board, kind, rating, politician_id, user_id, title, body, is_anonymous) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, board, kind, title, created_at`,
-      [brd, knd, rt, politician_id || null, user.id, t, b, anon]
+      `INSERT INTO threads (board, kind, politician_id, user_id, title, body, is_anonymous) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, board, kind, title, created_at`,
+      [brd, knd, politician_id || null, user.id, t, b, anon]
     )
     const { rows: me } = await db.query('SELECT prole_number FROM users WHERE id = $1', [user.id])
     const who = anon ? `Prole #${me[0]?.prole_number}` : `@${user.username}`
@@ -154,7 +152,9 @@ export async function forumRoutes(server: FastifyInstance) {
     const { id } = request.params as { id: string }
     const { locked, pinned, status, board } = request.body as any
     const { rows } = await db.query(
-      `UPDATE threads SET locked = COALESCE($2, locked), pinned = COALESCE($3, pinned), status = COALESCE($4, status), board = COALESCE($5, board) WHERE id = $1 RETURNING id, locked, pinned, status, board`,
+      `UPDATE threads SET locked = COALESCE($2, locked), pinned = COALESCE($3, pinned), status = COALESCE($4, status), board = COALESCE($5, board),
+         kind = CASE COALESCE($5, board) WHEN 'leaks' THEN 'leak' WHEN 'verdicts' THEN 'verdict' ELSE 'discussion' END
+       WHERE id = $1 RETURNING id, locked, pinned, status, board, kind`,
       [id, locked ?? null, pinned ?? null, ['active', 'removed'].includes(status) ? status : null, BOARD_KEYS.includes(board) ? board : null]
     )
     return rows[0]

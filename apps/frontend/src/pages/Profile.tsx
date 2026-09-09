@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { changeUsername, getMe, getMyActivity, updateNotifPrefs, resendVerification } from '../api/auth'
 import { errorMessage } from '../api/client'
 import { Empty, Loading } from '../components/States'
-import { BOARD_LABEL, KindBadge } from '../components/forum/ThreadRow'
+import { BOARD_LABEL } from '../components/forum/ThreadRow'
 import { proleTag, ratingColor, timeAgo } from '../lib/format'
 
 type ActivityTab = 'ratings' | 'threads' | 'proposals' | 'bookmarks'
@@ -78,7 +78,6 @@ export default function Profile() {
         <Link key={t.id} to={`/forum/${t.id}`} className="post card--link" style={{ display: 'block' }}>
           <div className="post__head">
             <div className="post__who">
-              <KindBadge kind={t.kind} rating={t.rating} />
               <span className="badge badge--outline">{BOARD_LABEL[t.board] || t.board}</span>
               {t.leader_name && <span className="post__name">{t.leader_name}</span>}
               <span className="post__time">{timeAgo(t.last_activity)}</span>

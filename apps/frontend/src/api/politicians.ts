@@ -101,7 +101,7 @@ export const reviewProposal = async ({ id, ...data }: { id: string; action: 'app
 export const getBoards = async () => (await client.get('/forum/boards')).data
 export const getThreads = async (params: { board?: string; leader?: string; kind?: ThreadKind; sort?: string; page?: number; q?: string; limit?: number }) => (await client.get('/forum/threads', { params })).data
 export const getThread = async (id: string) => (await client.get(`/forum/threads/${id}`)).data
-export const createThread = async (data: { title: string; body: string; board?: string; politician_id?: string; is_anonymous: boolean; kind?: ThreadKind; rating?: number }) => (await client.post('/forum/threads', data)).data
+export const createThread = async (data: { title: string; body: string; board?: string; politician_id?: string; is_anonymous: boolean }) => (await client.post('/forum/threads', data)).data
 export const createPost = async ({ thread_id, ...data }: { thread_id: string; body: string; is_anonymous: boolean; reply_to?: number }) => (await client.post(`/forum/threads/${thread_id}/posts`, data)).data
 export const upvoteThread = async (id: string) => (await client.post(`/forum/threads/${id}/upvote`)).data
 export const upvotePost = async (id: string) => (await client.post(`/forum/posts/${id}/upvote`)).data

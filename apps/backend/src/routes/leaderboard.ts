@@ -11,8 +11,7 @@ export async function leaderboardRoutes(server: FastifyInstance) {
       `SELECT ${LEADER_COLS},
               (SELECT COUNT(*) FROM controversies c WHERE c.politician_id = p.id)::int AS controversy_count
        FROM politicians p
-       WHERE p.truth_score IS NOT NULL
-         AND p.truth_score < (SELECT COALESCE(MAX(value), 90) FROM truth_score_config WHERE key = 'base_score')
+       WHERE p.truth_score IS NOT NULL AND p.wikidata_id IS NOT NULL
        ORDER BY p.truth_score ASC, p.name ASC
        LIMIT $1`,
       [limit]
@@ -43,16 +42,15 @@ export async function leaderboardRoutes(server: FastifyInstance) {
     const limit = Math.min(100, Number((request.query as any).limit) || 25)
     const { rows } = await db.query(
       `SELECT ${LEADER_COLS},
-              ((SELECT COUNT(*) FROM comments c WHERE c.politician_id = p.id AND c.created_at > NOW() - INTERVAL '7 days')
-               + (SELECT COUNT(*) FROM threads t WHERE t.politician_id = p.id AND t.status = 'active' AND t.created_at > NOW() - INTERVAL '7 days')
+              ((SELECT COUNT(*) FROM threads t WHERE t.politician_id = p.id AND t.status = 'active' AND t.created_at > NOW() - INTERVAL '7 days')
                + (SELECT COUNT(*) FROM thread_posts tp JOIN threads t ON t.id = tp.thread_id WHERE t.politician_id = p.id AND tp.created_at > NOW() - INTERVAL '7 days'))::int AS comments_week,
-              (SELECT COUNT(*) FROM verdicts v WHERE v.politician_id = p.id AND v.updated_at > NOW() - INTERVAL '7 days')::int AS verdicts_week
+              (SELECT COUNT(*) FROM ratings r WHERE r.politician_id = p.id AND r.updated_at > NOW() - INTERVAL '7 days')::int AS verdicts_week
        FROM politicians p
+       WHERE p.wikidata_id IS NOT NULL
        ORDER BY (
-         (SELECT COUNT(*) FROM comments c WHERE c.politician_id = p.id AND c.created_at > NOW() - INTERVAL '7 days') +
          (SELECT COUNT(*) FROM threads t WHERE t.politician_id = p.id AND t.status = 'active' AND t.created_at > NOW() - INTERVAL '7 days') +
          (SELECT COUNT(*) FROM thread_posts tp JOIN threads t ON t.id = tp.thread_id WHERE t.politician_id = p.id AND tp.created_at > NOW() - INTERVAL '7 days') +
-         (SELECT COUNT(*) FROM verdicts v WHERE v.politician_id = p.id AND v.updated_at > NOW() - INTERVAL '7 days')
+         (SELECT COUNT(*) FROM ratings r WHERE r.politician_id = p.id AND r.updated_at > NOW() - INTERVAL '7 days')
        ) DESC, p.name ASC
        LIMIT $1`,
       [limit]
@@ -62,20 +60,11 @@ export async function leaderboardRoutes(server: FastifyInstance) {
       .filter(r => r.activity > 0)
   })
 
-  server.get('/watched', async (request) => {
-    const limit = Math.min(100, Number((request.query as any).limit) || 25)
-    const { rows } = await db.query(
-      `SELECT ${LEADER_COLS}, p.attention FROM politicians p WHERE p.attention > 0 ORDER BY p.attention DESC, p.name ASC LIMIT $1`,
-      [limit]
-    )
-    return rows
-  })
-
   server.get('/leaked', async (request) => {
     const limit = Math.min(100, Number((request.query as any).limit) || 25)
     const { rows } = await db.query(
       `SELECT ${LEADER_COLS},
-              (SELECT COUNT(*) FROM leaks l WHERE l.politician_id = p.id AND l.status <> 'removed')::int AS leak_count
+              (SELECT COUNT(*) FROM threads t WHERE t.politician_id = p.id AND t.kind = 'leak' AND t.status = 'active')::int AS leak_count
        FROM politicians p
        ORDER BY leak_count DESC, p.name ASC
        LIMIT $1`,

@@ -8,7 +8,7 @@ import { usePostAsProle } from '../lib/identity'
 import IdentityToggle from '../components/IdentityToggle'
 import Upvote from '../components/Upvote'
 import { Loading } from '../components/States'
-import { BOARD_LABEL } from '../components/forum/ThreadRow'
+import { BOARD_LABEL, KindBadge } from '../components/forum/ThreadRow'
 import { proleTag, timeAgo, formatDate } from '../lib/format'
 
 /** Render >>N references as links to posts in the thread. */
@@ -45,13 +45,13 @@ export default function Thread() {
   return (
     <div className="page page--narrow" style={{ maxWidth: 860 }}>
       <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>
-        <Link to="/forum">Forum</Link> · <Link to={`/forum?board=${t.board}`}>{BOARD_LABEL[t.board] || t.board}</Link>{t.leader_name && <> · <Link to={`/leaders/${t.politician_id}?tab=discussion`}>{t.leader_name}</Link></>}
+        <Link to="/forum">Forum</Link> · <Link to={`/forum?board=${t.board}`}>{BOARD_LABEL[t.board] || t.board}</Link>{t.leader_name && <> · <Link to={`/leaders/${t.politician_id}?tab=${t.kind === 'leak' ? 'leaks' : t.kind === 'verdict' ? 'rating' : 'discussion'}`}>{t.leader_name}</Link></>}
       </p>
       <h1 style={{ fontSize: 'clamp(1.6rem, 3.5vw, 2.4rem)', marginBottom: '1rem' }}>{t.title}</h1>
 
       <div className="post" id="p0" style={{ borderLeft: '3px solid var(--accent)' }}>
         <div className="post__head">
-          <div className="post__who">{who(t)}<span className="post__time" title={formatDate(t.created_at)}>OP · {timeAgo(t.created_at)}</span>{t.pinned && <span className="badge badge--gold">Pinned</span>}{t.locked && <span className="badge badge--outline">Locked</span>}</div>
+          <div className="post__who"><KindBadge kind={t.kind} rating={t.rating} />{who(t)}<span className="post__time" title={formatDate(t.created_at)}>OP · {timeAgo(t.created_at)}</span>{t.pinned && <span className="badge badge--gold">Pinned</span>}{t.locked && <span className="badge badge--outline">Locked</span>}</div>
           <div className="row" style={{ gap: '0.3rem' }}>
             {user?.is_admin && <>
               <button className="btn btn--ghost btn--sm" onClick={() => mod.mutate({ id: t.id, locked: !t.locked })}>{t.locked ? 'Unlock' : 'Lock'}</button>

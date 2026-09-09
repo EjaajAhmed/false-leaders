@@ -2,6 +2,10 @@ export type Level = 'confirmed' | 'likely' | 'maybe' | 'speculative'
 export type VerdictKind = 'guilty' | 'suspicious' | 'unclear' | 'clean'
 export type Category = 'world_leader' | 'politician' | 'business' | 'media' | 'judiciary' | 'religious' | 'international' | 'military' | 'other'
 export type FeedType = 'score_change' | 'leak' | 'controversy' | 'controversy_escalated' | 'verdict_shift' | 'thread'
+export type ThreadKind = 'discussion' | 'leak' | 'verdict'
+
+export interface RatingSummary { n: number; average: number | null }
+export interface ScoreComponents { community: number | null; external: number | null }
 
 export interface VerdictCounts {
   total: number
@@ -50,15 +54,17 @@ export interface Leader {
   created_at?: string
   controversy_count?: number
   leak_count?: number
-  verdict_counts?: VerdictCounts | null
+  rating?: RatingSummary | null
   top_controversy?: { id?: string; title: string; level: Level } | null
 }
 
 export interface LeaderDetail extends Leader {
-  truth_score: number
+  truth_score: number | null
   score_history: ScorePoint[]
-  verdicts: { total: number; counts: VerdictCounts; percentages: Record<VerdictKind, number>; dominant: VerdictKind | null; score: number | null }
-  stats: { controversies: number; verdicts: number; leaks: number; comments: number }
+  score_components?: ScoreComponents | null
+  components?: ScoreComponents | null
+  rating?: RatingSummary | null
+  stats: { controversies?: number; ratings: number; leaks: number; threads: number; comments?: number }
 }
 
 export interface FeedEvent {

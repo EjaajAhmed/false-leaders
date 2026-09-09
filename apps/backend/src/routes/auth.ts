@@ -129,15 +129,15 @@ export async function authRoutes(server: FastifyInstance) {
     const user = (request as any).user
     const [{ rows: verdicts }, { rows: leaks }, { rows: bookmarks }, { rows: proposals }] = await Promise.all([
       db.query(
-        `SELECT v.id, v.verdict, v.body, v.is_anonymous, v.upvotes, v.updated_at, p.id AS leader_id, p.name AS leader_name
-         FROM verdicts v JOIN politicians p ON p.id = v.politician_id
-         WHERE v.user_id = $1 ORDER BY v.updated_at DESC LIMIT 100`,
+        `SELECT r.score, r.updated_at, p.id AS leader_id, p.name AS leader_name, p.truth_score
+         FROM ratings r JOIN politicians p ON p.id = r.politician_id
+         WHERE r.user_id = $1 ORDER BY r.updated_at DESC LIMIT 200`,
         [user.id]
       ),
       db.query(
-        `SELECT l.id, l.body, l.upvotes, l.status, l.created_at, p.id AS leader_id, p.name AS leader_name
-         FROM leaks l JOIN politicians p ON p.id = l.politician_id
-         WHERE l.user_id = $1 ORDER BY l.created_at DESC LIMIT 100`,
+        `SELECT t.id, t.kind, t.board, t.title, t.is_anonymous, t.upvotes, t.reply_count, t.status, t.last_activity, t.created_at, p.id AS leader_id, p.name AS leader_name
+         FROM threads t LEFT JOIN politicians p ON p.id = t.politician_id
+         WHERE t.user_id = $1 AND t.status = 'active' ORDER BY t.last_activity DESC LIMIT 100`,
         [user.id]
       ),
       db.query(
@@ -155,7 +155,7 @@ export async function authRoutes(server: FastifyInstance) {
         [user.id]
       ),
     ])
-    return { verdicts, leaks, bookmarks, proposals }
+    return { ratings: verdicts, threads: leaks, bookmarks, proposals }
   })
 
   server.patch('/notif-prefs', { onRequest: [authenticate] }, async (request) => {

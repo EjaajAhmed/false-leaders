@@ -794,3 +794,18 @@ strong { font-weight: 600; }
 @media (prefers-reduced-motion: reduce) {
   .sticky-score { transition: none; }
 }
+
+/* ── Ratings ── */
+.range { width: 100%; accent-color: var(--accent); cursor: pointer; }
+.rate { display: grid; gap: 0.35rem; }
+.rate__value { font-size: 2.4rem; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.rate--inline .rate__value { font-size: 1.6rem; }
+.rate__ends { display: flex; justify-content: space-between; letter-spacing: 0.08em; text-transform: uppercase; }
+.hist { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; align-items: end; height: 84px; }
+.hist__col { display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; height: 100%; gap: 0.2rem; }
+.hist__count { text-align: center; color: var(--muted); min-height: 1em; }
+.hist__bar { background: var(--accent); min-height: 2px; opacity: 0.9; }
+.hist__labels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; text-align: center; margin-top: 0.35rem; letter-spacing: 0.06em; }
+.breakdown { display: grid; gap: 0.35rem; }
+.breakdown__row { display: grid; grid-template-columns: 1fr auto 3ch; gap: 0.75rem; align-items: baseline; font-size: 0.85rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+.breakdown__row > .mono:last-child { text-align: right; font-weight: 600; }

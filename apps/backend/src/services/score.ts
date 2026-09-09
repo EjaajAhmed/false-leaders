@@ -3,14 +3,14 @@ import { emitFeedEvent } from './feed'
 import { recordScoreEvent } from './provenance'
 
 const SITE = process.env.FRONTEND_URL || 'https://falseleaders.com'
-
 type Config = Record<string, number>
 
-// Config keys that belong to the archived controversy/funding/influence formula.
+// Keys from earlier formulas kept in the table but no longer used.
 export const ARCHIVED_CONFIG_KEYS = [
   'weight_confirmed', 'weight_likely', 'weight_maybe', 'weight_speculative',
-  'funding_corporate_threshold', 'funding_corporate_penalty',
-  'funding_foreign_threshold', 'funding_foreign_penalty',
+  'funding_corporate_threshold', 'funding_corporate_penalty', 'funding_foreign_threshold', 'funding_foreign_penalty',
+  'verdict_min_count', 'verdict_confidence_n', 'verdict_guilty_weight', 'verdict_suspicious_weight',
+  'leak_upvote_threshold', 'leak_weight', 'leak_max_penalty', 'promise_broken_weight', 'promise_max_penalty', 'base_score',
 ]
 
 export async function loadScoreConfig(): Promise<Config> {
@@ -20,173 +20,87 @@ export async function loadScoreConfig(): Promise<Config> {
   return cfg
 }
 
-export interface VerdictTally { total: number; guilty: number; suspicious: number; unclear: number; clean: number }
-export interface LeakTally { counted: number }
+export interface RatingTally { n: number; sum: number }
+export type MediaTally = { articles: number; negative: number } | null
+export interface SanctionTally { authorities: number }
+export interface ScoreComponents { community: number | null; external: number | null }
 
 /**
- * Community-driven TruthScore.
- *
- * Starts at base_score (90). Verdicts deduct once there are at least
- * verdict_min_count of them: the Guilty share deducts up to verdict_guilty_weight
- * and the Suspicious share up to verdict_suspicious_weight, scaled by a confidence
- * factor that reaches 1 at verdict_confidence_n verdicts. Leaks with at least
- * leak_upvote_threshold upvotes deduct leak_weight each, capped at leak_max_penalty.
- * Floor 1. Never zero.
+ * TruthScore = weight_community × members' rating + weight_external × outside signal.
+ * Members' rating: mean of 0–100 ratings, shrunk toward 50 until rating_prior_weight ratings exist.
+ * Outside signal: (1 − share of markedly negative coverage) × 100 from GDELT over 30 days, minus a
+ * sanctions penalty for listings by scored authorities. A part with no data is left null and the
+ * other part carries the score alone; with neither, the score is null ("unrated").
  */
-export interface ScoreComponents { verdicts: number; leaks: number; sanctions: number; promises: number }
-
-/** Deductions by component, each rounded to two decimals so the ledger is stable. */
-export interface SanctionTally { authorities: number }
-
-export interface PromiseTally { broken: number }
-
-export function computeComponents(cfg: Config, verdicts: VerdictTally, leaks: LeakTally, sanctions: SanctionTally = { authorities: 0 }, promises: PromiseTally = { broken: 0 }): ScoreComponents {
-  let verdictDeduction = 0
-  const minCount = cfg.verdict_min_count ?? 3
-  if (verdicts.total >= minCount && verdicts.total > 0) {
-    const confidence = Math.min(1, verdicts.total / Math.max(1, cfg.verdict_confidence_n ?? 25))
-    const guiltyShare = verdicts.guilty / verdicts.total
-    const suspiciousShare = verdicts.suspicious / verdicts.total
-    verdictDeduction = (guiltyShare * (cfg.verdict_guilty_weight ?? 60) + suspiciousShare * (cfg.verdict_suspicious_weight ?? 30)) * confidence
-  }
-  const leakDeduction = Math.min(cfg.leak_max_penalty ?? 20, leaks.counted * (cfg.leak_weight ?? 2))
-  const sanctionDeduction = Math.min(cfg.sanction_max_penalty ?? 30, sanctions.authorities * (cfg.sanction_weight ?? 15))
-  const promiseDeduction = Math.min(cfg.promise_max_penalty ?? 15, promises.broken * (cfg.promise_broken_weight ?? 3))
-  return { verdicts: Math.round(verdictDeduction * 100) / 100, leaks: Math.round(leakDeduction * 100) / 100, sanctions: Math.round(sanctionDeduction * 100) / 100, promises: Math.round(promiseDeduction * 100) / 100 }
+export function computeComponents(cfg: Config, rating: RatingTally, media: MediaTally, sanctions: SanctionTally): ScoreComponents {
+  const k = cfg.rating_prior_weight ?? 5
+  const community = rating.n > 0 ? (rating.sum + 50 * k) / (rating.n + k) : null
+  const penalty = Math.min(cfg.sanction_max_penalty ?? 30, sanctions.authorities * (cfg.sanction_weight ?? 15))
+  let external: number | null = null
+  if (media && media.articles >= (cfg.external_min_articles ?? 20)) external = Math.max(0, (1 - media.negative / media.articles) * 100 - penalty)
+  else if (sanctions.authorities > 0) external = Math.max(0, 50 - penalty)
+  return { community: community == null ? null : Math.round(community * 10) / 10, external: external == null ? null : Math.round(external * 10) / 10 }
 }
 
-export function computeScore(cfg: Config, verdicts: VerdictTally, leaks: LeakTally): number {
-  const c = computeComponents(cfg, verdicts, leaks)
-  const score = (cfg.base_score ?? 90) - c.verdicts - c.leaks - c.sanctions - c.promises
-  return Math.max(1, Math.min(100, Math.round(score)))
-}
-
-/** Archived formula (controversy levels, corporate funding, foreign influence). Kept for reference. */
-export function computeArchivedScore(
-  cfg: Config,
-  controversies: { level: string }[],
-  funding: { source_type: string; amount: number | string }[],
-  influence: { influence_score: number | string }[]
-): number {
-  let score = cfg.base_score ?? 90
-  for (const c of controversies) score -= cfg[`weight_${c.level}`] ?? 0
-  if (funding.length > 0) {
-    const total = funding.reduce((s, f) => s + Number(f.amount), 0)
-    const corporate = funding.filter(f => ['Corporate', 'PAC'].includes(f.source_type)).reduce((s, f) => s + Number(f.amount), 0)
-    if (total > 0 && (corporate / total) * 100 > (cfg.funding_corporate_threshold ?? 60)) score -= cfg.funding_corporate_penalty ?? 10
-  }
-  for (const inf of influence) {
-    if (Number(inf.influence_score) > (cfg.funding_foreign_threshold ?? 60)) score -= cfg.funding_foreign_penalty ?? 10
-  }
-  return Math.max(1, Math.min(100, Math.round(score)))
+export function combine(cfg: Config, c: ScoreComponents): number | null {
+  const wc = (cfg.weight_community ?? 60) / 100, we = (cfg.weight_external ?? 40) / 100
+  if (c.community != null && c.external != null) return Math.max(1, Math.min(100, Math.round(wc * c.community + we * c.external)))
+  if (c.community != null) return Math.max(1, Math.min(100, Math.round(c.community)))
+  if (c.external != null) return Math.max(1, Math.min(100, Math.round(c.external)))
+  return null
 }
 
 export interface ScoreHistoryPoint { d: string; s: number }
-
 const HISTORY_LIMIT = 120
+const today = () => new Date().toISOString().slice(0, 10)
 
-function today(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
-/**
- * Recalculates a leader's TruthScore, persists it, appends to score_history
- * (one point per day) and emits a feed event when the score moves.
- */
-export async function recalculateScore(
-  politicianId: string,
-  cfg?: Config
-): Promise<{ score: number; previous: number | null; changed: boolean } | null> {
+export async function recalculateScore(politicianId: string, cfg?: Config): Promise<{ score: number | null; previous: number | null; changed: boolean } | null> {
   const config = cfg ?? await loadScoreConfig()
-
-  const { rows } = await db.query(
-    'SELECT id, name, truth_score, score_history, score_components FROM politicians WHERE id = $1',
-    [politicianId]
-  )
+  const { rows } = await db.query('SELECT id, name, truth_score, score_history, score_components FROM politicians WHERE id = $1', [politicianId])
   if (rows.length === 0) return null
   const leader = rows[0]
 
-  const [{ rows: v }, { rows: l }, { rows: sx }, { rows: pr }] = await Promise.all([
-    db.query(
-      `SELECT COUNT(*)::int AS total,
-              COUNT(*) FILTER (WHERE verdict = 'guilty')::int AS guilty,
-              COUNT(*) FILTER (WHERE verdict = 'suspicious')::int AS suspicious,
-              COUNT(*) FILTER (WHERE verdict = 'unclear')::int AS unclear,
-              COUNT(*) FILTER (WHERE verdict = 'clean')::int AS clean
-       FROM verdicts WHERE politician_id = $1`,
-      [politicianId]
-    ),
-    db.query(
-      `SELECT COUNT(*)::int AS counted FROM leaks
-       WHERE politician_id = $1 AND status IN ('visible', 'escalated') AND upvotes >= $2`,
-      [politicianId, config.leak_upvote_threshold ?? 3]
-    ),
-    db.query(
-      `SELECT COUNT(DISTINCT COALESCE(authority, dataset, entity_id))::int AS authorities, MIN(entity_id) AS entity_id
-       FROM flags WHERE politician_id = $1 AND kind = 'sanction' AND scored`,
-      [politicianId]
-    ),
-    db.query(`SELECT COUNT(*)::int AS broken FROM promises WHERE politician_id = $1 AND status = 'broken' AND review_status = 'published' AND evidence_url IS NOT NULL`, [politicianId]),
+  const [{ rows: r }, { rows: m }, { rows: sx }] = await Promise.all([
+    db.query('SELECT COUNT(*)::int AS n, COALESCE(SUM(score), 0)::int AS sum FROM ratings WHERE politician_id = $1', [politicianId]),
+    db.query('SELECT articles_30d AS articles, negative_30d AS negative, source_url FROM media_summary WHERE politician_id = $1', [politicianId]),
+    db.query(`SELECT COUNT(DISTINCT COALESCE(authority, dataset, entity_id))::int AS authorities, MIN(entity_id) AS entity_id FROM flags WHERE politician_id = $1 AND kind = 'sanction' AND scored`, [politicianId]),
   ])
-
-  const components = computeComponents(config, v[0], l[0], sx[0], pr[0])
-  const score = Math.max(1, Math.min(100, Math.round((config.base_score ?? 90) - components.verdicts - components.leaks - components.sanctions - components.promises)))
+  const media = m[0] ? { articles: Number(m[0].articles), negative: Number(m[0].negative) } : null
+  const components = computeComponents(config, r[0], media, sx[0])
+  const score = combine(config, components)
   const previous = leader.truth_score == null ? null : Math.round(Number(leader.truth_score))
   const changed = previous !== score
 
-  // Ledger: one event per component whose deduction moved. Every event carries the source it was computed from.
-  const prevComponents: Partial<ScoreComponents> = leader.score_components || {}
-  const sources: Record<keyof ScoreComponents, string> = {
-    verdicts: `${SITE}/leaders/${politicianId}?tab=verdicts`,
-    leaks: `${SITE}/leaders/${politicianId}?tab=leaks`,
-    sanctions: sx[0].entity_id ? `https://www.opensanctions.org/entities/${encodeURIComponent(sx[0].entity_id)}/` : `${SITE}/leaders/${politicianId}?tab=flags`,
-    promises: `${SITE}/leaders/${politicianId}?tab=promises`,
-  }
-  const details: Record<keyof ScoreComponents, Record<string, unknown>> = {
-    verdicts: { total: v[0].total, guilty: v[0].guilty, suspicious: v[0].suspicious, unclear: v[0].unclear, clean: v[0].clean },
-    leaks: { counted_leaks: l[0].counted, upvote_threshold: config.leak_upvote_threshold ?? 3 },
-    sanctions: { authorities: sx[0].authorities },
-    promises: { broken_published: pr[0].broken },
-  }
-  for (const key of ['verdicts', 'leaks', 'sanctions', 'promises'] as (keyof ScoreComponents)[]) {
-    const before = Number(prevComponents[key] ?? 0)
-    const after = components[key]
-    if (Math.abs(after - before) < 0.005) continue
-    await recordScoreEvent(politicianId, key, Math.round((before - after) * 100) / 100, sources[key],
-      { deduction_before: before, deduction_after: after, ...details[key] }, { before: previous, after: score })
+  // Ledger: one event per part that moved, with the source it was computed from.
+  const prev: Partial<ScoreComponents> = leader.score_components || {}
+  const wc = (config.weight_community ?? 60) / 100, we = (config.weight_external ?? 40) / 100
+  const parts: { key: keyof ScoreComponents; weight: number; source: string; detail: Record<string, unknown> }[] = [
+    { key: 'community', weight: wc, source: `${SITE}/leaders/${politicianId}?tab=rating`, detail: { ratings: r[0].n, average: components.community } },
+    { key: 'external', weight: we, source: sx[0].entity_id && !media ? `https://www.opensanctions.org/entities/${encodeURIComponent(sx[0].entity_id)}/` : (m[0]?.source_url || `${SITE}/leaders/${politicianId}?tab=media`),
+      detail: { articles_30d: media?.articles ?? null, negative_30d: media?.negative ?? null, negative_share: media && media.articles ? Math.round((media.negative / media.articles) * 1000) / 10 : null, sanction_authorities: sx[0].authorities, external: components.external } },
+  ]
+  for (const p of parts) {
+    const before = prev[p.key] ?? null, after = components[p.key]
+    if (before === after || (before != null && after != null && Math.abs(before - after) < 0.05)) continue
+    const points = Math.round(((after ?? 0) - (before ?? 0)) * p.weight * 100) / 100
+    await recordScoreEvent(politicianId, p.key, points, p.source, { before, after, weight: p.weight, ...p.detail }, { before: previous, after: score ?? 0 })
   }
 
   const history: ScoreHistoryPoint[] = Array.isArray(leader.score_history) ? leader.score_history : []
-  const last = history[history.length - 1]
-  const day = today()
   let nextHistory = history
-
-  if (!last) {
-    nextHistory = [{ d: day, s: score }]
-  } else if (last.d === day) {
-    if (last.s !== score) nextHistory = [...history.slice(0, -1), { d: day, s: score }]
-  } else {
-    nextHistory = [...history, { d: day, s: score }]
+  if (score != null) {
+    const last = history[history.length - 1], day = today()
+    if (!last) nextHistory = [{ d: day, s: score }]
+    else if (last.d === day) { if (last.s !== score) nextHistory = [...history.slice(0, -1), { d: day, s: score }] }
+    else nextHistory = [...history, { d: day, s: score }]
+    if (nextHistory.length > HISTORY_LIMIT) nextHistory = nextHistory.slice(-HISTORY_LIMIT)
   }
-  if (nextHistory.length > HISTORY_LIMIT) nextHistory = nextHistory.slice(-HISTORY_LIMIT)
-
-  const historyChanged = nextHistory !== history
-
-  if (changed || historyChanged || JSON.stringify(prevComponents) !== JSON.stringify(components)) {
-    await db.query(
-      'UPDATE politicians SET truth_score = $1, score_history = $2, score_components = $3 WHERE id = $4',
-      [score, JSON.stringify(nextHistory), JSON.stringify(components), politicianId]
-    )
+  if (changed || nextHistory !== history || JSON.stringify(prev) !== JSON.stringify(components)) {
+    await db.query('UPDATE politicians SET truth_score = $1, score_history = $2, score_components = $3 WHERE id = $4', [score, JSON.stringify(nextHistory), JSON.stringify(components), politicianId])
   }
-
-  if (changed && previous !== null) {
-    await emitFeedEvent('score_change', politicianId, leader.name, {
-      from: previous,
-      to: score,
-      delta: score - previous,
-    })
+  if (changed && previous !== null && score !== null) {
+    await emitFeedEvent('score_change', politicianId, leader.name, { from: previous, to: score, delta: score - previous })
   }
-
   return { score, previous, changed }
 }
 
@@ -195,9 +109,6 @@ export function scoreDaysAgo(history: ScoreHistoryPoint[], days: number): number
   if (!Array.isArray(history) || history.length === 0) return null
   const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10)
   let candidate: ScoreHistoryPoint | null = null
-  for (const p of history) {
-    if (p.d <= cutoff) candidate = p
-    else break
-  }
+  for (const p of history) { if (p.d <= cutoff) candidate = p; else break }
   return candidate ? candidate.s : history[0].s
 }

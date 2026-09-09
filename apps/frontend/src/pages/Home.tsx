@@ -61,7 +61,7 @@ function Hero({ leaders }: { leaders: number }) {
           <strong>{count.toLocaleString()}</strong> leaders under watch
         </p>
         <p className="muted" style={{ maxWidth: '52ch', marginTop: '1.25rem', fontSize: '0.95rem' }}>
-          Rate, investigate and judge the people in power. Heads of state, executives, judges, moguls, clerics. Every score is earned, every verdict is public, every leak is anonymous.
+          Rate, investigate and judge the people in power. Heads of state, executives, judges, moguls, clerics. Members rate them 0 to 100; the world's press and sanctions lists fill in the rest. Every leak is anonymous.
         </p>
         <div className="hero__actions">
           <Link to="/browse" className="btn btn--gold">Open the files</Link>
@@ -144,7 +144,7 @@ export default function Home() {
                       <div className="lb-row__name truncate">{p.name}</div>
                       <div className="lb-row__meta truncate">{p.position}</div>
                     </div>
-                    <div className="lb-row__value" style={{ color: scoreColor(Number(p.truth_score)) }}>{Math.round(Number(p.truth_score))}</div>
+                    <div className="lb-row__value" style={{ color: scoreColor(p.truth_score == null ? null : Number(p.truth_score)) }}>{p.truth_score == null ? '—' : Math.round(Number(p.truth_score))}</div>
                   </Link>
                 )}
               />
@@ -185,7 +185,8 @@ export default function Home() {
             {[
               ['Leaders', stats.data?.leaders],
               ...(ARCHIVED.controversies ? [] : [['Controversies', stats.data?.controversies]]),
-              ['Verdicts', stats.data?.verdicts],
+              ['Ratings', stats.data?.ratings],
+              ['Threads', stats.data?.threads],
               ['Leaks', stats.data?.leaks],
               ['Members', stats.data?.proles],
             ].map(([label, v]) => (

@@ -13,14 +13,15 @@ import 'leaflet/dist/leaflet.css'
 const COLORS = {
   clean: '#2d6a2d', watch: '#c9a84c', warn: '#8b4513', condemned: '#8b1a1a',
 }
-function markerColor(score: number) {
+function markerColor(score: number | null) {
+  if (score == null) return '#4a4640'
   if (score >= 75) return COLORS.clean
   if (score >= 50) return COLORS.watch
   if (score >= 25) return COLORS.warn
   return COLORS.condemned
 }
 
-function createIcon(score: number) {
+function createIcon(score: number | null) {
   const color = markerColor(score)
   return L.divIcon({
     className: '',
@@ -81,7 +82,7 @@ export default function MapPage() {
           maxZoom={16}
         />
         {withCoords.map((p: any) => (
-          <Marker key={p.id} position={[Number(p.latitude), Number(p.longitude)]} icon={createIcon(Number(p.truth_score ?? 90))}>
+          <Marker key={p.id} position={[Number(p.latitude), Number(p.longitude)]} icon={createIcon(p.truth_score == null ? null : Number(p.truth_score))}>
             <Popup minWidth={220} maxWidth={280}>
               <div className="row row--between" style={{ alignItems: 'flex-start', gap: '0.75rem' }}>
                 {p.photo_url && <img className="photo photo--popup" src={p.photo_url} alt="" />}

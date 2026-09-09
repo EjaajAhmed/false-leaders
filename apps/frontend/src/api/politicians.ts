@@ -1,5 +1,5 @@
 import client from './client'
-import type { FeedType, Level, VerdictKind } from '../types'
+import type { FeedType, Level, ThreadKind } from '../types'
 
 // ── Leaders ──
 export const getPoliticians = async (filters?: {
@@ -71,21 +71,10 @@ export const postComment = async (data: { politician_id: string; body: string; i
   (await client.post('/comments', data)).data
 export const deleteComment = async (id: string) => (await client.delete(`/comments/${id}`)).data
 
-// ── Verdicts ──
-export const getVerdicts = async (politicianId: string) => (await client.get(`/politicians/${politicianId}/verdicts`)).data
-export const submitVerdict = async ({ politician_id, ...data }: { politician_id: string; verdict: VerdictKind; body?: string; is_anonymous: boolean }) =>
-  (await client.post(`/politicians/${politician_id}/verdicts`, data)).data
-export const upvoteVerdict = async (id: string) => (await client.post(`/verdicts/${id}/upvote`)).data
-export const deleteVerdict = async (id: string) => (await client.delete(`/verdicts/${id}`)).data
-
-// ── Leaks ──
-export const getLeaks = async (politicianId: string) => (await client.get(`/politicians/${politicianId}/leaks`)).data
-export const submitLeak = async ({ politician_id, body }: { politician_id: string; body: string }) =>
-  (await client.post(`/politicians/${politician_id}/leaks`, { body })).data
-export const upvoteLeak = async (id: string) => (await client.post(`/leaks/${id}/upvote`)).data
-export const getLeakQueue = async (status?: string) => (await client.get('/leaks/queue', { params: { status } })).data
-export const setLeakStatus = async ({ id, ...data }: { id: string; status: string; title?: string; level?: Level }) =>
-  (await client.patch(`/leaks/${id}/status`, data)).data
+// ── Ratings (0–100 per member; 60% of the score) ──
+export const getRating = async (id: string) => (await client.get(`/politicians/${id}/rating`)).data
+export const setRating = async ({ politician_id, score }: { politician_id: string; score: number }) => (await client.post(`/politicians/${politician_id}/rating`, { score })).data
+export const clearRating = async (id: string) => (await client.delete(`/politicians/${id}/rating`)).data
 
 // ── Controversies ──
 export const getControversies = async (politicianId: string) => (await client.get(`/controversies/${politicianId}`)).data
@@ -105,9 +94,9 @@ export const reviewProposal = async ({ id, ...data }: { id: string; action: 'app
 
 // ── Forum ──
 export const getBoards = async () => (await client.get('/forum/boards')).data
-export const getThreads = async (params: { board?: string; leader?: string; sort?: string; page?: number; q?: string; limit?: number }) => (await client.get('/forum/threads', { params })).data
+export const getThreads = async (params: { board?: string; leader?: string; kind?: ThreadKind; sort?: string; page?: number; q?: string; limit?: number }) => (await client.get('/forum/threads', { params })).data
 export const getThread = async (id: string) => (await client.get(`/forum/threads/${id}`)).data
-export const createThread = async (data: { title: string; body: string; board?: string; politician_id?: string; is_anonymous: boolean }) => (await client.post('/forum/threads', data)).data
+export const createThread = async (data: { title: string; body: string; board?: string; politician_id?: string; is_anonymous: boolean; kind?: ThreadKind; rating?: number }) => (await client.post('/forum/threads', data)).data
 export const createPost = async ({ thread_id, ...data }: { thread_id: string; body: string; is_anonymous: boolean; reply_to?: number }) => (await client.post(`/forum/threads/${thread_id}/posts`, data)).data
 export const upvoteThread = async (id: string) => (await client.post(`/forum/threads/${id}/upvote`)).data
 export const upvotePost = async (id: string) => (await client.post(`/forum/posts/${id}/upvote`)).data

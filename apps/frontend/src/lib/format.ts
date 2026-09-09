@@ -118,7 +118,7 @@ export function feedText(e: FeedEvent): FeedText {
       }
     }
     case 'leak':
-      return { before: `${proleTag(m.prole_number)} submitted a new Leak on `, after: '', label: 'Leak' }
+      return { before: `${proleTag(m.prole_number)} filed a leak on `, after: m.title ? `: "${m.title}"` : '', label: 'Leak' }
     case 'controversy': {
       const lvl = String(m.level || 'speculative')
       const head = lvl === 'confirmed' ? 'New controversy confirmed' : `New controversy logged (${lvl})`
@@ -129,7 +129,7 @@ export function feedText(e: FeedEvent): FeedText {
     case 'verdict_shift':
       return { before: 'Community verdict on ', after: ` shifted to ${verdictLabel(m.to)}`, label: 'Verdict' }
     case 'thread':
-      return { before: `${m.who || 'Someone'} opened a thread on `, after: `: "${m.title}"`, label: 'Forum' }
+      return { before: `${m.who || 'Someone'} ${m.kind === 'verdict' ? 'posted a verdict on' : 'opened a thread on'} `, after: `: "${m.title}"`, label: m.kind === 'verdict' ? 'Verdict' : 'Forum' }
     default:
       return { before: '', after: '', label: e.type }
   }

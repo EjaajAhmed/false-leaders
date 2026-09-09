@@ -7,6 +7,7 @@ import { notifyUser } from '../services/notify'
 export const BOARDS = [
   { key: 'general', label: 'General', blurb: 'Anything about power and the people who hold it.' },
   { key: 'leaders', label: 'Leaders', blurb: 'Threads tagged to a specific leader.' },
+  { key: 'leaks', label: 'Leaks', blurb: 'Anonymous tips. Always posted as a Prole number. Unverified; post responsibly.' },
   { key: 'intel', label: 'Intel', blurb: 'Documents, records, things worth digging into.' },
   { key: 'money', label: 'Money', blurb: 'Funding, contracts, conflicts of interest.' },
   { key: 'media', label: 'Media', blurb: 'Coverage, spin, who is saying what.' },
@@ -25,19 +26,20 @@ export async function forumRoutes(server: FastifyInstance) {
   })
 
   server.get('/threads', { onRequest: [optionalAuth] }, async (request) => {
-    const { board, leader, sort, page, limit, q } = request.query as any
+    const { board, leader, sort, page, limit, q, kind } = request.query as any
     const viewer = (request as any).user
     const pageNum = Math.max(1, Number(page) || 1), limitNum = Math.min(50, Number(limit) || 25)
     const params: any[] = []
     let where = `WHERE t.status = 'active'`
     if (board && BOARD_KEYS.includes(board)) { params.push(board); where += ` AND t.board = $${params.length}` }
     if (leader) { params.push(leader); where += ` AND t.politician_id = $${params.length}` }
+    if (kind && ['discussion', 'leak', 'verdict'].includes(kind)) { params.push(kind); where += ` AND t.kind = $${params.length}` }
     if (q) { params.push(`%${q}%`); where += ` AND (t.title ILIKE $${params.length} OR t.body ILIKE $${params.length})` }
     const order = sort === 'new' ? 't.created_at DESC' : sort === 'top' ? 't.upvotes DESC, t.last_activity DESC' : 't.pinned DESC, t.last_activity DESC'
     const viewerIdx = viewer ? (params.push(viewer.id), params.length) : null
     params.push(limitNum, (pageNum - 1) * limitNum)
     const { rows } = await db.query(
-      `SELECT t.id, t.board, t.politician_id, p.name AS leader_name, t.title, LEFT(t.body, 240) AS excerpt, t.is_anonymous, t.upvotes, t.reply_count, t.pinned, t.locked, t.last_activity, t.created_at,
+      `SELECT t.id, t.board, t.kind, t.rating, t.politician_id, p.name AS leader_name, t.title, LEFT(t.body, 240) AS excerpt, t.is_anonymous, t.upvotes, t.reply_count, t.pinned, t.locked, t.last_activity, t.created_at,
               ${IDENT('t')},
               ${viewerIdx ? `(t.user_id = $${viewerIdx})` : 'false'} AS is_own,
               ${viewerIdx ? `EXISTS (SELECT 1 FROM thread_upvotes tu WHERE tu.thread_id = t.id AND tu.user_id = $${viewerIdx})` : 'false'} AS user_upvoted
@@ -51,28 +53,32 @@ export async function forumRoutes(server: FastifyInstance) {
 
   server.post('/threads', { onRequest: [requireVerified] }, async (request, reply) => {
     const user = (request as any).user
-    const { title, body, board, politician_id, is_anonymous } = request.body as any
+    const { title, body, board, politician_id, is_anonymous, kind, rating } = request.body as any
+    const knd = ['discussion', 'leak', 'verdict'].includes(kind) ? kind : (board === 'leaks' ? 'leak' : 'discussion')
     const t = String(title || '').trim(), b = String(body || '').trim()
     if (t.length < 4 || b.length < 2) return reply.status(400).send({ error: 'Title and body required.' })
     if (t.length > MAX_TITLE || b.length > MAX_BODY) return reply.status(400).send({ error: 'Too long.' })
-    let brd = BOARD_KEYS.includes(board) ? board : 'general'
+    let brd = knd === 'leak' ? 'leaks' : BOARD_KEYS.includes(board) ? board : 'general'
     let leaderName: string | null = null
     if (politician_id) {
       const { rows } = await db.query('SELECT name FROM politicians WHERE id = $1', [politician_id])
       if (!rows.length) return reply.status(400).send({ error: 'No such leader.' })
       leaderName = rows[0].name
       if (brd === 'general') brd = 'leaders'
+    } else if (knd !== 'discussion') {
+      return reply.status(400).send({ error: 'Leak and verdict threads must be about a leader.' })
     }
     const { rows: recent } = await db.query(`SELECT 1 FROM threads WHERE user_id = $1 AND created_at > NOW() - INTERVAL '3 minutes'`, [user.id])
     if (recent.length) return reply.status(429).send({ error: 'Slow down. One new thread every few minutes.' })
-    const anon = is_anonymous !== false
+    const anon = knd === 'leak' ? true : is_anonymous !== false
+    const rt = knd === 'verdict' && Number.isInteger(Number(rating)) && Number(rating) >= 0 && Number(rating) <= 100 ? Number(rating) : null
     const { rows } = await db.query(
-      `INSERT INTO threads (board, politician_id, user_id, title, body, is_anonymous) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, board, title, created_at`,
-      [brd, politician_id || null, user.id, t, b, anon]
+      `INSERT INTO threads (board, kind, rating, politician_id, user_id, title, body, is_anonymous) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, board, kind, title, created_at`,
+      [brd, knd, rt, politician_id || null, user.id, t, b, anon]
     )
     const { rows: me } = await db.query('SELECT prole_number FROM users WHERE id = $1', [user.id])
     const who = anon ? `Prole #${me[0]?.prole_number}` : `@${user.username}`
-    if (politician_id) await emitFeedEvent('thread', politician_id, leaderName!, { title: t, thread_id: rows[0].id, who, board: brd })
+    if (politician_id) await emitFeedEvent(knd === 'leak' ? 'leak' : 'thread', politician_id, leaderName!, { title: t, thread_id: rows[0].id, who, board: brd, kind: knd, prole_number: anon ? me[0]?.prole_number : undefined })
     return reply.status(201).send(rows[0])
   })
 
@@ -81,7 +87,7 @@ export async function forumRoutes(server: FastifyInstance) {
     const viewer = (request as any).user
     const v = viewer ? [viewer.id] : []
     const { rows } = await db.query(
-      `SELECT t.id, t.board, t.politician_id, p.name AS leader_name, t.title, t.body, t.is_anonymous, t.upvotes, t.reply_count, t.pinned, t.locked, t.status, t.last_activity, t.created_at,
+      `SELECT t.id, t.board, t.kind, t.rating, t.politician_id, p.name AS leader_name, t.title, t.body, t.is_anonymous, t.upvotes, t.reply_count, t.pinned, t.locked, t.status, t.last_activity, t.created_at,
               ${IDENT('t')},
               ${viewer ? '(t.user_id = $2)' : 'false'} AS is_own,
               ${viewer ? 'EXISTS (SELECT 1 FROM thread_upvotes tu WHERE tu.thread_id = t.id AND tu.user_id = $2)' : 'false'} AS user_upvoted

@@ -5,17 +5,19 @@ import { getBoards, getThreads } from '../api/politicians'
 import ThreadRow, { BOARD_LABEL } from '../components/forum/ThreadRow'
 import ThreadComposer from '../components/forum/ThreadComposer'
 import { Empty, Loading } from '../components/States'
+import type { ThreadKind } from '../types'
 
 export default function Forum() {
   const [params, setParams] = useSearchParams()
   const board = params.get('board') || ''
   const sort = params.get('sort') || 'active'
+  const kind = (params.get('kind') || '') as '' | ThreadKind
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
   const [composing, setComposing] = useState(false)
   const boards = useQuery({ queryKey: ['boards'], queryFn: getBoards, staleTime: 60000 })
-  const threads = useQuery({ queryKey: ['threads', board, sort, q, page], queryFn: () => getThreads({ board: board || undefined, sort, q: q || undefined, page, limit: 25 }), placeholderData: prev => prev, refetchInterval: 60000 })
-  const set = (next: Record<string, string>) => { const o: Record<string, string> = {}; if (next.board ?? board) o.board = next.board ?? board; if ((next.sort ?? sort) !== 'active') o.sort = next.sort ?? sort; setParams(o, { replace: true }); setPage(1) }
+  const threads = useQuery({ queryKey: ['threads', board, sort, q, page, kind], queryFn: () => getThreads({ board: board || undefined, kind: kind || undefined, sort, q: q || undefined, page, limit: 25 }), placeholderData: prev => prev, refetchInterval: 60000 })
+  const set = (next: Record<string, string>) => { const o: Record<string, string> = {}; if (next.board ?? board) o.board = next.board ?? board; if ((next.sort ?? sort) !== 'active') o.sort = next.sort ?? sort; if (next.kind ?? kind) o.kind = next.kind ?? kind; setParams(o, { replace: true }); setPage(1) }
   const current = boards.data?.find((b: any) => b.key === board)
 
   return (
@@ -34,6 +36,9 @@ export default function Forum() {
           ))}
         </div>
         <div className="viewbar__narrow">
+          <select className="select select--quiet" value={kind} onChange={e => set({ kind: e.target.value })} aria-label="Thread type">
+            <option value="">All types</option><option value="discussion">Discussion</option><option value="verdict">Verdicts</option><option value="leak">Leaks</option>
+          </select>
           <select className="select select--quiet" value={sort} onChange={e => set({ sort: e.target.value })} aria-label="Sort">
             <option value="active">Active</option><option value="new">New</option><option value="top">Top</option>
           </select>
@@ -58,7 +63,7 @@ export default function Forum() {
           <button className="btn btn--sm" disabled={!threads.data.hasMore} onClick={() => setPage(p => p + 1)}>Next</button>
         </div>
       )}
-      <p className="section__caption" style={{ marginTop: '1.5rem' }}>Boards: {Object.values(BOARD_LABEL).join(' · ')}. Threads about a specific leader also appear on that leader's page. Moderators can lock or remove threads; removed posts stay in place as "[removed]".</p>
+      <p className="section__caption" style={{ marginTop: '1.5rem' }}>Boards: {Object.values(BOARD_LABEL).join(' · ')}. Threads about a specific leader also appear on that leader's page. Leaks are always anonymous; verdicts carry the author's 0–100 rating. Neither moves the score by itself. Moderators can lock or remove threads; removed posts stay in place as "[removed]".</p>
     </div>
   )
 }

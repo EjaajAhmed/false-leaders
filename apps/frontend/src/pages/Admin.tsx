@@ -2,72 +2,18 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getPoliticians, getLeakQueue, setLeakStatus, getProposalQueue, reviewProposal, getSpikeQueue, reviewSpike, addDocument, scanContradictions, getPromiseQueue, reviewPromise, getContradictionQueue, reviewContradiction } from '../api/politicians'
+import { getPoliticians, getProposalQueue, reviewProposal, getSpikeQueue, reviewSpike, addDocument, scanContradictions, getPromiseQueue, reviewPromise, getContradictionQueue, reviewContradiction } from '../api/politicians'
 import client, { errorMessage } from '../api/client'
 import AIAnalyzer from '../components/AIAnalyzer'
 import LevelBadge from '../components/LevelBadge'
 import { Empty, Loading } from '../components/States'
-import { CATEGORIES, LEVELS, proleTag, timeAgo } from '../lib/format'
+import { CATEGORIES, LEVELS, timeAgo } from '../lib/format'
 import type { Level } from '../types'
 import { ARCHIVED } from '../config'
 
 const emptyForm = {
   name: '', party: '', region: '', position: '', bio: '', country: '', category: 'politician',
   age: '', latitude: '', longitude: '', photo_url: '', aliases: '', prominence: '',
-}
-
-function LeakQueue() {
-  const qc = useQueryClient()
-  const [escalating, setEscalating] = useState<string | null>(null)
-  const [title, setTitle] = useState('')
-  const [level, setLevel] = useState<Level>('speculative')
-  const { data, isLoading } = useQuery({ queryKey: ['leak-queue'], queryFn: () => getLeakQueue() })
-  const mutate = useMutation({
-    mutationFn: setLeakStatus,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['leak-queue'] }); setEscalating(null); setTitle('') },
-    onError: e => alert(errorMessage(e)),
-  })
-
-  return (
-    <div className="card" id="leaks">
-      <div className="section-title"><h2>Leak queue</h2><span className="mono tiny dim">{data?.length || 0} awaiting</span></div>
-      {isLoading && <Loading />}
-      {!isLoading && data?.length === 0 && <Empty text="Queue is empty." />}
-      <div className="stack">
-        {data?.map((l: any) => (
-          <div key={l.id} className="post">
-            <div className="post__head">
-              <div className="post__who">
-                <span className="post__prole">{proleTag(l.prole_number)}</span>
-                <span className="mono tiny dim">(@{l.username})</span>
-                <Link to={`/leaders/${l.politician_id}?tab=leaks`} className="post__name">{l.leader_name}</Link>
-                <span className="post__time">{timeAgo(l.created_at)} · {l.upvotes} upvotes</span>
-              </div>
-              <div className="row" style={{ gap: '0.3rem' }}>
-                {!ARCHIVED.controversies && <button className="btn btn--sm" onClick={() => { setEscalating(escalating === l.id ? null : l.id); setTitle(l.body.slice(0, 80)) }}>Escalate</button>}
-                <button className="btn btn--ghost btn--sm btn--danger" onClick={() => { if (confirm('Remove this leak?')) mutate.mutate({ id: l.id, status: 'removed' }) }}>Remove</button>
-              </div>
-            </div>
-            <p className="post__body">{l.body}</p>
-            {escalating === l.id && (
-              <div className="stack" style={{ marginTop: '0.75rem', padding: '0.75rem', border: '1px solid var(--border-strong)', background: 'var(--bg)' }}>
-                <div className="grid-2" style={{ gap: '0.5rem' }}>
-                  <div className="field"><label className="label">Controversy title</label><input className="input" value={title} onChange={e => setTitle(e.target.value)} maxLength={200} /></div>
-                  <div className="field"><label className="label">Level</label>
-                    <select className="select" value={level} onChange={e => setLevel(e.target.value as Level)}>{LEVELS.map(x => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
-                  </div>
-                </div>
-                <div className="row">
-                  <button className="btn btn--gold btn--sm" disabled={!title.trim() || mutate.isPending} onClick={() => mutate.mutate({ id: l.id, status: 'escalated', title, level })}>Escalate to controversy</button>
-                  <button className="btn btn--ghost btn--sm" onClick={() => setEscalating(null)}>Cancel</button>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
 }
 
 function SpikeQueue() {
@@ -322,14 +268,13 @@ export default function Admin() {
         <p className="eyebrow">Restricted</p>
         <h1>Admin</h1>
         <div className="chips" style={{ marginTop: '0.75rem' }}>
-          {[['#leaks', 'Leak queue'], ['#spikes', 'Spike captions'], ['#promises', 'Promises'], ...(ARCHIVED.controversies ? [] : [['#proposals', 'Proposals']]), ['#weights', 'Weights'], ['#leader-form', 'Leaders'], ['#broadcast', 'Broadcast']].map(([href, label]) => (
+          {[['#spikes', 'Spike captions'], ['#promises', 'Promises'], ...(ARCHIVED.controversies ? [] : [['#proposals', 'Proposals']]), ['#weights', 'Weights'], ['#leader-form', 'Leaders'], ['#broadcast', 'Broadcast']].map(([href, label]) => (
             <a key={href} href={href} className="chip">{label}</a>
           ))}
         </div>
       </div>
 
       <div className="stack" style={{ gap: '1.5rem' }}>
-        <LeakQueue />
         <SpikeQueue />
         <PromiseDesk leaders={all} />
         {!ARCHIVED.controversies && <ProposalQueue />}

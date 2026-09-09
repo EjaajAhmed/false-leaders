@@ -5,15 +5,16 @@ import { useAuth } from '../context/AuthContext'
 import { changeUsername, getMe, getMyActivity, updateNotifPrefs, resendVerification } from '../api/auth'
 import { errorMessage } from '../api/client'
 import { Empty, Loading } from '../components/States'
-import { proleTag, scoreColor, timeAgo, verdictLabel } from '../lib/format'
+import { BOARD_LABEL, KindBadge } from '../components/forum/ThreadRow'
+import { proleTag, scoreColor, timeAgo } from '../lib/format'
 
-type ActivityTab = 'verdicts' | 'leaks' | 'proposals' | 'bookmarks'
+type ActivityTab = 'ratings' | 'threads' | 'proposals' | 'bookmarks'
 
 export default function Profile() {
   const { user, loginUser, logout } = useAuth()
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const [tab, setTab] = useState<ActivityTab>('verdicts')
+  const [tab, setTab] = useState<ActivityTab>('ratings')
   const [newUsername, setNewUsername] = useState('')
   const [usernameMsg, setUsernameMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [showUsername, setShowUsername] = useState(false)
@@ -58,35 +59,33 @@ export default function Profile() {
   const activityBody = () => {
     if (activity.isLoading) return <Loading />
     if (!lists) return null
-    if (tab === 'verdicts') {
-      if (!lists.verdicts.length) return <Empty text="You haven't judged anyone. Yet." />
-      return lists.verdicts.map((v: any) => (
-        <Link key={v.id} to={`/leaders/${v.leader_id}?tab=verdicts`} className="post card--link" style={{ display: 'block' }}>
-          <div className="post__head">
-            <div className="post__who">
-              <span className={`badge badge--${v.verdict}`}>{verdictLabel(v.verdict)}</span>
-              <span className="post__name">{v.leader_name}</span>
-              <span className="post__time">{timeAgo(v.updated_at)}</span>
-            </div>
-            <span className="mono tiny dim">{v.is_anonymous ? proleTag(user.prole_number) : `@${user.username}`} · {v.upvotes} upvotes</span>
+    if (tab === 'ratings') {
+      if (!lists.ratings.length) return <Empty text="You haven't rated anyone. Yet." />
+      return lists.ratings.map((r: any) => (
+        <Link key={r.leader_id} to={`/leaders/${r.leader_id}?tab=rating`} className="lb-row card--link" style={{ borderTop: '1px solid var(--border)' }}>
+          <span className="mono" style={{ color: scoreColor(Number(r.score)), fontWeight: 600 }}>{r.score}</span>
+          <div style={{ minWidth: 0 }}>
+            <div className="lb-row__name truncate">{r.leader_name}</div>
+            <div className="lb-row__meta truncate">Your rating · TruthScore {r.truth_score == null ? '—' : Math.round(Number(r.truth_score))}</div>
           </div>
-          {v.body && <p className="post__body small">{v.body}</p>}
+          <span className="mono tiny dim">{timeAgo(r.updated_at)}</span>
         </Link>
       ))
     }
-    if (tab === 'leaks') {
-      if (!lists.leaks.length) return <Empty text="No leaks filed. When you know something, this is where it goes." />
-      return lists.leaks.map((l: any) => (
-        <Link key={l.id} to={`/leaders/${l.leader_id}?tab=leaks`} className="post card--link" style={{ display: 'block' }}>
+    if (tab === 'threads') {
+      if (!lists.threads.length) return <Empty text="No threads yet. Start one on the forum." />
+      return lists.threads.map((t: any) => (
+        <Link key={t.id} to={`/forum/${t.id}`} className="post card--link" style={{ display: 'block' }}>
           <div className="post__head">
             <div className="post__who">
-              <span className="post__prole">{proleTag(user.prole_number)}</span>
-              <span className="post__name">{l.leader_name}</span>
-              <span className="post__time">{timeAgo(l.created_at)}</span>
+              <KindBadge kind={t.kind} rating={t.rating} />
+              <span className="badge badge--outline">{BOARD_LABEL[t.board] || t.board}</span>
+              {t.leader_name && <span className="post__name">{t.leader_name}</span>}
+              <span className="post__time">{timeAgo(t.last_activity)}</span>
             </div>
-            <span className={`badge ${l.status === 'escalated' ? 'badge--confirmed' : l.status === 'removed' ? 'badge--outline' : 'badge--gold'}`}>{l.status}</span>
+            <span className="mono tiny dim">{t.is_anonymous ? proleTag(user.prole_number) : `@${user.username}`} · {t.reply_count} repl{t.reply_count === 1 ? 'y' : 'ies'} · {t.upvotes} up</span>
           </div>
-          <p className="post__body small">{l.body}</p>
+          <p className="post__body small">{t.title}</p>
         </Link>
       ))
     }
@@ -108,7 +107,7 @@ export default function Profile() {
     if (!lists.bookmarks.length) return <Empty text="Nothing saved. Everyone is worth watching." />
     return lists.bookmarks.map((b: any) => (
       <Link key={b.id} to={`/leaders/${b.leader_id}`} className="lb-row" style={{ borderTop: '1px solid var(--border)' }}>
-        <span className="mono" style={{ color: scoreColor(Number(b.truth_score)), fontWeight: 600 }}>{Math.round(Number(b.truth_score))}</span>
+        <span className="mono" style={{ color: scoreColor(b.truth_score == null ? null : Number(b.truth_score)), fontWeight: 600 }}>{b.truth_score == null ? '—' : Math.round(Number(b.truth_score))}</span>
         <div style={{ minWidth: 0 }}>
           <div className="lb-row__name truncate">{b.leader_name}</div>
           <div className="lb-row__meta truncate">{b.position}{b.graft_name ? ` · ${b.graft_name}` : ''}</div>
@@ -136,20 +135,20 @@ export default function Profile() {
           <p className="eyebrow eyebrow--gold">Anonymous identity</p>
           <h2 className="mono" style={{ fontSize: '1.6rem', margin: '0.5rem 0 0.25rem', color: 'var(--gold)', fontWeight: 600 }}>{proleTag(user.prole_number)}</h2>
           <p className="muted small">Assigned on registration. Permanent.</p>
-          <p className="help" style={{ marginTop: '0.75rem' }}>Never linked to your username in public. Leaks, and anything you choose to post anonymously, carry this number.</p>
+          <p className="help" style={{ marginTop: '0.75rem' }}>Never linked to your username in public. Leaks, and anything you choose to post anonymously, carry this number. Ratings are never shown with either.</p>
         </div>
       </div>
 
       {!user.email_verified && (
         <div className="notice" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-          <span>Unverified. Verdicts, leaks and discussion are locked.</span>
+          <span>Unverified. Ratings, leaks and discussion are locked.</span>
           <button className="btn btn--sm" onClick={() => resendVerification().then(() => alert('Sent.'))}>Resend email</button>
         </div>
       )}
 
       <div className="section-title"><h2>Activity</h2></div>
       <div className="tabs" style={{ marginBottom: '1rem' }}>
-        {([['verdicts', 'Verdicts'], ['leaks', 'Leaks'], ['proposals', 'Proposals'], ['bookmarks', 'Bookmarks']] as [ActivityTab, string][]).map(([k, l]) => (
+        {([['ratings', 'Ratings'], ['threads', 'Threads'], ['proposals', 'Proposals'], ['bookmarks', 'Bookmarks']] as [ActivityTab, string][]).map(([k, l]) => (
           <button key={k} className={`tab${tab === k ? ' is-active' : ''}`} onClick={() => setTab(k)}>
             {l}{lists?.[k]?.length ? <span className="tab__count">{lists[k].length}</span> : null}
           </button>

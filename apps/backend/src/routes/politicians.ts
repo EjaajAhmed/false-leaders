@@ -3,19 +3,13 @@ import { db } from '../db/client'
 import { authenticate, requireAdmin } from '../middleware/auth'
 import { notifyPoliticianUpdate } from '../services/notify'
 import { loadScoreConfig, recalculateScore } from '../services/score'
-import { getVerdictAggregate } from '../services/verdicts'
+import { ratingAggregate } from './ratings'
 import { enrichLeader, getHeadlines } from '../services/enrich'
 
 export const CATEGORIES = ['world_leader', 'politician', 'business', 'media', 'judiciary', 'religious', 'international', 'military', 'other']
 
 const VERDICT_JSON = `
-  (SELECT json_build_object(
-     'total', COUNT(*),
-     'guilty', COUNT(*) FILTER (WHERE verdict = 'guilty'),
-     'suspicious', COUNT(*) FILTER (WHERE verdict = 'suspicious'),
-     'unclear', COUNT(*) FILTER (WHERE verdict = 'unclear'),
-     'clean', COUNT(*) FILTER (WHERE verdict = 'clean')
-   ) FROM verdicts v WHERE v.politician_id = p.id) AS verdict_counts`
+  (SELECT json_build_object('n', COUNT(*), 'average', ROUND(AVG(score))) FROM ratings r WHERE r.politician_id = p.id) AS rating`
 
 const TOP_CONTROVERSY_JSON = `
   (SELECT json_build_object('id', c.id, 'title', c.title, 'level', c.level)
@@ -51,7 +45,7 @@ const CARD_COLUMNS = `
   p.id, p.name, p.party, p.region, p.position, p.country, p.category, p.prominence, p.age, p.bio, p.photo_url,
   p.attention, p.wiki_url, p.aliases, p.truth_score, p.latitude, p.longitude, p.created_at,
   (SELECT COUNT(*) FROM controversies c WHERE c.politician_id = p.id)::int AS controversy_count,
-  (SELECT COUNT(*) FROM leaks l WHERE l.politician_id = p.id AND l.status IN ('visible', 'escalated'))::int AS leak_count,
+  (SELECT COUNT(*) FROM threads t WHERE t.politician_id = p.id AND t.kind = 'leak' AND t.status = 'active')::int AS leak_count,
   ${VERDICT_JSON},
   ${TOP_CONTROVERSY_JSON}`
 
@@ -159,16 +153,17 @@ export async function politiciansRoutes(server: FastifyInstance) {
     if (rows.length === 0) return reply.status(404).send({ error: 'No such leader.' })
 
     const result = await recalculateScore(id)
-    const score = result?.score ?? Math.round(Number(rows[0].truth_score ?? 90))
+    const score = result ? result.score : (rows[0].truth_score == null ? null : Math.round(Number(rows[0].truth_score)))
 
-    const [{ rows: fresh }, verdicts, { rows: counts }] = await Promise.all([
-      db.query('SELECT score_history FROM politicians WHERE id = $1', [id]),
-      getVerdictAggregate(id),
+    const [{ rows: fresh }, rating, { rows: counts }] = await Promise.all([
+      db.query('SELECT score_history, score_components FROM politicians WHERE id = $1', [id]),
+      ratingAggregate(id),
       db.query(
         `SELECT
            (SELECT COUNT(*) FROM controversies WHERE politician_id = $1)::int AS controversies,
            (SELECT COUNT(*) FROM verdicts WHERE politician_id = $1)::int AS verdicts,
-           (SELECT COUNT(*) FROM leaks WHERE politician_id = $1 AND status IN ('visible', 'escalated'))::int AS leaks,
+           (SELECT COUNT(*) FROM threads WHERE politician_id = $1 AND kind = 'leak' AND status = 'active')::int AS leaks,
+           (SELECT COUNT(*) FROM ratings WHERE politician_id = $1)::int AS ratings,
            (SELECT COUNT(*) FROM threads WHERE politician_id = $1 AND status = 'active')::int AS threads,
            (SELECT COUNT(*) FROM comments WHERE politician_id = $1)::int AS comments`,
         [id]
@@ -182,7 +177,8 @@ export async function politiciansRoutes(server: FastifyInstance) {
       ...rows[0],
       truth_score: score,
       score_history: history.filter(p => p.d >= cutoff),
-      verdicts,
+      rating,
+      components: fresh[0]?.score_components || {},
       stats: counts[0],
     }
   })
@@ -207,7 +203,7 @@ export async function politiciansRoutes(server: FastifyInstance) {
 
     const { rows } = await db.query(
       `INSERT INTO politicians (name, party, region, position, bio, country, category, prominence, age, latitude, longitude, photo_url, aliases, truth_score, score_history)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 90, '[]') RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NULL, '[]') RETURNING *`,
       [
         String(name).trim(), party || null, region || null, position || null, bio || null,
         country || null,

@@ -1,16 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getPolitician, getGrafts, addBookmark, removeBookmark, checkBookmark, syncLeader, getLeaderNews, getVerdicts, getLeaks } from '../api/politicians'
+import { getPolitician, getGrafts, addBookmark, removeBookmark, checkBookmark, syncLeader, getLeaderNews } from '../api/politicians'
 import { useAuth } from '../context/AuthContext'
 import type { LeaderDetail } from '../types'
 import { Loading } from '../components/States'
 import Section from '../components/Section'
 import ScorePanel from '../components/ScorePanel'
 import SourcesDrawer from '../components/SourcesDrawer'
-import ScoreRing from '../components/ScoreRing'
-import Sparkline from '../components/Sparkline'
-import VerdictBar from '../components/VerdictBar'
 import { Redacted } from '../components/Redaction'
 import CareerLedger, { careerHeadline, usePositions } from '../components/leader/CareerLedger'
 import WatchSection, { useWatch, watchHeadline } from '../components/leader/WatchSection'
@@ -20,18 +17,19 @@ import FlagsSection, { flagsHeadline, useFlags } from '../components/leader/Flag
 import AttentionSection, { attentionHeadline, useAttention } from '../components/leader/AttentionSection'
 import RecordsSection, { recordsHeadline, useRecords } from '../components/leader/RecordsSection'
 import { PromisesList, ContradictionsList, promisesHeadline, contradictionsHeadline, usePromises } from '../components/leader/PromisesSection'
-import VerdictsTab from '../components/leader/VerdictsTab'
-import LeaksTab from '../components/leader/LeaksTab'
+import RateSection, { ratingHeadline, useRating } from '../components/leader/RateSection'
+import LeaksSection from '../components/leader/LeaksSection'
 import Discussion from '../components/leader/Discussion'
-import { categoryLabel, compact, formatDate, scoreLabel, verdictLabel } from '../lib/format'
+import { categoryLabel, compact, formatDate, scoreLabel } from '../lib/format'
 
-function ScoreStamp({ score, compactMode = false, onClick }: { score: number; compactMode?: boolean; onClick: () => void }) {
+function ScoreStamp({ score, compactMode = false, onClick }: { score: number | null; compactMode?: boolean; onClick: () => void }) {
+  const unrated = score == null
   return (
-    <button type="button" className={`score-stamp${compactMode ? ' score-stamp--compact' : ''}`} onClick={onClick} aria-label={`TruthScore ${score}. Show how it was produced.`}>
+    <button type="button" className={`score-stamp${compactMode ? ' score-stamp--compact' : ''}`} onClick={onClick} aria-label={unrated ? 'No TruthScore yet. Show why.' : `TruthScore ${score}. Show how it was produced.`}>
       {!compactMode && <span className="eyebrow">TruthScore</span>}
-      <span className="score-stamp__value">{score}</span>
-      <span className="score-stamp__bar" aria-hidden="true"><span style={{ width: `${Math.max(0, 100 - score)}%` }} /></span>
-      {!compactMode && <span className="score-stamp__hint">{scoreLabel(score)} · tap to interrogate</span>}
+      <span className="score-stamp__value" style={unrated ? { color: 'var(--dim)' } : undefined}>{unrated ? '—' : score}</span>
+      <span className="score-stamp__bar" aria-hidden="true"><span style={{ width: unrated ? '0%' : `${Math.max(0, 100 - (score as number))}%` }} /></span>
+      {!compactMode && <span className="score-stamp__hint">{unrated ? 'Unrated · tap to see why' : `${scoreLabel(score)} · tap to interrogate`}</span>}
     </button>
   )
 }
@@ -98,8 +96,7 @@ export default function Leader() {
   const attention = useAttention(id!)
   const records = useRecords(id!)
   const promises = usePromises(id!)
-  const verdicts = useQuery({ queryKey: ['verdicts', id], queryFn: () => getVerdicts(id!) })
-  const leaks = useQuery({ queryKey: ['leaks', id], queryFn: () => getLeaks(id!) })
+  const rating = useRating(id!)
   const news = useQuery({ queryKey: ['news', id], queryFn: () => getLeaderNews(id!), staleTime: 10 * 60 * 1000 })
   const sync = useMutation({ mutationFn: () => syncLeader(id!), onSuccess: () => { qc.invalidateQueries({ queryKey: ['politician', id] }); qc.invalidateQueries({ queryKey: ['positions', id] }); qc.invalidateQueries({ queryKey: ['watch', id] }); qc.invalidateQueries({ queryKey: ['sources', id] }) } })
 
@@ -134,7 +131,7 @@ export default function Leader() {
     )
   }
 
-  const score = Number(leader.truth_score)
+  const score = leader.truth_score == null ? null : Number(leader.truth_score)
   const political = POLITICAL.has(String(leader.category))
   const office = political && leader.current_office ? leader.current_office : leader.position
   const termStart = year(leader.term_start)
@@ -150,10 +147,8 @@ export default function Leader() {
   const rec = recordsHeadline(records.data)
   const prm = promisesHeadline(promises.data)
   const ctr = contradictionsHeadline(promises.data)
-  const agg = verdicts.data?.aggregate
-  const verdictHeadline = agg?.total ? `${agg.percentages[agg.dominant]}% ${verdictLabel(agg.dominant)}` : 'No verdicts yet'
-  const verdictSummary = agg?.total ? `${agg.total} member verdict${agg.total === 1 ? '' : 's'}. Community score ${agg.score} of 100. Opinions of site members, not findings of fact.` : 'No member has submitted a verdict. Verdicts are opinions of site members, not findings of fact.'
-  const leakCount = leaks.data?.length || 0
+  const rate = ratingHeadline(rating.data, score)
+  const leakCount = Number((leader.stats as any)?.leaks || 0)
   const newsCount = news.data?.items?.length || 0
 
   return (
@@ -229,23 +224,12 @@ export default function Leader() {
         {leader.wiki_url && <p className="section__caption">Summary adapted from <a href={leader.wiki_url} target="_blank" rel="noopener noreferrer" style={{ borderBottom: '1px solid var(--border-strong)' }}>Wikipedia</a>, CC BY-SA 4.0.</p>}
       </Section>
 
-      <Section id="verdicts" label="Community verdict" headline={verdictHeadline} summary={verdictSummary} open={focus === 'verdicts'}>
-        <div className="grid-2" style={{ marginBottom: '1.25rem' }}>
-          <div className="card" style={{ display: 'flex', justifyContent: 'space-around', gap: '1rem' }}>
-            <ScoreRing value={score} size="md" label="TruthScore" />
-            <ScoreRing value={agg?.score} size="md" label="Community" />
-          </div>
-          <div className="card">
-            <div className="row row--between" style={{ marginBottom: '0.5rem' }}><span className="eyebrow">TruthScore · 30 days</span></div>
-            <Sparkline points={leader.score_history || []} />
-            <div style={{ marginTop: '0.75rem' }}><VerdictBar counts={agg?.counts} size="lg" /></div>
-          </div>
-        </div>
-        <VerdictsTab leaderId={leader.id} />
+      <Section id="rating" label="Rate · members' score" headline={rate.headline} summary={rate.summary} open={focus === 'rating' || focus === 'verdicts'} defaultOpen={focus === 'rating' || focus === 'verdicts'}>
+        <RateSection leaderId={leader.id} leaderName={leader.name} score={score} history={leader.score_history || []} />
       </Section>
 
-      <Section id="leaks" label="Leaks" headline={`${leakCount} leak${leakCount === 1 ? '' : 's'}`} summary="Anonymous, unverified submissions from members. Upvoted leaks can lower the score; every deduction is logged with its source." open={focus === 'leaks'}>
-        <LeaksTab leaderId={leader.id} onGoTo={() => undefined} />
+      <Section id="leaks" label="Leaks" headline={`${leakCount} leak${leakCount === 1 ? '' : 's'}`} summary="Anonymous, unverified threads from members on the Leaks board. Leaks never move the score." open={focus === 'leaks'}>
+        <LeaksSection leaderId={leader.id} leaderName={leader.name} />
       </Section>
 
       <Section id="news" label="Coverage" headline={newsCount ? `${newsCount} headline${newsCount === 1 ? '' : 's'} · 30 days` : 'No indexed coverage'} summary={newsCount ? 'Recent English-language headlines indexed by GDELT. Presence in the news is not a judgement.' : 'GDELT has not indexed English-language coverage in the last 30 days, or the index is temporarily unavailable.'} open={focus === 'news'}>

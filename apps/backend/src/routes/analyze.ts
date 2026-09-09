@@ -1,7 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 import { requireAdmin } from '../middleware/auth'
-import { recalculateScore } from '../services/score'
 import { emitFeedEvent } from '../services/feed'
 
 async function fetchArticleText(url: string): Promise<string> {
@@ -154,9 +153,6 @@ ${combined.slice(0, 50000)}`
     for (const c of controversies) {
       await emitFeedEvent('controversy', id, leaderName, { title: c.title, level: c.level || 'speculative' })
     }
-    const result = await recalculateScore(id)
-    const score = result?.score ?? null
-
-    return { success: true, new_truth_score: score }
+    return { success: true }
   })
 }

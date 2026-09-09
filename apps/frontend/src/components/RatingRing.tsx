@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { scoreColor } from '../lib/format'
+import { ratingColor } from '../lib/format'
 
 interface Props {
   value: number | null | undefined
@@ -12,8 +12,9 @@ const DIMS = { sm: 44, md: 72, lg: 128, xl: 160 }
 const STROKE = { sm: 3, md: 5, lg: 8, xl: 9 }
 const FONT = { sm: '0.78rem', md: '1.2rem', lg: '2.2rem', xl: '2.8rem' }
 
-export default function ScoreRing({ value, size = 'md', label, sublabel }: Props) {
-  const target = value == null || isNaN(Number(value)) ? null : Math.max(0, Math.min(100, Math.round(Number(value))))
+/** Community rating ring. A null value renders as a dash: unrated, not zero. */
+export default function RatingRing({ value, size = 'md', label, sublabel }: Props) {
+  const target = value == null || isNaN(Number(value)) ? null : Math.max(0, Math.min(100, Math.floor(Number(value))))
   const [mounted, setMounted] = useState(false)
   const [display, setDisplay] = useState(0)
   const raf = useRef<number | null>(null)
@@ -22,7 +23,7 @@ export default function ScoreRing({ value, size = 'md', label, sublabel }: Props
   const stroke = STROKE[size]
   const r = (dim - stroke) / 2
   const c = 2 * Math.PI * r
-  const color = scoreColor(target)
+  const color = ratingColor(target)
 
   useEffect(() => {
     const t = requestAnimationFrame(() => setMounted(true))
@@ -32,12 +33,11 @@ export default function ScoreRing({ value, size = 'md', label, sublabel }: Props
   useEffect(() => {
     if (target == null) { setDisplay(0); return }
     const start = performance.now()
-    const from = 0
     const duration = 1300
     const step = (now: number) => {
       const p = Math.min(1, (now - start) / duration)
       const eased = 1 - Math.pow(1 - p, 3)
-      setDisplay(Math.round(from + (target - from) * eased))
+      setDisplay(Math.round(target * eased))
       if (p < 1) raf.current = requestAnimationFrame(step)
     }
     raf.current = requestAnimationFrame(step)

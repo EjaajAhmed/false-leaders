@@ -38,11 +38,11 @@ export default function AIAnalyzer({ politicianId, politicianName }: Props) {
       foreign_influence: (results.foreign_influence || []).filter((_: any, i: number) => selected.influence.has(i)),
       controversies: (results.controversies || []).filter((_: any, i: number) => selected.controversies.has(i)),
     })).data,
-    onSuccess: (data) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['politicians-admin'] })
       qc.invalidateQueries({ queryKey: ['politician', politicianId] })
       setResults(null); setUrls(''); setRawText('')
-      alert(`Saved. New TruthScore: ${data.new_truth_score}`)
+      alert('Saved.')
     },
     onError: e => setError(errorMessage(e)),
   })

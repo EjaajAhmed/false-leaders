@@ -16,7 +16,7 @@ export function categoryLabel(c: string | null | undefined): string {
   return CATEGORIES.find(x => x.value === c)?.label ?? 'Figure'
 }
 
-export function scoreColor(score: number | null | undefined): string {
+export function ratingColor(score: number | null | undefined): string {
   if (score == null || isNaN(Number(score))) return 'var(--dim)'
   const s = Number(score)
   if (s >= 75) return 'var(--score-clean)'
@@ -25,12 +25,13 @@ export function scoreColor(score: number | null | undefined): string {
   return 'var(--score-condemned)'
 }
 
-export function scoreLabel(score: number | null | undefined): string {
+/** Band label for a community rating. Bands are the same as the ring colours. */
+export function ratingLabel(score: number | null | undefined): string {
   if (score == null) return 'Unrated'
   const s = Number(score)
-  if (s >= 75) return 'Clean'
-  if (s >= 50) return 'Watch list'
-  if (s >= 25) return 'Warning'
+  if (s >= 75) return 'Trusted'
+  if (s >= 50) return 'Divided'
+  if (s >= 25) return 'Distrusted'
   return 'Condemned'
 }
 
@@ -110,9 +111,9 @@ export function feedText(e: FeedEvent): FeedText {
       const dir = delta < 0 ? 'dropped' : 'rose'
       const pts = Math.abs(delta)
       return {
-        before: 'TruthScore for ',
+        before: 'Archived score for ',
         after: ` ${dir} ${pts} point${pts === 1 ? '' : 's'}`,
-        label: 'Score',
+        label: 'Archive',
         detail: `${m.from} → ${m.to}`,
         deltaClass: delta < 0 ? 'delta-down' : 'delta-up',
       }
@@ -128,6 +129,8 @@ export function feedText(e: FeedEvent): FeedText {
       return { before: `Leak escalated to controversy: ${m.title} — `, after: '', label: 'Escalation' }
     case 'verdict_shift':
       return { before: 'Community verdict on ', after: ` shifted to ${verdictLabel(m.to)}`, label: 'Verdict' }
+    case 'rating_public':
+      return { before: 'Community rating for ', after: ` is now public: ${m.average} from ${m.count} ratings`, label: 'Rating' }
     case 'thread':
       return { before: `${m.who || 'Someone'} ${m.kind === 'verdict' ? 'posted a verdict on' : 'opened a thread on'} `, after: `: "${m.title}"`, label: m.kind === 'verdict' ? 'Verdict' : 'Forum' }
     default:

@@ -7,7 +7,7 @@ import FeedList from '../components/FeedList'
 import LeaderCard from '../components/LeaderCard'
 import Reveal from '../components/Reveal'
 import { Loading } from '../components/States'
-import { compact, scoreColor } from '../lib/format'
+import { compact, ratingColor } from '../lib/format'
 import { ARCHIVED } from '../config'
 import Stamp from '../components/Stamp'
 
@@ -61,7 +61,7 @@ function Hero({ leaders }: { leaders: number }) {
           <strong>{count.toLocaleString()}</strong> leaders under watch
         </p>
         <p className="muted" style={{ maxWidth: '52ch', marginTop: '1.25rem', fontSize: '0.95rem' }}>
-          Rate, investigate and judge the people in power. Heads of state, executives, judges, moguls, clerics. Members rate them 0 to 100; the world's press and sanctions lists fill in the rest. Every leak is anonymous.
+          Rate, investigate and judge the people in power. Heads of state, executives, judges, moguls, clerics. Members rate them 0 to 100. The average goes public once enough people have voted. Every leak is anonymous.
         </p>
         <div className="hero__actions">
           <Link to="/browse" className="btn btn--gold">Open the files</Link>
@@ -90,7 +90,7 @@ function Snapshot({ title, to, query, render }: { title: string; to: string; que
 export default function Home() {
   const stats = useQuery({ queryKey: ['stats'], queryFn: getStats })
   const feed = useQuery({ queryKey: ['feed', 'home'], queryFn: () => getFeed({ limit: 12 }), refetchInterval: 30000 })
-  const condemned = useQuery({ queryKey: ['leaderboard', 'condemned', 5], queryFn: () => getLeaderboard('condemned', 5) })
+  const lowest = useQuery({ queryKey: ['leaderboard', 'lowest', 5], queryFn: () => getLeaderboard('lowest', 5) })
   const watched = useQuery({ queryKey: ['leaderboard', 'watched', 5], queryFn: () => getLeaderboard('watched', 5) })
   const featured = useQuery({ queryKey: ['featured'], queryFn: getFeatured })
   const threads = useQuery({ queryKey: ['threads', 'home'], queryFn: () => getThreads({ sort: 'active', limit: 6 }), refetchInterval: 60000 })
@@ -134,9 +134,9 @@ export default function Home() {
                 )}
               />
               <Snapshot
-                title="Most Condemned"
-                to="/leaderboard?tab=condemned"
-                query={condemned}
+                title="Lowest Rated"
+                to="/leaderboard?tab=lowest"
+                query={lowest}
                 render={(p, i) => (
                   <Link key={p.id} to={`/leaders/${p.id}`} className="lb-row">
                     <span className="lb-row__rank">{String(i + 1).padStart(2, '0')}</span>
@@ -144,7 +144,7 @@ export default function Home() {
                       <div className="lb-row__name truncate">{p.name}</div>
                       <div className="lb-row__meta truncate">{p.position}</div>
                     </div>
-                    <div className="lb-row__value" style={{ color: scoreColor(p.truth_score == null ? null : Number(p.truth_score)) }}>{p.truth_score == null ? '—' : Math.round(Number(p.truth_score))}</div>
+                    <div className="lb-row__value" style={{ color: ratingColor(p.rating_avg == null ? null : Number(p.rating_avg)) }}>{p.rating_avg == null ? '—' : p.rating_avg}</div>
                   </Link>
                 )}
               />

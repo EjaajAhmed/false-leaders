@@ -9,7 +9,7 @@ import { getFlags } from '../services/opensanctions'
 import { getAttention } from '../services/attention'
 import { getCountryRecords, syncCountryRecords } from '../services/adapters'
 import { optionalAuth } from '../middleware/auth'
-import { getScoreEvents, getSources } from '../services/provenance'
+import { getSources } from '../services/provenance'
 import { lastRuns, listJobs, runJob } from '../services/jobs'
 
 // Mounted under /politicians. Each section is its own endpoint so a failing source degrades one section only.
@@ -78,11 +78,6 @@ export async function dossierRoutes(server: FastifyInstance) {
   server.get('/:id/sources', async (request) => {
     const { id } = request.params as { id: string }
     return getSources(id)
-  })
-
-  server.get('/:id/score-events', async (request) => {
-    const { id } = request.params as { id: string }
-    return getScoreEvents(id)
   })
 
   server.post('/:id/sync', { onRequest: [requireAdmin] }, async (request, reply) => {

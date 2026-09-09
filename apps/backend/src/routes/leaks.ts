@@ -2,7 +2,6 @@ import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 import { optionalAuth, requireAdmin, requireVerified } from '../middleware/auth'
 import { emitFeedEvent } from '../services/feed'
-import { recalculateScore } from '../services/score'
 import { notifyPoliticianUpdate } from '../services/notify'
 
 const MAX_BODY = 4000
@@ -81,7 +80,6 @@ export async function leaksRoutes(server: FastifyInstance) {
       [id]
     )
     if (rows.length === 0) return reply.status(404).send({ error: 'Not found.' })
-    await recalculateScore(rows[0].politician_id)
     return { upvoted, upvotes: rows[0].upvotes }
   })
 
@@ -135,12 +133,10 @@ export async function leaksRoutes(server: FastifyInstance) {
         title: controversyTitle, level: controversyLevel, controversy_id: created[0].id, leak_id: id,
       })
       await notifyPoliticianUpdate(leak.politician_id, leaderName, [`leak escalated to controversy: "${controversyTitle}"`])
-      await recalculateScore(leak.politician_id)
       return { success: true, status: 'escalated', controversy: created[0], reviewed_by: user.id }
     }
 
     await db.query('UPDATE leaks SET status = $1 WHERE id = $2', [status, id])
-    await recalculateScore(leak.politician_id)
     return { success: true, status }
   })
 }

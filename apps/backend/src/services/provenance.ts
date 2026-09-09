@@ -37,31 +37,3 @@ export async function getSources(politicianId: string) {
   return rows
 }
 
-/**
- * Append a score event. The database also refuses rows without a source URL;
- * this check exists so the failure is loud and early.
- */
-export async function recordScoreEvent(
-  politicianId: string,
-  kind: string,
-  points: number,
-  sourceUrl: string,
-  detail: Record<string, unknown> = {},
-  scores?: { before: number | null; after: number }
-): Promise<void> {
-  if (!sourceUrl || !sourceUrl.trim()) throw new Error(`Score event "${kind}" has no source URL and must not fire`)
-  await db.query(
-    `INSERT INTO score_events (politician_id, kind, points, score_before, score_after, source_url, detail)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [politicianId, kind, points, scores?.before ?? null, scores?.after ?? null, sourceUrl, JSON.stringify(detail)]
-  )
-}
-
-export async function getScoreEvents(politicianId: string, limit = 100) {
-  const { rows } = await db.query(
-    `SELECT id, kind, points, score_before, score_after, source_url, detail, created_at
-     FROM score_events WHERE politician_id = $1 ORDER BY created_at DESC LIMIT $2`,
-    [politicianId, limit]
-  )
-  return rows
-}

@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { getMapLeaders, getPoliticiansMeta } from '../api/politicians'
 import { VIEWS } from '../config'
 import type { ViewKey } from '../config'
-import ScoreRing from '../components/ScoreRing'
+import RatingRing from '../components/RatingRing'
 import { categoryLabel, leaderMeta } from '../lib/format'
 import 'leaflet/dist/leaflet.css'
 
@@ -65,8 +65,8 @@ export default function MapPage() {
       </div>
 
       <div className="map-legend map-legend--bottom" style={{ top: 'auto', bottom: '1.5rem' }}>
-        <div className="eyebrow">TruthScore</div>
-        {[['Clean · 75–90', COLORS.clean], ['Watch list · 50–74', COLORS.watch], ['Warning · 25–49', COLORS.warn], ['Condemned · 1–24', COLORS.condemned]].map(([label, color]) => (
+        <div className="eyebrow">Community rating</div>
+        {[['Trusted · 75–100', COLORS.clean], ['Divided · 50–74', COLORS.watch], ['Distrusted · 25–49', COLORS.warn], ['Condemned · 0–24', COLORS.condemned], ['Unrated', '#4a4640']].map(([label, color]) => (
           <div key={label} className="map-legend__item"><span className="map-legend__swatch" style={{ background: color }} />{label}</div>
         ))}
       </div>
@@ -82,7 +82,7 @@ export default function MapPage() {
           maxZoom={16}
         />
         {withCoords.map((p: any) => (
-          <Marker key={p.id} position={[Number(p.latitude), Number(p.longitude)]} icon={createIcon(p.truth_score == null ? null : Number(p.truth_score))}>
+          <Marker key={p.id} position={[Number(p.latitude), Number(p.longitude)]} icon={createIcon(p.rating_avg == null ? null : Number(p.rating_avg))}>
             <Popup minWidth={220} maxWidth={280}>
               <div className="row row--between" style={{ alignItems: 'flex-start', gap: '0.75rem' }}>
                 {p.photo_url && <img className="photo photo--popup" src={p.photo_url} alt="" />}
@@ -91,7 +91,7 @@ export default function MapPage() {
                   <p className="mono tiny" style={{ color: 'var(--gold)', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '0.2rem' }}>{categoryLabel(p.category)}</p>
                   <p className="muted small" style={{ marginTop: '0.1rem' }}>{leaderMeta(p)}</p>
                 </div>
-                {p.truth_score != null && <ScoreRing value={Number(p.truth_score)} size="sm" />}
+                <RatingRing value={p.rating_avg == null ? null : Number(p.rating_avg)} size="sm" />
               </div>
               {p.bio && <p className="small" style={{ margin: '0.6rem 0', color: '#b9b3a7' }}>{p.bio.length > 110 ? p.bio.slice(0, 110) + '…' : p.bio}</p>}
               <Link to={`/leaders/${p.id}`} className="btn btn--sm" style={{ marginTop: '0.4rem' }}>Open file</Link>

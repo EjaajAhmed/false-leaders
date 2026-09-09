@@ -8,7 +8,7 @@ import { CATEGORIES } from '../lib/format'
 import { VIEWS } from '../config'
 import type { ViewKey } from '../config'
 
-type Sort = 'prominence' | 'name' | 'score_asc' | 'score_desc' | 'newest'
+type Sort = 'prominence' | 'name' | 'rating_asc' | 'rating_desc' | 'newest'
 
 // Primary views shown in the bar. Specific categories and countries narrow across everyone on file.
 const PRIMARY = VIEWS.filter(v => v.key !== 'all')
@@ -67,8 +67,8 @@ export default function Browse() {
       position: position || undefined,
       min_age: minAge ? Number(minAge) : undefined,
       max_age: maxAge ? Number(maxAge) : undefined,
-      min_truth: minTruth ? Number(minTruth) : undefined,
-      max_truth: maxTruth ? Number(maxTruth) : undefined,
+      min_rating: minTruth ? Number(minTruth) : undefined,
+      max_rating: maxTruth ? Number(maxTruth) : undefined,
       sort, page, limit: 20,
     }),
     placeholderData: prev => prev,
@@ -125,8 +125,8 @@ export default function Browse() {
         <select className="select" style={{ width: 'auto' }} value={sort} onChange={e => { setSort(e.target.value as Sort); setPage(1) }}>
           <option value="prominence">Prominence</option>
           <option value="name">A–Z</option>
-          <option value="score_asc">Lowest score</option>
-          <option value="score_desc">Highest score</option>
+          <option value="rating_asc">Lowest rated</option>
+          <option value="rating_desc">Highest rated</option>
           <option value="newest">Newest files</option>
         </select>
         <button className={`btn${activeFilterCount > 0 ? ' is-active' : ''}`} onClick={() => setShowFilters(!showFilters)}>
@@ -160,11 +160,11 @@ export default function Browse() {
               </div>
             </div>
             <div className="field">
-              <label className="label">TruthScore</label>
+              <label className="label">Community rating</label>
               <div className="row" style={{ gap: '0.5rem' }}>
-                <input className="input" type="number" min={1} max={100} placeholder="Min" value={minTruth} onChange={e => set(setMinTruth)(e.target.value)} />
+                <input className="input" type="number" min={0} max={100} placeholder="Min" value={minTruth} onChange={e => set(setMinTruth)(e.target.value)} />
                 <span className="dim">–</span>
-                <input className="input" type="number" min={1} max={100} placeholder="Max" value={maxTruth} onChange={e => set(setMaxTruth)(e.target.value)} />
+                <input className="input" type="number" min={0} max={100} placeholder="Max" value={maxTruth} onChange={e => set(setMaxTruth)(e.target.value)} />
               </div>
             </div>
           </div>

@@ -1,11 +1,11 @@
 import client from './client'
-import type { FeedType, Level, ThreadKind } from '../types'
+import type { ApprovalPoll, FeedType, Level, ThreadKind } from '../types'
 
 // ── Leaders ──
 export const getPoliticians = async (filters?: {
   search?: string; country?: string; party?: string; position?: string; category?: string; view?: string
-  min_age?: number; max_age?: number; min_truth?: number; max_truth?: number
-  page?: number; limit?: number; sort?: 'name' | 'score_asc' | 'score_desc' | 'newest' | 'prominence'
+  min_age?: number; max_age?: number; min_rating?: number; max_rating?: number
+  page?: number; limit?: number; sort?: 'name' | 'rating_asc' | 'rating_desc' | 'newest' | 'prominence'
 }) => {
   const res = await client.get('/politicians', { params: filters })
   return res.data
@@ -38,7 +38,6 @@ export const syncLeaderMedia = async (id: string) => (await client.post(`/politi
 export const getSpikeQueue = async (status = 'draft') => (await client.get('/admin/spikes', { params: { status } })).data
 export const reviewSpike = async ({ id, ...data }: { id: string; status: string; summary?: string }) => (await client.patch(`/admin/spikes/${id}`, data)).data
 export const getLeaderSources = async (id: string) => (await client.get(`/politicians/${id}/sources`)).data
-export const getScoreEvents = async (id: string) => (await client.get(`/politicians/${id}/score-events`)).data
 
 export const getPoliticiansMeta = async () => {
   const res = await client.get('/politicians/meta')
@@ -59,7 +58,7 @@ export const getFeed = async (params?: { type?: FeedType | 'controversy'; before
   return res.data as { events: any[]; hasMore: boolean }
 }
 
-export type LeaderboardTab = 'condemned' | 'drop' | 'discussed' | 'leaked' | 'watched'
+export type LeaderboardTab = 'lowest' | 'highest' | 'discussed' | 'leaked' | 'watched'
 export const getLeaderboard = async (tab: LeaderboardTab, limit = 25) => {
   const res = await client.get(`/leaderboard/${tab}`, { params: { limit } })
   return res.data
@@ -71,10 +70,16 @@ export const postComment = async (data: { politician_id: string; body: string; i
   (await client.post('/comments', data)).data
 export const deleteComment = async (id: string) => (await client.delete(`/comments/${id}`)).data
 
-// ── Ratings (0–100 per member; 60% of the score) ──
+// ── Community rating (0–100 per member; average published after a minimum number of votes) ──
 export const getRating = async (id: string) => (await client.get(`/politicians/${id}/rating`)).data
 export const setRating = async ({ politician_id, score }: { politician_id: string; score: number }) => (await client.post(`/politicians/${politician_id}/rating`, { score })).data
 export const clearRating = async (id: string) => (await client.delete(`/politicians/${id}/rating`)).data
+
+// ── Approval polling (external, editor-entered with a source) ──
+export const getApproval = async (id: string) => (await client.get(`/politicians/${id}/approval`)).data as { latest: ApprovalPoll | null; polls: ApprovalPoll[] }
+export const listApprovalPolls = async () => (await client.get('/admin/approval-polls')).data as (ApprovalPoll & { leader_name: string })[]
+export const addApprovalPoll = async (data: { politician_id: string; pollster: string; approve: number; disapprove?: number | null; sample_size?: number | null; fieldwork_end: string; source_url: string; note?: string }) => (await client.post('/admin/approval-polls', data)).data as ApprovalPoll
+export const deleteApprovalPoll = async (id: string) => (await client.delete(`/admin/approval-polls/${id}`)).data
 
 // ── Controversies ──
 export const getControversies = async (politicianId: string) => (await client.get(`/controversies/${politicianId}`)).data

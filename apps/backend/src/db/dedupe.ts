@@ -9,7 +9,7 @@ import { db } from './client'
   for (const g of groups) {
     const [keep, ...drop] = g.ids as string[]
     for (const id of drop) {
-      for (const t of ['comments', 'votes', 'bookmarks', 'verdicts', 'leaks', 'controversies', 'funding_sources', 'foreign_influence', 'controversy_proposals', 'feed_events', 'score_events']) {
+      for (const t of ['comments', 'votes', 'bookmarks', 'verdicts', 'leaks', 'controversies', 'funding_sources', 'foreign_influence', 'controversy_proposals', 'feed_events', 'archived_score_events', 'approval_polls']) {
         const col = t === 'feed_events' ? 'leader_id' : 'politician_id'
         await db.query(`UPDATE ${t} SET ${col} = $1 WHERE ${col} = $2`, [keep, id]).catch(() => undefined)
       }

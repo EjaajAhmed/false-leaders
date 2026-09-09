@@ -1,5 +1,4 @@
 import { requireAdmin } from '../middleware/auth'
-import { recalculateScore } from '../services/score'
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 
@@ -24,14 +23,12 @@ export async function influenceRoutes(server: FastifyInstance) {
        RETURNING *`,
       [politician_id, country, country_code || null, Number(influence_score), notes || null]
     )
-    await recalculateScore(politician_id)
     return reply.status(201).send(rows[0])
   })
 
   server.delete('/:id', auth, async (request, reply) => {
     const { id } = request.params as { id: string }
     const { rows } = await db.query('DELETE FROM foreign_influence WHERE id = $1 RETURNING politician_id', [id])
-    if (rows[0]) await recalculateScore(rows[0].politician_id)
     return { success: true }
   })
 }

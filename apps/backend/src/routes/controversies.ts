@@ -2,7 +2,6 @@ import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 import { optionalAuth, requireAdmin, requireVerified } from '../middleware/auth'
 import { notifyPoliticianUpdate } from '../services/notify'
-import { recalculateScore } from '../services/score'
 import { emitFeedEvent } from '../services/feed'
 
 const LEVELS = ['confirmed', 'likely', 'maybe', 'speculative']
@@ -40,7 +39,6 @@ export async function controversiesRoutes(server: FastifyInstance) {
 
     await emitFeedEvent('controversy', politician_id, leaderName, { title, level, controversy_id: rows[0].id })
     await notifyPoliticianUpdate(politician_id, leaderName, [`new controversy added: "${title}"`])
-    await recalculateScore(politician_id)
 
     return reply.status(201).send(rows[0])
   })
@@ -71,7 +69,6 @@ export async function controversiesRoutes(server: FastifyInstance) {
       }
     }
     if (changes.length > 0) await notifyPoliticianUpdate(prev.politician_id, leaderName, changes)
-    await recalculateScore(prev.politician_id)
 
     return rows[0]
   })
@@ -79,7 +76,6 @@ export async function controversiesRoutes(server: FastifyInstance) {
   server.delete('/:id', admin, async (request) => {
     const { id } = request.params as { id: string }
     const { rows } = await db.query('DELETE FROM controversies WHERE id = $1 RETURNING politician_id', [id])
-    if (rows[0]) await recalculateScore(rows[0].politician_id)
     return { success: true }
   })
 

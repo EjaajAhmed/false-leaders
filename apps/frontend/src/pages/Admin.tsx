@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getPoliticians, getProposalQueue, reviewProposal, getSpikeQueue, reviewSpike, addDocument, scanContradictions, getPromiseQueue, reviewPromise, getContradictionQueue, reviewContradiction } from '../api/politicians'
+import { getPoliticians, listApprovalPolls, addApprovalPoll, deleteApprovalPoll, getProposalQueue, reviewProposal, getSpikeQueue, reviewSpike, addDocument, scanContradictions, getPromiseQueue, reviewPromise, getContradictionQueue, reviewContradiction } from '../api/politicians'
 import client, { errorMessage } from '../api/client'
 import AIAnalyzer from '../components/AIAnalyzer'
 import LevelBadge from '../components/LevelBadge'
@@ -48,6 +48,55 @@ function SpikeQueue() {
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+function ApprovalDesk({ leaders }: { leaders: any[] }) {
+  const qc = useQueryClient()
+  const blank = { leader: '', politician_id: '', pollster: '', approve: '', disapprove: '', sample_size: '', fieldwork_end: '', source_url: '', note: '' }
+  const [form, setForm] = useState(blank)
+  const [msg, setMsg] = useState('')
+  const polls = useQuery({ queryKey: ['approval-polls'], queryFn: listApprovalPolls })
+  const add = useMutation({
+    mutationFn: addApprovalPoll,
+    onSuccess: (p) => { setMsg(`Saved: ${p.pollster}, ${p.approve}% approve.`); qc.invalidateQueries({ queryKey: ['approval-polls'] }); qc.invalidateQueries({ queryKey: ['approval', p.politician_id] }); setForm(f => ({ ...blank, leader: f.leader, politician_id: f.politician_id, pollster: f.pollster })) },
+    onError: e => setMsg(errorMessage(e)),
+  })
+  const del = useMutation({ mutationFn: deleteApprovalPoll, onSuccess: () => qc.invalidateQueries({ queryKey: ['approval-polls'] }) })
+  const pick = (name: string) => { const l = leaders.find(x => x.name === name); setForm(f => ({ ...f, leader: name, politician_id: l?.id || '' })) }
+  const ready = form.politician_id && form.pollster.trim() && form.approve !== '' && /^\d{4}-\d{2}-\d{2}$/.test(form.fieldwork_end) && /^https?:\/\//.test(form.source_url)
+  return (
+    <div className="card" id="approval">
+      <div className="section-title"><h2>Approval polling</h2><span className="mono tiny dim">{polls.data?.length || 0} on file</span></div>
+      <p className="help" style={{ marginBottom: '1rem' }}>External approval numbers, shown on the leader page as a separate labelled stat with this source. They never feed the community rating. Enter the poll as published; the latest fieldwork date is what displays.</p>
+      <div className="grid-2" style={{ gap: '0.5rem' }}>
+        <div className="field"><label className="label">Leader</label><input className="input" list="approval-leader-names" value={form.leader} onChange={e => pick(e.target.value)} placeholder="Start typing a name" /><datalist id="approval-leader-names">{leaders.slice(0, 2000).map(l => <option key={l.id} value={l.name} />)}</datalist></div>
+        <div className="field"><label className="label">Pollster</label><input className="input" value={form.pollster} onChange={e => setForm({ ...form, pollster: e.target.value })} placeholder="Gallup, YouGov, Angus Reid…" /></div>
+        <div className="field"><label className="label">Approve %</label><input className="input mono" type="number" min={0} max={100} step={0.1} value={form.approve} onChange={e => setForm({ ...form, approve: e.target.value })} /></div>
+        <div className="field"><label className="label">Disapprove % (optional)</label><input className="input mono" type="number" min={0} max={100} step={0.1} value={form.disapprove} onChange={e => setForm({ ...form, disapprove: e.target.value })} /></div>
+        <div className="field"><label className="label">Fieldwork end</label><input className="input mono" type="date" value={form.fieldwork_end} onChange={e => setForm({ ...form, fieldwork_end: e.target.value })} /></div>
+        <div className="field"><label className="label">Sample size (optional)</label><input className="input mono" type="number" min={1} value={form.sample_size} onChange={e => setForm({ ...form, sample_size: e.target.value })} /></div>
+      </div>
+      <div className="field" style={{ marginTop: '0.5rem' }}><label className="label">Source URL</label><input className="input" value={form.source_url} onChange={e => setForm({ ...form, source_url: e.target.value })} placeholder="https://…" /></div>
+      <div className="field" style={{ marginTop: '0.5rem' }}><label className="label">Note (optional)</label><input className="input" value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} maxLength={500} placeholder="Question wording, population, caveats" /></div>
+      <div className="row row--wrap" style={{ marginTop: '0.9rem' }}>
+        <button className="btn btn--gold" disabled={!ready || add.isPending} onClick={() => add.mutate({ politician_id: form.politician_id, pollster: form.pollster.trim(), approve: Number(form.approve), disapprove: form.disapprove === '' ? null : Number(form.disapprove), sample_size: form.sample_size === '' ? null : Number(form.sample_size), fieldwork_end: form.fieldwork_end, source_url: form.source_url.trim(), note: form.note.trim() || undefined })}>{add.isPending ? 'Saving' : 'Save poll'}</button>
+        {msg && <span className="mono tiny" style={{ color: 'var(--gold)' }}>{msg}</span>}
+      </div>
+      {polls.data && polls.data.length > 0 && (
+        <div className="stack" style={{ gap: '0.4rem', marginTop: '1.25rem', maxHeight: 360, overflowY: 'auto' }}>
+          {polls.data.map((p: any) => (
+            <div key={p.id} className="row row--between" style={{ padding: '0.5rem 0.7rem', border: '1px solid var(--border)', background: 'var(--bg)', gap: '0.75rem' }}>
+              <div style={{ minWidth: 0 }}>
+                <p className="small truncate" style={{ fontWeight: 500 }}><Link to={`/leaders/${p.politician_id}`}>{p.leader_name}</Link> <span className="mono">{Math.round(Number(p.approve))}%</span>{p.disapprove != null && <span className="mono dim"> / {Math.round(Number(p.disapprove))}%</span>}</p>
+                <p className="tiny muted truncate">{p.pollster} · {p.fieldwork_end?.slice(0, 10)}{p.sample_size ? ` · n=${p.sample_size}` : ''} · <a href={p.source_url} target="_blank" rel="noopener noreferrer">source</a></p>
+              </div>
+              <button className="btn btn--ghost btn--sm btn--danger" onClick={() => { if (confirm('Remove this poll?')) del.mutate(p.id) }}>Remove</button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -190,25 +239,12 @@ export default function Admin() {
   const [search, setSearch] = useState('')
   const [broadcastSubject, setBroadcastSubject] = useState('')
   const [broadcastMessage, setBroadcastMessage] = useState('')
-  const [configValues, setConfigValues] = useState<Record<string, number>>({})
   const [saveError, setSaveError] = useState('')
 
   useEffect(() => { if (!user) navigate('/login') }, [user, navigate])
 
   const { data } = useQuery({ queryKey: ['politicians-admin'], queryFn: () => getPoliticians({ limit: 1000, include_unlinked: '1' } as any), enabled: !!user?.is_admin })
-  const { data: configData } = useQuery({
-    queryKey: ['truth-score-config'],
-    queryFn: async () => (await client.get('/config/truth-score')).data,
-    enabled: !!user?.is_admin,
-  })
 
-  useEffect(() => {
-    if (configData) {
-      const vals: Record<string, number> = {}
-      for (const c of configData) vals[c.key] = Number(c.value)
-      setConfigValues(vals)
-    }
-  }, [configData])
 
   const invalidateLeaders = () => {
     qc.invalidateQueries({ queryKey: ['politicians-admin'] })
@@ -227,14 +263,6 @@ export default function Admin() {
   const broadcast = useMutation({
     mutationFn: async () => (await client.post('/notifications/broadcast', { subject: broadcastSubject, message: broadcastMessage })).data,
     onSuccess: () => { setBroadcastSubject(''); setBroadcastMessage('') },
-  })
-  const saveConfig = useMutation({
-    mutationFn: async () => (await client.put('/config/truth-score', Object.entries(configValues).map(([key, value]) => ({ key, value: Number(value) })))).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['truth-score-config'] }),
-  })
-  const recalc = useMutation({
-    mutationFn: async () => (await client.post('/politicians/recalculate-all', {})).data,
-    onSuccess: (d) => { invalidateLeaders(); alert(`Recalculated ${d.updated} leaders. ${d.changed} changed.`) },
   })
 
   if (!user) return null
@@ -268,7 +296,7 @@ export default function Admin() {
         <p className="eyebrow">Restricted</p>
         <h1>Admin</h1>
         <div className="chips" style={{ marginTop: '0.75rem' }}>
-          {[['#spikes', 'Spike captions'], ['#promises', 'Promises'], ...(ARCHIVED.controversies ? [] : [['#proposals', 'Proposals']]), ['#weights', 'Weights'], ['#leader-form', 'Leaders'], ['#broadcast', 'Broadcast']].map(([href, label]) => (
+          {[['#spikes', 'Spike captions'], ['#promises', 'Promises'], ...(ARCHIVED.controversies ? [] : [['#proposals', 'Proposals']]), ['#approval', 'Approval polls'], ['#leader-form', 'Leaders'], ['#broadcast', 'Broadcast']].map(([href, label]) => (
             <a key={href} href={href} className="chip">{label}</a>
           ))}
         </div>
@@ -279,25 +307,7 @@ export default function Admin() {
         <PromiseDesk leaders={all} />
         {!ARCHIVED.controversies && <ProposalQueue />}
 
-        <div className="card" id="weights">
-          <div className="section-title"><h2>TruthScore weights</h2></div>
-          <p className="help" style={{ marginBottom: '1rem' }}>
-            Score starts at the base and is reduced by community verdicts (Guilty and Suspicious shares, scaled by how many verdicts exist) and by upvoted leaks. Floor is 1.
-          </p>
-          <div className="grid-2" style={{ gap: '0.75rem' }}>
-            {configData?.filter((c: any) => !c.archived).map((c: any) => (
-              <div key={c.key} className="field">
-                <label className="label">{c.label}</label>
-                <input className="input mono" type="number" value={configValues[c.key] ?? c.value} onChange={e => setConfigValues(prev => ({ ...prev, [c.key]: Number(e.target.value) }))} />
-              </div>
-            ))}
-          </div>
-          <div className="row row--wrap" style={{ marginTop: '1rem' }}>
-            <button className="btn btn--gold" onClick={() => saveConfig.mutate()} disabled={saveConfig.isPending}>{saveConfig.isPending ? 'Saving' : 'Save weights'}</button>
-            <button className="btn" onClick={() => recalc.mutate()} disabled={recalc.isPending}>{recalc.isPending ? 'Recalculating' : 'Recalculate all scores'}</button>
-            {saveConfig.isSuccess && <span className="mono tiny" style={{ color: 'var(--gold)' }}>Saved. Recalculate to apply.</span>}
-          </div>
-        </div>
+        <ApprovalDesk leaders={all} />
 
         <div className="card" id="leader-form">
           <div className="section-title"><h2>{editing ? 'Edit leader' : 'Add leader'}</h2>{editing && <span className="mono tiny dim">{editing}</span>}</div>
@@ -324,7 +334,7 @@ export default function Admin() {
             <label className="label">Bio</label>
             <textarea className="textarea" value={form.bio} onChange={e => setForm({ ...form, bio: e.target.value })} rows={3} />
           </div>
-          <p className="help" style={{ marginTop: '0.6rem' }}>TruthScore is derived from controversies, funding and foreign influence. It is not editable.</p>
+          <p className="help" style={{ marginTop: '0.6rem' }}>The community rating comes only from member votes and cannot be edited here.</p>
           {saveError && <div className="error" style={{ marginTop: '0.75rem' }}>{saveError}</div>}
           <div className="row" style={{ marginTop: '0.9rem' }}>
             <button className="btn btn--gold" onClick={() => save.mutate(form)} disabled={!form.name.trim() || save.isPending}>{save.isPending ? 'Saving' : editing ? 'Save changes' : 'Add leader'}</button>
@@ -355,7 +365,7 @@ export default function Admin() {
             {filtered.map((p: any) => (
               <div key={p.id} className="row row--between" style={{ padding: '0.55rem 0.7rem', border: '1px solid var(--border)', background: 'var(--bg)' }}>
                 <div style={{ minWidth: 0 }}>
-                  <p className="small truncate" style={{ fontWeight: 500 }}>{p.name} <span className="mono dim">{Math.round(Number(p.truth_score))}</span></p>
+                  <p className="small truncate" style={{ fontWeight: 500 }}>{p.name} <span className="mono dim">{p.rating_avg == null ? `— (${p.rating_count ?? 0})` : `${p.rating_avg} (${p.rating_count})`}</span></p>
                   <p className="tiny muted truncate">{[p.position, p.party].filter(Boolean).join(' · ')}</p>
                 </div>
                 <div className="row" style={{ gap: '0.3rem' }}>

@@ -1,6 +1,5 @@
 import { db } from '../db/client'
 import { generateText } from './gemini'
-import { recalculateScore } from './score'
 
 const SITE = process.env.FRONTEND_URL || 'https://falseleaders.com'
 
@@ -118,6 +117,6 @@ export async function getContradictions(politicianId: string, includeDrafts = fa
   return rows
 }
 
-export async function afterPromiseReview(politicianId: string) {
-  await recalculateScore(politicianId)
+export async function afterPromiseReview(_politicianId: string) {
+  // Promises no longer move any score; kept so callers stay unchanged.
 }

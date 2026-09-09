@@ -20,7 +20,7 @@ Information about a politician's record is public but scattered across lobbying 
 - **Scoring model** — each politician carries a rating derived from a configurable ruleset. Weights and deduction rules live in the database and are served through a config endpoint, so the model can be tuned without a redeploy.
 - **Article analyzer** — submits news articles to an LLM to extract structured, reviewable claims rather than free-form summaries.
 - **Riding map** — Leaflet map built from parsed electoral coordinate data.
-- **Charts** — Recharts breakdowns of funding and score composition.
+- **Community rating** — members rate each leader 0–100; the floored average is published once enough members have voted. External approval polling is shown separately with its source.
 - **Accounts** — JWT authentication with bcrypt password hashing, email verification via Resend, and rate limiting on sensitive routes. Verified users can comment, vote, and bookmark politicians.
 - **Notifications** — updates on bookmarked politicians.
 

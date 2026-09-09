@@ -64,7 +64,7 @@ export default function FlagsSection({ leaderId, name }: { leaderId: string; nam
                 <td>{s.authority || s.dataset || '—'}{s.reason ? <div className="tiny muted" style={{ marginTop: '0.2rem', maxWidth: '40ch' }}>{s.reason.slice(0, 220)}{s.reason.length > 220 ? '…' : ''}</div> : null}</td>
                 <td className="small">{s.program || '—'}</td>
                 <td className="mono small">{s.listing_date || s.start_date || '—'}</td>
-                <td className="mono tiny" title={s.scored ? 'Counts toward the TruthScore' : 'Shown but not scored'}>{s.scored ? 'yes' : 'no'}</td>
+                <td className="mono tiny" title={s.scored ? 'Listed by a recognised sanctions authority' : 'Listed only by a state outside the recognised set'}>{s.scored ? 'yes' : 'no'}</td>
                 <td><a href={s.source_url} target="_blank" rel="noopener noreferrer" className="mono tiny" style={{ borderBottom: '1px solid var(--border-strong)' }}>Open</a></td>
               </tr>
             ))}

@@ -16,7 +16,6 @@ import { controversiesRoutes } from './routes/controversies'
 import { notificationsRoutes } from './routes/notifications'
 import { fundingRoutes } from './routes/funding'
 import { influenceRoutes } from './routes/influence'
-import { configRoutes } from './routes/config'
 import { analyzeRoutes } from './routes/analyze'
 import { leaderVerdictRoutes, verdictsRoutes } from './routes/verdicts'
 import { leaderLeakRoutes, leaksRoutes } from './routes/leaks'
@@ -27,6 +26,7 @@ import { adminRoutes, dossierRoutes } from './routes/dossier'
 import { leaderPromiseRoutes, promiseAdminRoutes } from './routes/promises'
 import { forumRoutes } from './routes/forum'
 import { ratingRoutes } from './routes/ratings'
+import { approvalRoutes, approvalAdminRoutes } from './routes/approval'
 import { NIGHTLY_ORDER } from './services/nightly'
 import { startScheduler } from './services/jobs'
 
@@ -105,6 +105,8 @@ server.register(leaderPromiseRoutes, { prefix: '/politicians' })
 server.register(promiseAdminRoutes, { prefix: '/admin' })
 server.register(forumRoutes, { prefix: '/forum' })
 server.register(ratingRoutes, { prefix: '/politicians' })
+server.register(approvalRoutes, { prefix: '/politicians' })
+server.register(approvalAdminRoutes, { prefix: '/admin' })
 server.register(verdictsRoutes, { prefix: '/verdicts' })
 server.register(leaksRoutes, { prefix: '/leaks' })
 server.register(proposalsRoutes, { prefix: '/controversy-proposals' })
@@ -119,7 +121,6 @@ server.register(controversiesRoutes, { prefix: '/controversies' })
 server.register(notificationsRoutes, { prefix: '/notifications' })
 server.register(fundingRoutes, { prefix: '/funding' })
 server.register(influenceRoutes, { prefix: '/influence' })
-server.register(configRoutes, { prefix: '/config' })
 
 server.get('/health', async () => ({ status: 'ok' }))
 

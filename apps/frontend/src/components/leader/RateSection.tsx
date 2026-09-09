@@ -4,32 +4,31 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRating, setRating, clearRating, getThreads } from '../../api/politicians'
 import { errorMessage } from '../../api/client'
 import { useAuth } from '../../context/AuthContext'
-import ScoreRing from '../ScoreRing'
-import Sparkline from '../Sparkline'
+import RatingRing from '../RatingRing'
 import ThreadRow from '../forum/ThreadRow'
 import ThreadComposer from '../forum/ThreadComposer'
 import { Empty, Loading } from '../States'
-import type { ScorePoint } from '../../types'
+import { ratingLabel } from '../../lib/format'
 
-export const COMMUNITY_WEIGHT = 60
-export const EXTERNAL_WEIGHT = 40
 const BINS = ['0–24', '25–49', '50–74', '75–100']
 
 export function useRating(leaderId: string) {
   return useQuery({ queryKey: ['rating', leaderId], queryFn: () => getRating(leaderId) })
 }
 
-export function ratingHeadline(data: any, score: number | null) {
+/** Collapsed-state copy for the Rate section. Never shows an average below the publication threshold. */
+export function ratingHeadline(data: any) {
   const n = Number(data?.n || 0)
-  if (!n) {
+  const min = Number(data?.min_votes || 5)
+  if (data?.average != null) {
     return {
-      headline: score == null ? 'Unrated' : 'No member ratings yet',
-      summary: `Members rate this person from 0 to 100. Their average is ${COMMUNITY_WEIGHT}% of the TruthScore; the other ${EXTERNAL_WEIGHT}% is a signal from outside this site.`,
+      headline: `${data.average} / 100 · ${n} rating${n === 1 ? '' : 's'}`,
+      summary: `${ratingLabel(data.average)}. The floored average of member ratings, 0 to 100. Opinions of members, not findings of fact.`,
     }
   }
   return {
-    headline: `Members: ${data.average} / 100`,
-    summary: `${n} rating${n === 1 ? '' : 's'} from members. That average is ${COMMUNITY_WEIGHT}% of the TruthScore; the other ${EXTERNAL_WEIGHT}% comes from outside this site. Opinions of members, not findings of fact.`,
+    headline: n ? `Unrated · ${n} of ${min} ratings` : 'Unrated',
+    summary: `Members rate this person from 0 to 100. The average is published once ${min} members have rated, so a single vote never stands in for the crowd.`,
   }
 }
 
@@ -45,7 +44,7 @@ function Histogram({ bins }: { bins: number[] }) {
   )
 }
 
-export default function RateSection({ leaderId, leaderName, score, history }: { leaderId: string; leaderName: string; score: number | null; history: ScorePoint[] }) {
+export default function RateSection({ leaderId, leaderName }: { leaderId: string; leaderName: string }) {
   const { user } = useAuth()
   const qc = useQueryClient()
   const verified = !!user?.email_verified
@@ -61,7 +60,6 @@ export default function RateSection({ leaderId, leaderName, score, history }: { 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['rating', leaderId] })
     qc.invalidateQueries({ queryKey: ['politician', leaderId] })
-    qc.invalidateQueries({ queryKey: ['score-events', leaderId] })
   }
   const submit = useMutation({
     mutationFn: setRating,
@@ -71,38 +69,22 @@ export default function RateSection({ leaderId, leaderName, score, history }: { 
   const withdraw = useMutation({ mutationFn: () => clearRating(leaderId), onSuccess: () => { invalidate(); setValue(50); setTouched(false) } })
   const verdicts = useQuery({ queryKey: ['threads', 'leader', leaderId, 'verdict'], queryFn: () => getThreads({ leader: leaderId, kind: 'verdict', sort: 'new', limit: 10 }) })
 
-  const comp = data?.components || {}
-  const community = comp.community == null ? null : Math.round(Number(comp.community))
-  const external = comp.external == null ? null : Math.round(Number(comp.external))
+  const n = Number(data?.n || 0)
+  const min = Number(data?.min_votes || 5)
+  const average: number | null = data?.average ?? null
   const mine: number | null = data?.mine ?? null
 
   return (
     <div>
       <div className="grid-2" style={{ marginBottom: '1.25rem' }}>
-        <div className="card" style={{ display: 'flex', justifyContent: 'space-around', gap: '1rem' }}>
-          <ScoreRing value={score} size="md" label="TruthScore" />
-          <ScoreRing value={data?.average} size="md" label="Members" sublabel={data?.n ? `${data.n} rating${data.n === 1 ? '' : 's'}` : 'none yet'} />
+        <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', gap: '1rem' }}>
+          <RatingRing value={average} size="lg" label="Community rating" sublabel={average != null ? `${n} rating${n === 1 ? '' : 's'}` : n ? `${n} of ${min} ratings` : 'no ratings yet'} />
         </div>
         <div className="card">
-          <div className="eyebrow" style={{ marginBottom: '0.5rem' }}>How it combines</div>
-          <div className="breakdown">
-            <div className="breakdown__row"><span>Members' ratings</span><span className="mono tiny dim">{COMMUNITY_WEIGHT}%</span><span className="mono">{community == null ? <span className="dim">—</span> : community}</span></div>
-            <div className="breakdown__row"><span>Outside signal</span><span className="mono tiny dim">{EXTERNAL_WEIGHT}%</span><span className="mono">{external == null ? <span className="dim">—</span> : external}</span></div>
-          </div>
-          <p className="help" style={{ marginTop: '0.6rem' }}>
-            {community == null && external == null && 'Neither part exists yet, so there is no score.'}
-            {community == null && external != null && 'No member ratings yet, so the score is the outside signal alone until members rate.'}
-            {community != null && external == null && 'No outside signal yet, so the score is the members’ average alone.'}
-            {community != null && external != null && 'Both parts exist. Members are shrunk toward 50 while ratings are few.'}
-            {' '}The outside signal is the share of world press coverage that is not negative in tone, less a deduction for listings by scoring sanctions authorities. Tap the score for every event.
-          </p>
-          {history?.length > 1 && <div style={{ marginTop: '0.6rem' }}><Sparkline points={history} /></div>}
+          <div className="row row--between" style={{ marginBottom: '0.6rem' }}><span className="eyebrow">Distribution</span><span className="mono tiny dim">{n} total</span></div>
+          {isLoading ? <Loading /> : n ? <Histogram bins={data.bins || [0, 0, 0, 0]} /> : <p className="small dim">No ratings yet. The first one sets the tone.</p>}
+          {average == null && n > 0 && <p className="help" style={{ marginTop: '0.6rem' }}>The average is withheld until {min} members have rated. {min - n} more to go.</p>}
         </div>
-      </div>
-
-      <div className="card" style={{ marginBottom: '1.25rem' }}>
-        <div className="row row--between" style={{ marginBottom: '0.6rem' }}><span className="eyebrow">Distribution of member ratings</span><span className="mono tiny dim">{data?.n || 0} total</span></div>
-        {isLoading ? <Loading /> : data?.n ? <Histogram bins={data.bins || [0, 0, 0, 0]} /> : <p className="small dim">No ratings yet. The first one sets the tone.</p>}
       </div>
 
       {!user && <div className="notice notice--plain" style={{ marginBottom: '1.25rem' }}><Link to="/login" style={{ color: 'var(--gold)' }}>Sign in</Link> to rate {leaderName}. One rating per account, changeable any time.</div>}
@@ -127,7 +109,7 @@ export default function RateSection({ leaderId, leaderName, score, history }: { 
             <button className={`btn btn--ghost${explaining ? ' is-active' : ''}`} onClick={() => setExplaining(!explaining)}>{explaining ? 'Close' : 'Explain it on the forum'}</button>
             {done && <span className="mono tiny" style={{ color: 'var(--gold)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Filed.</span>}
           </div>
-          <p className="help">Ratings are always private to your account: nobody sees who rated what, only the average and the spread.</p>
+          <p className="help">Ratings are private to your account: nobody sees who rated what, only the average and the spread.</p>
         </div>
       )}
 

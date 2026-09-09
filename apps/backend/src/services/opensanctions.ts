@@ -3,7 +3,6 @@ import { Readable } from 'stream'
 import { Agent } from 'undici'
 import { db } from '../db/client'
 import { recordSource } from './provenance'
-import { recalculateScore, loadScoreConfig } from './score'
 
 const UA = 'FalseLeaders/1.0 (https://falseleaders.com; noreply@falseleaders.com)'
 const agent = new Agent({ connect: { timeout: 30000 }, bodyTimeout: 0, headersTimeout: 60000 })
@@ -200,15 +199,13 @@ export async function syncOpenSanctions(log: (m: string) => void = () => undefin
     client.release()
   }
 
-  // Provenance + score for sanctioned leaders
-  const cfg = await loadScoreConfig()
+  // Provenance for sanctioned leaders
   for (const l of leaders) {
     const ms = byLeader.get(l.id) || []
     const pep = peps.get(l.qid!)
     if (ms.length || pep) {
       await recordSource(l.id, 'flags', { sanctions_entities: ms.map(m => m.entityId), pep: !!pep }, { name: 'OpenSanctions', url: entityUrl(ms[0]?.entityId || l.qid!), license: LICENSE })
     }
-    await recalculateScore(l.id, cfg)
   }
   return { leaders: leaders.length, matched: matches.size, flagged, peps: peps.size, edges }
 }

@@ -1,12 +1,10 @@
 import 'dotenv/config'
 import { db } from './client'
 import { LEADERS, PROMINENCE } from './seed/leaders'
-import { loadScoreConfig, recalculateScore } from '../services/score'
 
 const YEAR = new Date().getFullYear()
 
 async function seed() {
-  const cfg = await loadScoreConfig()
   let inserted = 0
   let updated = 0
   let skipped = 0
@@ -30,11 +28,10 @@ async function seed() {
     }
 
     const { rows } = await db.query(
-      `INSERT INTO politicians (name, position, country, party, region, latitude, longitude, age, category, prominence, bio, truth_score, score_history)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 90, '[]') RETURNING id`,
+      `INSERT INTO politicians (name, position, country, party, region, latitude, longitude, age, category, prominence, bio)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
       [name, position, country, party, region, lat, lng, birthYear ? YEAR - birthYear : null, category, prominence, bio]
     )
-    await recalculateScore(rows[0].id, cfg)
     inserted++
   }
 

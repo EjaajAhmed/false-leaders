@@ -129,7 +129,7 @@ export async function authRoutes(server: FastifyInstance) {
     const user = (request as any).user
     const [{ rows: verdicts }, { rows: leaks }, { rows: bookmarks }, { rows: proposals }] = await Promise.all([
       db.query(
-        `SELECT r.score, r.updated_at, p.id AS leader_id, p.name AS leader_name, p.truth_score
+        `SELECT r.score, r.updated_at, p.id AS leader_id, p.name AS leader_name, p.rating_avg, p.rating_count
          FROM ratings r JOIN politicians p ON p.id = r.politician_id
          WHERE r.user_id = $1 ORDER BY r.updated_at DESC LIMIT 200`,
         [user.id]
@@ -142,7 +142,7 @@ export async function authRoutes(server: FastifyInstance) {
       ),
       db.query(
         `SELECT b.id, b.created_at, b.graft_id, g.name AS graft_name,
-                p.id AS leader_id, p.name AS leader_name, p.position, p.truth_score
+                p.id AS leader_id, p.name AS leader_name, p.position, p.rating_avg, p.rating_count
          FROM bookmarks b JOIN politicians p ON p.id = b.politician_id
          LEFT JOIN grafts g ON g.id = b.graft_id
          WHERE b.user_id = $1 ORDER BY b.created_at DESC LIMIT 200`,

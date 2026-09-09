@@ -2,14 +2,12 @@ import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 import { authenticate, requireAdmin } from '../middleware/auth'
 import { notifyPoliticianUpdate } from '../services/notify'
-import { loadScoreConfig, recalculateScore } from '../services/score'
-import { ratingAggregate } from './ratings'
+import { ratingAggregate } from '../services/rating'
 import { enrichLeader, getHeadlines } from '../services/enrich'
 
 export const CATEGORIES = ['world_leader', 'politician', 'business', 'media', 'judiciary', 'religious', 'international', 'military', 'other']
 
-const VERDICT_JSON = `
-  (SELECT json_build_object('n', COUNT(*), 'average', ROUND(AVG(score))) FROM ratings r WHERE r.politician_id = p.id) AS rating`
+const RATING_JSON = `json_build_object('n', p.rating_count, 'average', p.rating_avg) AS rating`
 
 const TOP_CONTROVERSY_JSON = `
   (SELECT json_build_object('id', c.id, 'title', c.title, 'level', c.level)
@@ -43,10 +41,10 @@ export function viewCondition(view: string | undefined): string | null {
 
 const CARD_COLUMNS = `
   p.id, p.name, p.party, p.region, p.position, p.country, p.category, p.prominence, p.age, p.bio, p.photo_url,
-  p.attention, p.wiki_url, p.aliases, p.truth_score, p.latitude, p.longitude, p.created_at,
+  p.attention, p.wiki_url, p.aliases, p.rating_avg, p.rating_count, p.latitude, p.longitude, p.created_at,
   (SELECT COUNT(*) FROM controversies c WHERE c.politician_id = p.id)::int AS controversy_count,
   (SELECT COUNT(*) FROM threads t WHERE t.politician_id = p.id AND t.kind = 'leak' AND t.status = 'active')::int AS leak_count,
-  ${VERDICT_JSON},
+  ${RATING_JSON},
   ${TOP_CONTROVERSY_JSON}`
 
 function parseAliases(input: unknown): string[] {
@@ -59,7 +57,7 @@ export async function politiciansRoutes(server: FastifyInstance) {
   const admin = { onRequest: [requireAdmin] }
 
   server.get('/', async (request) => {
-    const { search, country, party, position, category, view, min_age, max_age, min_truth, max_truth, page, limit, sort, include_unlinked } = request.query as any
+    const { search, country, party, position, category, view, min_age, max_age, min_rating, max_rating, page, limit, sort, include_unlinked } = request.query as any
 
     const pageNum = Math.max(1, Number(page) || 1)
     const limitNum = Math.min(1000, Math.max(1, Number(limit) || 20))
@@ -83,15 +81,17 @@ export async function politiciansRoutes(server: FastifyInstance) {
     if (viewSql) where += ` AND ${viewSql}`
     if (min_age) { where += ` AND p.age >= $${i}`; params.push(Number(min_age)); i++ }
     if (max_age) { where += ` AND p.age <= $${i}`; params.push(Number(max_age)); i++ }
-    if (min_truth) { where += ` AND p.truth_score >= $${i}`; params.push(Number(min_truth)); i++ }
-    if (max_truth) { where += ` AND p.truth_score <= $${i}`; params.push(Number(max_truth)); i++ }
+    if (min_rating) { where += ` AND p.rating_avg >= $${i}`; params.push(Number(min_rating)); i++ }
+    if (max_rating) { where += ` AND p.rating_avg <= $${i}`; params.push(Number(max_rating)); i++ }
 
     const orderBy = {
       name: 'p.name ASC',
-      score_asc: 'p.truth_score ASC NULLS LAST, p.name ASC',
-      score_desc: 'p.truth_score DESC NULLS LAST, p.name ASC',
+      rating_asc: 'p.rating_avg ASC NULLS LAST, p.rating_count DESC, p.name ASC',
+      rating_desc: 'p.rating_avg DESC NULLS LAST, p.rating_count DESC, p.name ASC',
+      score_asc: 'p.rating_avg ASC NULLS LAST, p.rating_count DESC, p.name ASC',
+      score_desc: 'p.rating_avg DESC NULLS LAST, p.rating_count DESC, p.name ASC',
       newest: 'p.created_at DESC',
-      prominence: 'p.prominence DESC, p.truth_score ASC NULLS LAST, p.name ASC',
+      prominence: 'p.prominence DESC, p.rating_count DESC, p.name ASC',
     }[String(sort) as 'name'] || 'p.name ASC'
 
     const countResult = await db.query(`SELECT COUNT(*) ${where}`, params)
@@ -136,9 +136,9 @@ export async function politiciansRoutes(server: FastifyInstance) {
     if (viewSql) where += ` AND ${viewSql}`
     if (country) { params.push(`%${country}%`); where += ` AND p.country ILIKE $${params.length}` }
     const { rows } = await db.query(
-      `SELECT p.id, p.name, p.position, p.party, p.country, p.category, p.prominence, p.truth_score, p.latitude, p.longitude,
+      `SELECT p.id, p.name, p.position, p.party, p.country, p.category, p.prominence, p.rating_avg, p.rating_count, p.latitude, p.longitude,
               p.photo_url, p.attention, LEFT(p.bio, 140) AS bio,
-              ${VERDICT_JSON}
+              ${RATING_JSON}
        FROM politicians p ${where}
        ORDER BY p.prominence DESC, p.name ASC
        LIMIT 2000`,
@@ -152,33 +152,21 @@ export async function politiciansRoutes(server: FastifyInstance) {
     const { rows } = await db.query('SELECT * FROM politicians WHERE id = $1', [id])
     if (rows.length === 0) return reply.status(404).send({ error: 'No such leader.' })
 
-    const result = await recalculateScore(id)
-    const score = result ? result.score : (rows[0].truth_score == null ? null : Math.round(Number(rows[0].truth_score)))
-
-    const [{ rows: fresh }, rating, { rows: counts }] = await Promise.all([
-      db.query('SELECT score_history, score_components FROM politicians WHERE id = $1', [id]),
+    const [rating, { rows: counts }] = await Promise.all([
       ratingAggregate(id),
       db.query(
         `SELECT
            (SELECT COUNT(*) FROM controversies WHERE politician_id = $1)::int AS controversies,
-           (SELECT COUNT(*) FROM verdicts WHERE politician_id = $1)::int AS verdicts,
            (SELECT COUNT(*) FROM threads WHERE politician_id = $1 AND kind = 'leak' AND status = 'active')::int AS leaks,
            (SELECT COUNT(*) FROM ratings WHERE politician_id = $1)::int AS ratings,
-           (SELECT COUNT(*) FROM threads WHERE politician_id = $1 AND status = 'active')::int AS threads,
-           (SELECT COUNT(*) FROM comments WHERE politician_id = $1)::int AS comments`,
+           (SELECT COUNT(*) FROM threads WHERE politician_id = $1 AND status = 'active')::int AS threads`,
         [id]
       ),
     ])
 
-    const history: { d: string; s: number }[] = Array.isArray(fresh[0]?.score_history) ? fresh[0].score_history : []
-    const cutoff = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
-
     return {
       ...rows[0],
-      truth_score: score,
-      score_history: history.filter(p => p.d >= cutoff),
       rating,
-      components: fresh[0]?.score_components || {},
       stats: counts[0],
     }
   })
@@ -202,8 +190,8 @@ export async function politiciansRoutes(server: FastifyInstance) {
     if (!name || !String(name).trim()) return reply.status(400).send({ error: 'Name required.' })
 
     const { rows } = await db.query(
-      `INSERT INTO politicians (name, party, region, position, bio, country, category, prominence, age, latitude, longitude, photo_url, aliases, truth_score, score_history)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NULL, '[]') RETURNING *`,
+      `INSERT INTO politicians (name, party, region, position, bio, country, category, prominence, age, latitude, longitude, photo_url, aliases)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
       [
         String(name).trim(), party || null, region || null, position || null, bio || null,
         country || null,
@@ -216,21 +204,8 @@ export async function politiciansRoutes(server: FastifyInstance) {
         parseAliases(aliases),
       ]
     )
-    await recalculateScore(rows[0].id)
     enrichLeader(rows[0].id).catch(() => undefined)
     return reply.status(201).send(rows[0])
-  })
-
-  server.post('/recalculate-all', admin, async () => {
-    const cfg = await loadScoreConfig()
-    const { rows: all } = await db.query('SELECT id FROM politicians')
-    let updated = 0
-    let changed = 0
-    for (const p of all) {
-      const r = await recalculateScore(p.id, cfg)
-      if (r) { updated++; if (r.changed) changed++ }
-    }
-    return { success: true, updated, changed }
   })
 
   server.put('/:id', admin, async (request, reply) => {
@@ -273,12 +248,5 @@ export async function politiciansRoutes(server: FastifyInstance) {
     const { id } = request.params as { id: string }
     await db.query('DELETE FROM politicians WHERE id = $1', [id])
     return { success: true }
-  })
-
-  // Kept for backwards compatibility with older clients.
-  server.get('/:id/score', { onRequest: [authenticate] }, async (request) => {
-    const { id } = request.params as { id: string }
-    const r = await recalculateScore(id)
-    return { truth_score: r?.score ?? null }
   })
 }

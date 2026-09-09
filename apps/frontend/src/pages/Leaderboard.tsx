@@ -3,12 +3,12 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { getLeaderboard } from '../api/politicians'
 import type { LeaderboardTab } from '../api/politicians'
 import { Empty, Loading } from '../components/States'
-import { compact, scoreColor } from '../lib/format'
+import { compact, ratingColor } from '../lib/format'
 
 const TABS: { key: LeaderboardTab; label: string; blurb: string; empty: string }[] = [
   { key: 'watched', label: 'Most Watched', blurb: 'Most Wikipedia page views in the last 30 days.', empty: 'No attention data yet.' },
-  { key: 'condemned', label: 'Most Condemned', blurb: 'Lowest TruthScore on record.', empty: 'No one has been condemned yet. Rate someone.' },
-  { key: 'drop', label: 'Biggest Drop', blurb: 'Largest TruthScore fall in the last 7 days.', empty: 'No scores have fallen this week. Give it time.' },
+  { key: 'lowest', label: 'Lowest Rated', blurb: 'Lowest community rating among leaders with enough votes to publish one.', empty: 'Nobody has enough ratings to rank yet. Rate someone.' },
+  { key: 'highest', label: 'Highest Rated', blurb: 'Highest community rating among leaders with enough votes to publish one.', empty: 'Nobody has enough ratings to rank yet. Rate someone.' },
   { key: 'discussed', label: 'Most Discussed', blurb: 'Most threads, replies and ratings this week.', empty: 'Nobody is talking. Yet.' },
   { key: 'leaked', label: 'Most Leaked', blurb: 'Most leak threads, all time.', empty: 'No leaks on file. That doesn\'t mean there\'s nothing to find.' },
 ]
@@ -21,8 +21,8 @@ export default function Leaderboard() {
 
   const value = (p: any) => {
     switch (current) {
-      case 'condemned': return <div className="lb-row__value" style={{ color: scoreColor(Number(p.truth_score)) }}>{Math.round(Number(p.truth_score))}</div>
-      case 'drop': return <><div className="lb-row__value delta-down">{p.delta}</div><div className="lb-row__sub">{p.previous_score} → {Math.round(Number(p.truth_score))}</div></>
+      case 'lowest':
+      case 'highest': return <><div className="lb-row__value" style={{ color: ratingColor(Number(p.rating_avg)) }}>{p.rating_avg}</div><div className="lb-row__sub">{p.rating_count} ratings</div></>
       case 'discussed': return <><div className="lb-row__value">{p.activity}</div><div className="lb-row__sub">{p.comments_week} posts · {p.verdicts_week} ratings</div></>
       case 'leaked': return <><div className="lb-row__value">{p.leak_count}</div><div className="lb-row__sub">leaks</div></>
       case 'watched': return <><div className="lb-row__value">{compact(p.attention)}</div><div className="lb-row__sub">views · 30d</div></>

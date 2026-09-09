@@ -2,7 +2,6 @@ import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 import { requireAdmin, requireVerified } from '../middleware/auth'
 import { emitFeedEvent } from '../services/feed'
-import { recalculateScore } from '../services/score'
 import { notifyPoliticianUpdate } from '../services/notify'
 
 const LEVELS = ['confirmed', 'likely', 'maybe', 'speculative']
@@ -101,7 +100,6 @@ export async function proposalsRoutes(server: FastifyInstance) {
       title: finalTitle, level: finalLevel, controversy_id: created[0].id, proposed: true,
     })
     await notifyPoliticianUpdate(proposal.politician_id, leaderName, [`new controversy added: "${finalTitle}"`])
-    await recalculateScore(proposal.politician_id)
 
     return { success: true, status: 'approved', controversy: created[0] }
   })

@@ -7,6 +7,7 @@ export type FeedEventType =
   | 'controversy_escalated'
   | 'verdict_shift'
   | 'thread'
+  | 'rating_public'
 
 export async function emitFeedEvent(
   type: FeedEventType,

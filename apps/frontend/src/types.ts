@@ -1,11 +1,11 @@
 export type Level = 'confirmed' | 'likely' | 'maybe' | 'speculative'
 export type VerdictKind = 'guilty' | 'suspicious' | 'unclear' | 'clean'
 export type Category = 'world_leader' | 'politician' | 'business' | 'media' | 'judiciary' | 'religious' | 'international' | 'military' | 'other'
-export type FeedType = 'score_change' | 'leak' | 'controversy' | 'controversy_escalated' | 'verdict_shift' | 'thread'
+export type FeedType = 'score_change' | 'leak' | 'controversy' | 'controversy_escalated' | 'verdict_shift' | 'thread' | 'rating_public'
 export type ThreadKind = 'discussion' | 'leak' | 'verdict'
 
 export interface RatingSummary { n: number; average: number | null }
-export interface ScoreComponents { community: number | null; external: number | null }
+export interface ApprovalPoll { id: string; politician_id: string; pollster: string; approve: number; disapprove: number | null; sample_size: number | null; fieldwork_end: string; source_url: string; note: string | null; created_at: string }
 
 export interface VerdictCounts {
   total: number
@@ -22,8 +22,6 @@ export interface VerdictAggregate extends Omit<VerdictCounts, 'total'> {
   dominant: VerdictKind | null
   score: number | null
 }
-
-export interface ScorePoint { d: string; s: number }
 
 export interface Leader {
   id: string
@@ -48,7 +46,8 @@ export interface Leader {
   term_end?: string | null
   age?: number | null
   aliases?: string[]
-  truth_score?: number | string | null
+  rating_avg?: number | null
+  rating_count?: number
   latitude?: number | string | null
   longitude?: number | string | null
   created_at?: string
@@ -59,12 +58,8 @@ export interface Leader {
 }
 
 export interface LeaderDetail extends Leader {
-  truth_score: number | null
-  score_history: ScorePoint[]
-  score_components?: ScoreComponents | null
-  components?: ScoreComponents | null
-  rating?: RatingSummary | null
-  stats: { controversies?: number; ratings: number; leaks: number; threads: number; comments?: number }
+  rating: RatingSummary & { bins?: number[]; min_votes?: number }
+  stats: { controversies?: number; ratings: number; leaks: number; threads: number }
 }
 
 export interface FeedEvent {

@@ -6,7 +6,6 @@ import { useAuth } from '../context/AuthContext'
 import type { LeaderDetail } from '../types'
 import { Loading } from '../components/States'
 import Section from '../components/Section'
-import ScorePanel from '../components/ScorePanel'
 import SourcesDrawer from '../components/SourcesDrawer'
 import { Redacted } from '../components/Redaction'
 import CareerLedger, { careerHeadline, usePositions } from '../components/leader/CareerLedger'
@@ -18,18 +17,21 @@ import AttentionSection, { attentionHeadline, useAttention } from '../components
 import RecordsSection, { recordsHeadline, useRecords } from '../components/leader/RecordsSection'
 import { PromisesList, ContradictionsList, promisesHeadline, contradictionsHeadline, usePromises } from '../components/leader/PromisesSection'
 import RateSection, { ratingHeadline, useRating } from '../components/leader/RateSection'
+import ApprovalStat from '../components/leader/ApprovalStat'
 import LeaksSection from '../components/leader/LeaksSection'
 import Discussion from '../components/leader/Discussion'
-import { categoryLabel, compact, formatDate, scoreLabel } from '../lib/format'
+import { categoryLabel, compact, formatDate, ratingLabel } from '../lib/format'
 
-function ScoreStamp({ score, compactMode = false, onClick }: { score: number | null; compactMode?: boolean; onClick: () => void }) {
-  const unrated = score == null
+function RatingStamp({ average, count, minVotes, compactMode = false, onClick }: { average: number | null; count: number; minVotes: number; compactMode?: boolean; onClick: () => void }) {
+  const unrated = average == null
+  const countText = unrated ? `${count} of ${minVotes} ratings` : `${count} rating${count === 1 ? '' : 's'}`
   return (
-    <button type="button" className={`score-stamp${compactMode ? ' score-stamp--compact' : ''}`} onClick={onClick} aria-label={unrated ? 'No TruthScore yet. Show why.' : `TruthScore ${score}. Show how it was produced.`}>
-      {!compactMode && <span className="eyebrow">TruthScore</span>}
-      <span className="score-stamp__value" style={unrated ? { color: 'var(--dim)' } : undefined}>{unrated ? '—' : score}</span>
-      <span className="score-stamp__bar" aria-hidden="true"><span style={{ width: unrated ? '0%' : `${Math.max(0, 100 - (score as number))}%` }} /></span>
-      {!compactMode && <span className="score-stamp__hint">{unrated ? 'Unrated · tap to see why' : `${scoreLabel(score)} · tap to interrogate`}</span>}
+    <button type="button" className={`score-stamp${compactMode ? ' score-stamp--compact' : ''}`} onClick={onClick} aria-label={unrated ? `Unrated, ${countText}. Rate this leader.` : `Community rating ${average} out of 100 from ${countText}. Rate this leader.`}>
+      {!compactMode && <span className="eyebrow">Community rating</span>}
+      <span className="score-stamp__value" style={unrated ? { color: 'var(--dim)' } : undefined}>{unrated ? '—' : average}</span>
+      <span className="score-stamp__bar" aria-hidden="true"><span style={{ width: unrated ? '0%' : `${Math.max(0, 100 - (average as number))}%` }} /></span>
+      <span className="score-stamp__count">{countText}</span>
+      {!compactMode && <span className="score-stamp__hint">{unrated ? 'Unrated · tap to rate' : `${ratingLabel(average)} · tap to rate`}</span>}
     </button>
   )
 }
@@ -82,7 +84,8 @@ export default function Leader() {
   const focus = params.get('tab')
   const { user } = useAuth()
   const qc = useQueryClient()
-  const [panel, setPanel] = useState<'score' | 'sources' | null>(null)
+  const [panel, setPanel] = useState<'sources' | null>(null)
+  const [rateOpen, setRateOpen] = useState(0)
   const [sticky, setSticky] = useState(false)
   const headRef = useRef<HTMLElement>(null)
   const closePanel = useCallback(() => setPanel(null), [])
@@ -131,7 +134,6 @@ export default function Leader() {
     )
   }
 
-  const score = leader.truth_score == null ? null : Number(leader.truth_score)
   const political = POLITICAL.has(String(leader.category))
   const office = political && leader.current_office ? leader.current_office : leader.position
   const termStart = year(leader.term_start)
@@ -147,7 +149,11 @@ export default function Leader() {
   const rec = recordsHeadline(records.data)
   const prm = promisesHeadline(promises.data)
   const ctr = contradictionsHeadline(promises.data)
-  const rate = ratingHeadline(rating.data, score)
+  const rate = ratingHeadline(rating.data)
+  const avg: number | null = rating.data?.average ?? leader.rating?.average ?? null
+  const ratingCount = Number(rating.data?.n ?? leader.rating?.n ?? 0)
+  const minVotes = Number(rating.data?.min_votes || 5)
+  const openRate = () => setRateOpen(x => x + 1)
   const leakCount = Number((leader.stats as any)?.leaks || 0)
   const newsCount = news.data?.items?.length || 0
 
@@ -155,7 +161,7 @@ export default function Leader() {
     <div className="page page--narrow" style={{ maxWidth: 860 }}>
       <div className={`sticky-score${sticky ? ' is-visible' : ''}`} aria-hidden={!sticky}>
         <div className="sticky-score__name truncate">{leader.name}</div>
-        <ScoreStamp score={score} compactMode onClick={() => setPanel('score')} />
+        <RatingStamp average={avg} count={ratingCount} minVotes={minVotes} compactMode onClick={openRate} />
       </div>
 
       <header className="dossier-head" ref={headRef}>
@@ -174,9 +180,11 @@ export default function Leader() {
           </div>
         </div>
         <div className="dossier-head__score">
-          <ScoreStamp score={score} onClick={() => setPanel('score')} />
+          <RatingStamp average={avg} count={ratingCount} minVotes={minVotes} onClick={openRate} />
         </div>
       </header>
+
+      <ApprovalStat leaderId={leader.id} />
 
       <Section id="flags" label="Flags · sanctions and exposure" headline={flg.headline} summary={flg.summary} open={focus === 'flags'} defaultOpen={(flags.data?.flags || []).some((x: any) => x.kind === 'sanction')}>
         <FlagsSection leaderId={leader.id} name={leader.name} />
@@ -224,8 +232,8 @@ export default function Leader() {
         {leader.wiki_url && <p className="section__caption">Summary adapted from <a href={leader.wiki_url} target="_blank" rel="noopener noreferrer" style={{ borderBottom: '1px solid var(--border-strong)' }}>Wikipedia</a>, CC BY-SA 4.0.</p>}
       </Section>
 
-      <Section id="rating" label="Rate · members' score" headline={rate.headline} summary={rate.summary} open={focus === 'rating' || focus === 'verdicts'} defaultOpen={focus === 'rating' || focus === 'verdicts'}>
-        <RateSection leaderId={leader.id} leaderName={leader.name} score={score} history={leader.score_history || []} />
+      <Section id="rating" label="Community rating" headline={rate.headline} summary={rate.summary} open={focus === 'rating' || focus === 'verdicts' || rateOpen > 0} defaultOpen={focus === 'rating' || focus === 'verdicts'}>
+        <RateSection leaderId={leader.id} leaderName={leader.name} />
       </Section>
 
       <Section id="leaks" label="Leaks" headline={`${leakCount} leak${leakCount === 1 ? '' : 's'}`} summary="Anonymous, unverified threads from members on the Leaks board. Leaks never move the score." open={focus === 'leaks'}>
@@ -245,7 +253,6 @@ export default function Leader() {
         <Discussion leaderId={leader.id} leaderName={leader.name} />
       </Section>
 
-      {panel === 'score' && <ScorePanel leaderId={leader.id} score={score} onClose={closePanel} />}
       {panel === 'sources' && <SourcesDrawer leaderId={leader.id} onClose={closePanel} />}
     </div>
   )

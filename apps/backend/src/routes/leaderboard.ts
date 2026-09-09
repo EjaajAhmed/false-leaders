@@ -1,42 +1,24 @@
 import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
-import { scoreDaysAgo } from '../services/score'
 
-const LEADER_COLS = 'p.id, p.name, p.party, p.region, p.position, p.country, p.category, p.truth_score, p.photo_url'
+const LEADER_COLS = 'p.id, p.name, p.party, p.region, p.position, p.country, p.category, p.rating_avg, p.rating_count, p.photo_url'
 
 export async function leaderboardRoutes(server: FastifyInstance) {
-  server.get('/condemned', async (request) => {
-    const limit = Math.min(100, Number((request.query as any).limit) || 25)
+  const rated = (dir: 'ASC' | 'DESC') => async (request: any) => {
+    const limit = Math.min(100, Number(request.query.limit) || 25)
     const { rows } = await db.query(
-      `SELECT ${LEADER_COLS},
-              (SELECT COUNT(*) FROM controversies c WHERE c.politician_id = p.id)::int AS controversy_count
+      `SELECT ${LEADER_COLS}
        FROM politicians p
-       WHERE p.truth_score IS NOT NULL AND p.wikidata_id IS NOT NULL
-       ORDER BY p.truth_score ASC, p.name ASC
+       WHERE p.rating_avg IS NOT NULL AND p.wikidata_id IS NOT NULL
+       ORDER BY p.rating_avg ${dir}, p.rating_count DESC, p.name ASC
        LIMIT $1`,
       [limit]
     )
     return rows
-  })
-
-  server.get('/drop', async (request) => {
-    const limit = Math.min(100, Number((request.query as any).limit) || 25)
-    const { rows } = await db.query(
-      `SELECT ${LEADER_COLS}, p.score_history FROM politicians p WHERE p.score_history IS NOT NULL`
-    )
-    const scored = rows
-      .map(r => {
-        const now = Math.round(Number(r.truth_score))
-        const then = scoreDaysAgo(r.score_history, 7)
-        const delta = then == null ? 0 : now - then
-        const { score_history, ...rest } = r
-        return { ...rest, previous_score: then, delta }
-      })
-      .filter(r => r.delta < 0)
-      .sort((a, b) => a.delta - b.delta)
-      .slice(0, limit)
-    return scored
-  })
+  }
+  server.get('/lowest', rated('ASC'))
+  server.get('/highest', rated('DESC'))
+  server.get('/condemned', rated('ASC')) // legacy alias
 
   server.get('/discussed', async (request) => {
     const limit = Math.min(100, Number((request.query as any).limit) || 25)

@@ -6,7 +6,7 @@ import { changeUsername, getMe, getMyActivity, updateNotifPrefs, resendVerificat
 import { errorMessage } from '../api/client'
 import { Empty, Loading } from '../components/States'
 import { BOARD_LABEL, KindBadge } from '../components/forum/ThreadRow'
-import { proleTag, scoreColor, timeAgo } from '../lib/format'
+import { proleTag, ratingColor, timeAgo } from '../lib/format'
 
 type ActivityTab = 'ratings' | 'threads' | 'proposals' | 'bookmarks'
 
@@ -63,10 +63,10 @@ export default function Profile() {
       if (!lists.ratings.length) return <Empty text="You haven't rated anyone. Yet." />
       return lists.ratings.map((r: any) => (
         <Link key={r.leader_id} to={`/leaders/${r.leader_id}?tab=rating`} className="lb-row card--link" style={{ borderTop: '1px solid var(--border)' }}>
-          <span className="mono" style={{ color: scoreColor(Number(r.score)), fontWeight: 600 }}>{r.score}</span>
+          <span className="mono" style={{ color: ratingColor(Number(r.score)), fontWeight: 600 }}>{r.score}</span>
           <div style={{ minWidth: 0 }}>
             <div className="lb-row__name truncate">{r.leader_name}</div>
-            <div className="lb-row__meta truncate">Your rating · TruthScore {r.truth_score == null ? '—' : Math.round(Number(r.truth_score))}</div>
+            <div className="lb-row__meta truncate">Your rating · community {r.rating_avg == null ? `unrated (${r.rating_count ?? 0} so far)` : `${r.rating_avg} from ${r.rating_count}`}</div>
           </div>
           <span className="mono tiny dim">{timeAgo(r.updated_at)}</span>
         </Link>
@@ -107,7 +107,7 @@ export default function Profile() {
     if (!lists.bookmarks.length) return <Empty text="Nothing saved. Everyone is worth watching." />
     return lists.bookmarks.map((b: any) => (
       <Link key={b.id} to={`/leaders/${b.leader_id}`} className="lb-row" style={{ borderTop: '1px solid var(--border)' }}>
-        <span className="mono" style={{ color: scoreColor(b.truth_score == null ? null : Number(b.truth_score)), fontWeight: 600 }}>{b.truth_score == null ? '—' : Math.round(Number(b.truth_score))}</span>
+        <span className="mono" style={{ color: ratingColor(b.rating_avg == null ? null : Number(b.rating_avg)), fontWeight: 600 }}>{b.rating_avg == null ? '—' : b.rating_avg}</span>
         <div style={{ minWidth: 0 }}>
           <div className="lb-row__name truncate">{b.leader_name}</div>
           <div className="lb-row__meta truncate">{b.position}{b.graft_name ? ` · ${b.graft_name}` : ''}</div>

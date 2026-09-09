@@ -14,7 +14,7 @@ export const LICENSE = 'OpenSanctions, CC BY-NC 4.0 (source records carry their 
 export const entityUrl = (id: string) => `https://www.opensanctions.org/entities/${encodeURIComponent(id)}/`
 
 /**
- * Only listings from these authorities move the TruthScore. Several states sanction foreign officials as
+ * Only listings from these authorities are marked as scored (recognised). Several states sanction foreign officials as
  * retaliation (Russia, China, Belarus, Iran, Venezuela and others list Western politicians); those listings are
  * shown with their issuing authority but not scored. Dataset codes are OpenSanctions' own.
  */

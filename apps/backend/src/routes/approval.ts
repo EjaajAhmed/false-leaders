@@ -3,7 +3,8 @@ import { db } from '../db/client'
 import { requireAdmin } from '../middleware/auth'
 import { recordSource } from '../services/provenance'
 
-const POLL_COLS = 'id, politician_id, pollster, approve::float AS approve, disapprove::float AS disapprove, sample_size, to_char(fieldwork_end, 'YYYY-MM-DD') AS fieldwork_end, source_url, note, created_at'
+const cols = (a = '') => `${a}id, ${a}politician_id, ${a}pollster, ${a}approve::float AS approve, ${a}disapprove::float AS disapprove, ${a}sample_size, to_char(${a}fieldwork_end, 'YYYY-MM-DD') AS fieldwork_end, ${a}source_url, ${a}note, ${a}created_at`
+const POLL_COLS = cols()
 
 async function refreshApprovalSource(politicianId: string) {
   const { rows } = await db.query(`SELECT ${POLL_COLS} FROM approval_polls WHERE politician_id = $1 ORDER BY fieldwork_end DESC, created_at DESC LIMIT 1`, [politicianId])
@@ -54,7 +55,7 @@ export async function approvalAdminRoutes(server: FastifyInstance) {
 
   server.get('/approval-polls', { onRequest: [requireAdmin] }, async (request) => {
     const limit = Math.min(200, Number((request.query as any).limit) || 50)
-    const { rows } = await db.query(`SELECT a.${POLL_COLS.replace(/, /g, ', a.')}, p.name AS leader_name FROM approval_polls a JOIN politicians p ON p.id = a.politician_id ORDER BY a.created_at DESC LIMIT $1`, [limit])
+    const { rows } = await db.query(`SELECT ${cols('a.')}, p.name AS leader_name FROM approval_polls a JOIN politicians p ON p.id = a.politician_id ORDER BY a.created_at DESC LIMIT $1`, [limit])
     return rows
   })
 

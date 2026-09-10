@@ -236,7 +236,7 @@ export default function Leader() {
         <RateSection leaderId={leader.id} leaderName={leader.name} />
       </Section>
 
-      <Section id="leaks" label="Leaks" headline={`${leakCount} leak${leakCount === 1 ? '' : 's'}`} summary="Anonymous, unverified threads from members on the Leaks board. Leaks never move the score." open={focus === 'leaks'}>
+      <Section id="leaks" label="Leaks" headline={`${leakCount} leak${leakCount === 1 ? '' : 's'}`} summary="Anonymous, unverified threads from members on the Leaks board. Leaks never affect the rating." open={focus === 'leaks'}>
         <LeaksSection leaderId={leader.id} leaderName={leader.name} />
       </Section>
 

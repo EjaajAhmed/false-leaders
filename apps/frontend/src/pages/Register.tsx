@@ -1,20 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { register } from '../api/auth'
-import AuthSlideshow from '../components/AuthSlideshow'
-import Stamp from '../components/Stamp'
+import AuthShell, { PasswordField } from '../components/AuthShell'
 
 export default function Register() {
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [mounted, setMounted] = useState(false)
   const navigate = useNavigate()
-
-  useEffect(() => { setMounted(true) }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,129 +17,31 @@ export default function Register() {
     setError('')
     try {
       const data = await register({ email, username, password })
-      if (data.pending) {
-        navigate('/pending-verification', { state: { email } })
-      }
+      if (data.pending) navigate('/pending-verification', { state: { email } })
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Registration failed')
+      setError(err.response?.data?.error || 'Registration failed.')
     } finally {
       setLoading(false)
     }
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '0.875rem 1rem',
-    background: '#1a1a1a', border: '1px solid #2a2a2a',
-    borderRadius: '8px', color: '#f5f0e8',
-    fontSize: '0.95rem', fontFamily: 'sans-serif',
-    boxSizing: 'border-box', outline: 'none',
-    transition: 'border-color 0.2s'
-  }
-
-  const labelStyle: React.CSSProperties = {
-    display: 'block', color: '#888', fontSize: '0.75rem',
-    letterSpacing: '0.08em', textTransform: 'uppercase',
-    marginBottom: '0.5rem', fontFamily: 'sans-serif'
-  }
-
-  const formPanel = (
-    <div className="auth-form">
-      <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem' }}>
-        <Link to="/" style={{ color: '#555', fontSize: '0.8rem', textDecoration: 'none', fontFamily: 'sans-serif', letterSpacing: '0.04em' }}>
-          Continue as guest
-        </Link>
-      </div>
-
-      <button
-        onClick={() => navigate('/welcome')}
-        className="auth-back"
-        style={{ position: 'absolute', top: '1.5rem', left: '1.5rem', background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '1.2rem', padding: 0 }}
-      >
-        ←
-      </button>
-
-      <div style={{ opacity: mounted ? 1 : 0, transform: mounted ? 'translateY(0)' : 'translateY(16px)', transition: 'all 0.6s ease 0.2s' }}>
-        <h1 style={{ color: '#f5f0e8', fontSize: '2rem', margin: '0 0 0.5rem', fontWeight: 900, letterSpacing: '-0.01em', fontFamily: '"Playfair Display", Georgia, serif' }}>
-          Create account
-        </h1>
-        <p style={{ color: '#555', fontSize: '0.9rem', margin: '0 0 2.5rem', fontFamily: 'sans-serif' }}>
-          Already have an account?{' '}
-          <Link to="/login" style={{ color: '#c9a84c', textDecoration: 'none' }}>Log in here</Link>
-        </p>
-
-        {error && (
-          <div style={{ background: 'rgba(192,57,43,0.1)', border: '1px solid rgba(192,57,43,0.3)', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1.5rem', color: '#e74c3c', fontSize: '0.85rem', fontFamily: 'sans-serif' }}>
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <label style={labelStyle}>Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required style={inputStyle}
-              onFocus={e => e.target.style.borderColor = '#c9a84c'} onBlur={e => e.target.style.borderColor = '#2a2a2a'} />
-          </div>
-          <div>
-            <label style={labelStyle}>Username</label>
-            <input type="text" value={username} onChange={e => setUsername(e.target.value)} required
-              placeholder="How others will see you" style={inputStyle}
-              onFocus={e => e.target.style.borderColor = '#c9a84c'} onBlur={e => e.target.style.borderColor = '#2a2a2a'} />
-          </div>
-          <div>
-            <label style={labelStyle}>Password</label>
-            <div style={{ position: 'relative' }}>
-              <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required
-                style={{ ...inputStyle, paddingRight: '3rem' }}
-                onFocus={e => e.target.style.borderColor = '#c9a84c'} onBlur={e => e.target.style.borderColor = '#2a2a2a'} />
-              <button type="button" onClick={() => setShowPassword(!showPassword)}
-                style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: 0 }}>
-                {showPassword
-                  ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                  : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                }
-              </button>
-            </div>
-            <p style={{ margin: '0.4rem 0 0', color: '#444', fontSize: '0.75rem', fontFamily: 'sans-serif' }}>Minimum 8 characters</p>
-          </div>
-
-          <p style={{ margin: 0, color: '#444', fontSize: '0.75rem', fontFamily: 'sans-serif', lineHeight: 1.5 }}>
-            By signing up you agree to our terms. We'll never sell your data or spam you.
-          </p>
-
-          <button type="submit" disabled={loading}
-            style={{ marginTop: '0.25rem', padding: '0.875rem', background: loading ? '#2a2a2a' : '#c9a84c', color: loading ? '#555' : '#111', border: 'none', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600, fontFamily: 'sans-serif', letterSpacing: '0.04em', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}>
-            {loading ? 'Creating account...' : 'Next'}
-          </button>
-        </form>
-      </div>
-    </div>
-  )
-
   return (
-    <>
-      <div className="auth-page" style={{ fontFamily: 'Georgia, serif' }}>
-        <div className="auth-left">
-          <AuthSlideshow style={{ height: '100vh', position: 'sticky', top: 0 }}>
-            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '3rem' }}>
-              <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{ width: '32px', height: '32px', background: '#c9a84c', transform: 'rotate(45deg)', flexShrink: 0 }}>
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'rotate(-45deg)', fontSize: '1rem', color: '#111', fontWeight: 700 }}>F</div>
-                </div>
-                <span style={{ color: '#c9a84c', fontSize: '1.1rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>FalseLeaders</span>
-              </Link>
-              <div>
-                <div style={{ width: '40px', height: '2px', background: '#c9a84c', marginBottom: '1.5rem' }} />
-                <p style={{ margin: 0 }}><Stamp style={{ fontSize: 'clamp(2.6rem, 5vw, 4.2rem)', color: '#f5f0e8' }} /></p>
-              </div>
-              <p className="eyebrow" style={{ margin: 0 }}>FalseLeaders · Rate, investigate and judge the people in power.</p>
-            </div>
-          </AuthSlideshow>
+    <AuthShell eyebrow="New file" title="Register." lead={<>Already a member? <Link to="/login" className="auth-link">Sign in</Link>.</>}>
+      <form onSubmit={handleSubmit} className="stack" style={{ gap: '1rem' }}>
+        <div className="field">
+          <label className="label" htmlFor="auth-email">Email</label>
+          <input id="auth-email" className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" />
+          <span className="help">Used to verify the account. Never shown.</span>
         </div>
-
-        <div className="auth-right">
-          {formPanel}
+        <div className="field">
+          <label className="label" htmlFor="auth-username">Username</label>
+          <input id="auth-username" className="input" type="text" value={username} onChange={e => setUsername(e.target.value)} required autoComplete="username" placeholder="How others see you when you sign a post" />
         </div>
-      </div>
-    </>
+        <PasswordField value={password} onChange={setPassword} help="At least 8 characters." autoComplete="new-password" />
+        {error && <div className="error">{error}</div>}
+        <button type="submit" className="btn btn--gold btn--block" disabled={loading}>{loading ? 'Creating' : 'Create account'}</button>
+        <p className="help">You will get a verification email. Until you confirm it you can read, but not rate or post.</p>
+      </form>
+    </AuthShell>
   )
 }

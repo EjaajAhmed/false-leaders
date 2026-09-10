@@ -371,7 +371,7 @@ export default function Admin() {
                 <div className="row" style={{ gap: '0.3rem' }}>
                   <Link to={`/leaders/${p.id}`} className="btn btn--ghost btn--sm">View</Link>
                   <button className="btn btn--sm" onClick={() => edit(p)}>Edit</button>
-                  <button className="btn btn--ghost btn--sm btn--danger" onClick={() => { if (confirm(`Delete ${p.name}? This removes every controversy, verdict and leak on file.`)) del.mutate(p.id) }}>Delete</button>
+                  <button className="btn btn--ghost btn--sm btn--danger" onClick={() => { if (confirm(`Delete ${p.name}? This removes every rating, thread and record on file.`)) del.mutate(p.id) }}>Delete</button>
                 </div>
               </div>
             ))}

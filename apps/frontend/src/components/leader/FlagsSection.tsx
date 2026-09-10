@@ -24,13 +24,13 @@ export function flagsHeadline(f: any) {
   if (scored.length) {
     return {
       headline: `Sanctioned · ${authorities.size} authorit${authorities.size === 1 ? 'y' : 'ies'}`,
-      summary: `${scored.length} listing${scored.length === 1 ? '' : 's'} by ${[...authorities].slice(0, 4).join(', ')}${authorities.size > 4 ? ' and others' : ''}${unscored.length ? `, plus ${unscored.length} by other states not counted toward the score` : ''}. ${f.edges?.length ? `${f.edges.length} connected entities on record. ` : ''}Listings are decisions of the issuing governments, not court findings. OpenSanctions ${checked}.`,
+      summary: `${scored.length} listing${scored.length === 1 ? '' : 's'} by ${[...authorities].slice(0, 4).join(', ')}${authorities.size > 4 ? ' and others' : ''}${unscored.length ? `, plus ${unscored.length} by other states outside the recognised set` : ''}. ${f.edges?.length ? `${f.edges.length} connected entities on record. ` : ''}Listings are decisions of the issuing governments, not court findings. OpenSanctions ${checked}.`,
     }
   }
   if (unscored.length) {
     return {
-      headline: `Listed by ${[...otherAuth].slice(0, 2).join(' and ') || 'other states'} · not scored`,
-      summary: `${unscored.length} listing${unscored.length === 1 ? '' : 's'} by governments outside the set that counts toward the score (${f.scored_authorities}). Several states list foreign officials as retaliation, so these are shown for completeness only. OpenSanctions ${checked}.`,
+      headline: `Listed by ${[...otherAuth].slice(0, 2).join(' and ') || 'other states'} · not a recognised authority`,
+      summary: `${unscored.length} listing${unscored.length === 1 ? '' : 's'} by governments outside the recognised set (${f.scored_authorities}). Several states list foreign officials as retaliation, so these are shown for completeness only. OpenSanctions ${checked}.`,
     }
   }
   if (crime.length) return { headline: 'Flagged in crime-related lists', summary: `${crime.length} record${crime.length === 1 ? '' : 's'} with a crime-related topic in OpenSanctions. Details and sources below. OpenSanctions ${checked}.` }
@@ -57,7 +57,7 @@ export default function FlagsSection({ leaderId, name }: { leaderId: string; nam
       )}
       {sanctions.length > 0 && (
         <table className="datatable" style={{ marginTop: 0 }}>
-          <thead><tr><th>Authority</th><th>Programme</th><th>Listed</th><th>Scored</th><th>Source</th></tr></thead>
+          <thead><tr><th>Authority</th><th>Programme</th><th>Listed</th><th>Recognised</th><th>Source</th></tr></thead>
           <tbody>
             {sanctions.map((s, i) => (
               <tr key={i}>
@@ -83,7 +83,7 @@ export default function FlagsSection({ leaderId, name }: { leaderId: string; nam
       )}
       {edges.length > 0 && <NetworkGraph name={name} edges={edges} entityUrl={entityUrl} />}
       <p className="section__caption">
-        Source: <a href={f.opensanctions_id ? entityUrl(f.opensanctions_id) : 'https://www.opensanctions.org/'} target="_blank" rel="noopener noreferrer" style={{ borderBottom: '1px solid var(--border-strong)' }}>OpenSanctions</a> (CC BY-NC 4.0, aggregating official sanctions lists and PEP data), {f.checked_at ? `checked ${formatDate(f.checked_at)}` : 'not yet checked'}. Matches are by Wikidata identifier where available, otherwise by name and birth date; the match tier is recorded with each flag. Only listings by {f.scored_authorities} count toward the score.
+        Source: <a href={f.opensanctions_id ? entityUrl(f.opensanctions_id) : 'https://www.opensanctions.org/'} target="_blank" rel="noopener noreferrer" style={{ borderBottom: '1px solid var(--border-strong)' }}>OpenSanctions</a> (CC BY-NC 4.0, aggregating official sanctions lists and PEP data), {f.checked_at ? `checked ${formatDate(f.checked_at)}` : 'not yet checked'}. Matches are by Wikidata identifier where available, otherwise by name and birth date; the match tier is recorded with each flag. Listings by {f.scored_authorities} are marked as recognised; others are shown for completeness. Nothing here changes the community rating.
       </p>
     </div>
   )

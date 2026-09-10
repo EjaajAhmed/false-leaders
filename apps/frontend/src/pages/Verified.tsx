@@ -24,7 +24,7 @@ export default function Verified() {
   }, [])
 
   return (
-    <div className="noise" style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+    <div className="noise" style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
       <div style={{ maxWidth: 460, textAlign: 'center' }}>
         <div className="hero__rule" style={{ margin: '0 auto 1.5rem' }} />
         {error ? (

@@ -7,6 +7,7 @@ import { errorMessage } from '../api/client'
 import { Empty, Loading } from '../components/States'
 import { BOARD_LABEL } from '../components/forum/ThreadRow'
 import { proleTag, ratingColor, timeAgo } from '../lib/format'
+import { ARCHIVED } from '../config'
 
 type ActivityTab = 'ratings' | 'threads' | 'proposals' | 'bookmarks'
 
@@ -147,7 +148,7 @@ export default function Profile() {
 
       <div className="section-title"><h2>Activity</h2></div>
       <div className="tabs" style={{ marginBottom: '1rem' }}>
-        {([['ratings', 'Ratings'], ['threads', 'Threads'], ['proposals', 'Proposals'], ['bookmarks', 'Bookmarks']] as [ActivityTab, string][]).map(([k, l]) => (
+        {([['ratings', 'Ratings'], ['threads', 'Threads'], ...(ARCHIVED.controversies ? [] : [['proposals', 'Proposals']]), ['bookmarks', 'Bookmarks']] as [ActivityTab, string][]).map(([k, l]) => (
           <button key={k} className={`tab${tab === k ? ' is-active' : ''}`} onClick={() => setTab(k)}>
             {l}{lists?.[k]?.length ? <span className="tab__count">{lists[k].length}</span> : null}
           </button>

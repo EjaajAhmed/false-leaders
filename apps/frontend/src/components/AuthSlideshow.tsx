@@ -38,7 +38,7 @@ export default function AuthSlideshow({ children, style }: Props) {
       ))}
       <div style={{
         position: 'absolute', inset: 0,
-        background: 'linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.75) 100%)',
+        background: 'linear-gradient(to bottom, rgba(20,18,15,0.55) 0%, rgba(20,18,15,0.88) 100%)',
         pointerEvents: 'none'
       }} />
       {children && (

@@ -26,7 +26,7 @@ const MOBILE = [
   { to: '/', label: 'Home', icon: Icon.home },
   { to: '/browse', label: 'Browse', icon: Icon.browse },
   { to: '/forum', label: 'Forum', icon: Icon.feed },
-  { to: '/leaderboard', label: 'Board', icon: Icon.board },
+  { to: '/leaderboard', label: 'Ranks', icon: Icon.board },
   { to: '/profile', label: 'Profile', icon: Icon.profile },
 ]
 

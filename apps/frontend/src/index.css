@@ -486,17 +486,32 @@ strong { font-weight: 600; }
 .headline__title:hover { color: var(--gold); }
 
 /* Auth pages */
-.auth-page { display: flex; min-height: 100vh; }
-.auth-left { flex: 1; }
-.auth-right { width: 480px; min-width: 480px; }
-.auth-form { width: 100%; max-width: 480px; min-height: 100vh; background: var(--bg); display: flex; flex-direction: column; justify-content: center; padding: 3rem; position: relative; }
+.auth-page { display: flex; min-height: 100vh; background: var(--bg); }
+.auth-left { flex: 1; min-width: 0; }
+.auth-right { width: 500px; min-width: 500px; border-left: 1px solid var(--border); }
+.auth-form { width: 100%; min-height: 100vh; display: flex; flex-direction: column; justify-content: space-between; gap: 2rem; padding: 2rem 3rem; }
+.auth-form__top { display: flex; justify-content: flex-end; align-items: center; gap: 1rem; }
+.auth-form__body { max-width: 380px; }
+.auth-form__foot { max-width: 380px; }
+.auth-title { font-size: clamp(2.4rem, 4vw, 3.2rem); line-height: 0.95; margin: 0.4rem 0 0.6rem; }
+.auth-lead { margin-bottom: 1.75rem; }
+.auth-link { color: var(--text); border-bottom: 1px solid var(--border-strong); }
+.auth-brand { height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding: 3rem; }
+.auth-brand__mark { display: flex; align-items: center; gap: 0.75rem; }
+.auth-brand__name { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; font-size: 1.3rem; color: var(--text); }
+.auth-brand__stamp { font-size: clamp(2.6rem, 5vw, 4.4rem); margin-top: 1.25rem; }
+.auth-welcome { width: 100vw; height: 100dvh; overflow: hidden; background: var(--bg); }
+.auth-welcome .auth-brand { padding: 3rem 1.5rem 2.25rem; }
+.auth-welcome .auth-brand__stamp { font-size: clamp(2.8rem, 14vw, 4.2rem); }
 .auth-back { display: none; }
 @media (max-width: 768px) {
   .auth-page { min-height: 100dvh; }
   .auth-left { display: none; }
-  .auth-right { width: 100%; min-width: 0; max-width: 100%; }
-  .auth-form { max-width: 100%; min-height: 100dvh; padding: 4.5rem 1.5rem 2.5rem; }
-  .auth-back { display: block; }
+  .auth-right { width: 100%; min-width: 0; max-width: 100%; border-left: 0; }
+  .auth-form { min-height: 100dvh; padding: 1.25rem 1.25rem 2rem; }
+  .auth-form__top { justify-content: space-between; }
+  .auth-form__body, .auth-form__foot { max-width: 100%; }
+  .auth-back { display: inline-flex; }
 }
 
 /* ───────────── Home hero ───────────── */

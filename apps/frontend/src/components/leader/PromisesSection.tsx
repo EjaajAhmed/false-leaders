@@ -16,7 +16,7 @@ export function promisesHeadline(d: any) {
   const n = (s: string) => pub.filter(p => p.status === s).length
   return {
     headline: `${pub.length} promise${pub.length === 1 ? '' : 's'} tracked · ${n('kept')} kept · ${n('broken')} broken · ${n('pending')} pending`,
-    summary: `Each promise is a verbatim commitment from a dated source. "Kept" and "broken" verdicts carry an evidence link chosen by an editor; "pending" means no verdict has been reached. Broken promises with evidence lower the score.`,
+    summary: `Each promise is a verbatim commitment from a dated source. "Kept" and "broken" verdicts carry an evidence link chosen by an editor; "pending" means no verdict has been reached.`,
   }
 }
 

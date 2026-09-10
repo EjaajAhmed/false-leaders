@@ -6,13 +6,11 @@ import { notifyUser } from '../services/notify'
 
 export const BOARDS = [
   { key: 'general', label: 'General', blurb: 'Anything about power and the people who hold it.' },
-  { key: 'leaders', label: 'Leaders', blurb: 'Threads tagged to a specific leader.' },
+  { key: 'leaders', label: 'Leaders', blurb: 'Threads about a specific leader.' },
   { key: 'leaks', label: 'Leaks', blurb: 'Tips and things you know. Unverified; post responsibly.' },
-  { key: 'verdicts', label: 'Verdicts', blurb: 'Your judgement of a leader, argued in writing.' },
-  { key: 'intel', label: 'Intel', blurb: 'Documents, records, things worth digging into.' },
-  { key: 'money', label: 'Money', blurb: 'Funding, contracts, conflicts of interest.' },
+  { key: 'conspiracy', label: 'Conspiracy', blurb: 'Theories, patterns, connections. Bring your receipts.' },
   { key: 'media', label: 'Media', blurb: 'Coverage, spin, who is saying what.' },
-  { key: 'site', label: 'Site', blurb: 'FalseLeaders itself: bugs, ideas, the ratings.' },
+  { key: 'offtopic', label: 'Off topic', blurb: 'Everything else, including the site itself.' },
 ]
 const BOARD_KEYS = BOARDS.map(b => b.key)
 const MAX_TITLE = 160, MAX_BODY = 6000
@@ -34,7 +32,7 @@ export async function forumRoutes(server: FastifyInstance) {
     let where = `WHERE t.status = 'active'`
     if (board && BOARD_KEYS.includes(board)) { params.push(board); where += ` AND t.board = $${params.length}` }
     if (leader) { params.push(leader); where += ` AND t.politician_id = $${params.length}` }
-    if (kind && ['discussion', 'leak', 'verdict'].includes(kind)) { params.push(kind); where += ` AND t.kind = $${params.length}` }
+    if (kind && ['discussion', 'leak'].includes(kind)) { params.push(kind); where += ` AND t.kind = $${params.length}` }
     if (q) { params.push(`%${q}%`); where += ` AND (t.title ILIKE $${params.length} OR t.body ILIKE $${params.length})` }
     const order = sort === 'new' ? 't.created_at DESC' : sort === 'top' ? 't.upvotes DESC, t.last_activity DESC' : 't.pinned DESC, t.last_activity DESC'
     const viewerIdx = viewer ? (params.push(viewer.id), params.length) : null
@@ -59,8 +57,8 @@ export async function forumRoutes(server: FastifyInstance) {
     if (t.length < 4 || b.length < 2) return reply.status(400).send({ error: 'Title and body required.' })
     if (t.length > MAX_TITLE || b.length > MAX_BODY) return reply.status(400).send({ error: 'Too long.' })
     const brd = BOARD_KEYS.includes(board) ? board : 'general'
-    // kind is derived from the board so leak/verdict counts keep working; it grants no special behaviour.
-    const knd = brd === 'leaks' ? 'leak' : brd === 'verdicts' ? 'verdict' : 'discussion'
+    // kind is derived from the board so leak counts keep working; it grants no special behaviour.
+    const knd = brd === 'leaks' ? 'leak' : 'discussion'
     let leaderName: string | null = null
     if (politician_id) {
       const { rows } = await db.query('SELECT name FROM politicians WHERE id = $1', [politician_id])
@@ -153,7 +151,7 @@ export async function forumRoutes(server: FastifyInstance) {
     const { locked, pinned, status, board } = request.body as any
     const { rows } = await db.query(
       `UPDATE threads SET locked = COALESCE($2, locked), pinned = COALESCE($3, pinned), status = COALESCE($4, status), board = COALESCE($5, board),
-         kind = CASE COALESCE($5, board) WHEN 'leaks' THEN 'leak' WHEN 'verdicts' THEN 'verdict' ELSE 'discussion' END
+         kind = CASE COALESCE($5, board) WHEN 'leaks' THEN 'leak' ELSE 'discussion' END
        WHERE id = $1 RETURNING id, locked, pinned, status, board, kind`,
       [id, locked ?? null, pinned ?? null, ['active', 'removed'].includes(status) ? status : null, BOARD_KEYS.includes(board) ? board : null]
     )

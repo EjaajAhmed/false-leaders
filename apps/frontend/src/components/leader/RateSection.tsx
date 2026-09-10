@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getRating, setRating, clearRating, getThreads } from '../../api/politicians'
+import { getRating, setRating, clearRating } from '../../api/politicians'
 import { errorMessage } from '../../api/client'
 import { useAuth } from '../../context/AuthContext'
 import RatingRing from '../RatingRing'
-import ThreadRow from '../forum/ThreadRow'
-import ThreadComposer from '../forum/ThreadComposer'
-import { Empty, Loading } from '../States'
+import { Loading } from '../States'
 import { ratingLabel } from '../../lib/format'
 
 const BINS = ['0–24', '25–49', '50–74', '75–100']
@@ -119,35 +117,18 @@ function Histogram({ bins }: { bins: number[] }) {
   )
 }
 
-/** Distribution and written verdicts. The rating widget itself lives in RateBar. */
+/** Distribution of member ratings. The rating widget itself lives in RateBar. */
 export default function RateSection({ leaderId, leaderName }: { leaderId: string; leaderName: string }) {
-  const { user } = useAuth()
   const { data, isLoading } = useRating(leaderId)
-  const [explaining, setExplaining] = useState(false)
-  const verdicts = useQuery({ queryKey: ['threads', 'leader', leaderId, 'verdict'], queryFn: () => getThreads({ leader: leaderId, kind: 'verdict', sort: 'new', limit: 10 }) })
   const n = Number(data?.n || 0)
   const min = Number(data?.min_votes || 5)
 
   return (
-    <div>
-      <div className="card" style={{ marginBottom: '1.25rem' }}>
-        <div className="row row--between" style={{ marginBottom: '0.6rem' }}><span className="eyebrow">Distribution of member ratings</span><span className="mono tiny dim">{n} total</span></div>
-        {isLoading ? <Loading /> : n ? <Histogram bins={data.bins || [0, 0, 0, 0]} /> : <p className="small dim">No ratings yet. The first one sets the tone.</p>}
-        {data?.average == null && n > 0 && <p className="help" style={{ marginTop: '0.6rem' }}>The average is withheld until {min} members have rated. {min - n} more to go.</p>}
-        <p className="help" style={{ marginTop: '0.6rem' }}>Ratings are private to each account: nobody sees who rated what, only the average and the spread.</p>
-      </div>
-
-      <div className="row row--between" style={{ marginBottom: '0.6rem' }}>
-        <span className="eyebrow">Verdict threads · {verdicts.data?.total || 0}</span>
-        <div className="row" style={{ gap: '0.75rem' }}>
-          {user && <button className={`btn btn--sm${explaining ? ' is-active' : ''}`} onClick={() => setExplaining(!explaining)}>{explaining ? 'Close' : 'Write a verdict'}</button>}
-          <Link to="/forum?board=verdicts" className="mono tiny muted">All verdicts →</Link>
-        </div>
-      </div>
-      {explaining && <div style={{ marginBottom: '1rem' }}><ThreadComposer board="verdicts" leader={{ id: leaderId, name: leaderName }} onDone={() => setExplaining(false)} /></div>}
-      {verdicts.isLoading && <Loading />}
-      {!verdicts.isLoading && !verdicts.data?.threads?.length && <Empty text="No written verdicts yet." sub="Rate above, then argue it here" />}
-      <div className="stack" style={{ gap: '0.5rem' }}>{verdicts.data?.threads?.map((t: any) => <ThreadRow key={t.id} t={t} />)}</div>
+    <div className="card">
+      <div className="row row--between" style={{ marginBottom: '0.6rem' }}><span className="eyebrow">Distribution of member ratings</span><span className="mono tiny dim">{n} total</span></div>
+      {isLoading ? <Loading /> : n ? <Histogram bins={data.bins || [0, 0, 0, 0]} /> : <p className="small dim">No ratings yet. The first one sets the tone.</p>}
+      {data?.average == null && n > 0 && <p className="help" style={{ marginTop: '0.6rem' }}>The average is withheld until {min} members have rated. {min - n} more to go.</p>}
+      <p className="help" style={{ marginTop: '0.6rem' }}>Ratings are private to each account: nobody sees who rated {leaderName} what, only the average and the spread. Argue your rating in the Discussion section below.</p>
     </div>
   )
 }

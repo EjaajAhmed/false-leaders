@@ -232,7 +232,7 @@ export default function Leader() {
         {leader.wiki_url && <p className="section__caption">Summary adapted from <a href={leader.wiki_url} target="_blank" rel="noopener noreferrer" style={{ borderBottom: '1px solid var(--border-strong)' }}>Wikipedia</a>, CC BY-SA 4.0.</p>}
       </Section>
 
-      <Section id="rating" label="Ratings · distribution and verdicts" headline={rate.headline} summary={rate.summary} open={focus === 'rating' || focus === 'verdicts'} defaultOpen={focus === 'rating' || focus === 'verdicts'}>
+      <Section id="rating" label="Ratings · distribution" headline={rate.headline} summary={rate.summary} open={focus === 'rating' || focus === 'verdicts'} defaultOpen={focus === 'rating' || focus === 'verdicts'}>
         <RateSection leaderId={leader.id} leaderName={leader.name} />
       </Section>
 

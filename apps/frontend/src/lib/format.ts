@@ -132,7 +132,7 @@ export function feedText(e: FeedEvent): FeedText {
     case 'rating_public':
       return { before: 'Community rating for ', after: ` is now public: ${m.average} from ${m.count} ratings`, label: 'Rating' }
     case 'thread':
-      return { before: `${m.who || 'Someone'} ${m.kind === 'verdict' ? 'posted a verdict on' : 'opened a thread on'} `, after: `: "${m.title}"`, label: m.kind === 'verdict' ? 'Verdict' : 'Forum' }
+      return { before: `${m.who || 'Someone'} opened a thread on `, after: `: "${m.title}"`, label: 'Forum' }
     default:
       return { before: '', after: '', label: e.type }
   }

@@ -12,7 +12,7 @@ interface Props { board?: string; leader?: { id: string; name: string } | null; 
 
 const PLACEHOLDER: Record<string, string> = {
   leaks: 'What do you know? Text only. No names of private individuals.',
-  verdicts: 'Your judgement, and why. Link your sources.',
+  conspiracy: 'Lay out the theory and what supports it. Link your sources.',
 }
 
 export default function ThreadComposer({ board = 'general', leader = null, onDone }: Props) {

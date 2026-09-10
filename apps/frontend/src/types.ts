@@ -2,7 +2,7 @@ export type Level = 'confirmed' | 'likely' | 'maybe' | 'speculative'
 export type VerdictKind = 'guilty' | 'suspicious' | 'unclear' | 'clean'
 export type Category = 'world_leader' | 'politician' | 'business' | 'media' | 'judiciary' | 'religious' | 'international' | 'military' | 'other'
 export type FeedType = 'score_change' | 'leak' | 'controversy' | 'controversy_escalated' | 'verdict_shift' | 'thread' | 'rating_public'
-export type ThreadKind = 'discussion' | 'leak' | 'verdict'
+export type ThreadKind = 'discussion' | 'leak'
 
 export interface RatingSummary { n: number; average: number | null }
 export interface ApprovalPoll { id: string; politician_id: string; pollster: string; approve: number; disapprove: number | null; sample_size: number | null; fieldwork_end: string; source_url: string; note: string | null; created_at: string }

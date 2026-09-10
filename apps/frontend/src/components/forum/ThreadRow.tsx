@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { proleTag, timeAgo } from '../../lib/format'
 
-export const BOARD_LABEL: Record<string, string> = { general: 'General', leaders: 'Leaders', leaks: 'Leaks', verdicts: 'Verdicts', intel: 'Intel', money: 'Money', media: 'Media', site: 'Site' }
+export const BOARD_LABEL: Record<string, string> = { general: 'General', leaders: 'Leaders', leaks: 'Leaks', conspiracy: 'Conspiracy', media: 'Media', offtopic: 'Off topic' }
 
 export default function ThreadRow({ t }: { t: any }) {
   return (

@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { getPoliticians, getPoliticiansMeta } from '../api/politicians'
 import LeaderCard from '../components/LeaderCard'
 import { Empty, Loading } from '../components/States'
+import Dropdown from '../components/Dropdown'
 import { CATEGORIES } from '../lib/format'
 import { VIEWS } from '../config'
 import type { ViewKey } from '../config'
@@ -101,16 +102,8 @@ export default function Browse() {
           ))}
         </div>
         <div className="viewbar__narrow">
-          <select className={`select select--quiet${category ? ' is-active' : ''}`} value={category} onChange={e => onCategory(e.target.value)} aria-label="Category">
-            <option value="">Category</option>
-            {NARROW_CATEGORIES.filter(c => (meta?.categories?.find((m: any) => m.key === c.value)?.count || 0) > 0).map(c => (
-              <option key={c.value} value={c.value}>{c.plural}</option>
-            ))}
-          </select>
-          <select className={`select select--quiet${country ? ' is-active' : ''}`} value={country} onChange={e => onCountry(e.target.value)} aria-label="Country">
-            <option value="">Country</option>
-            {meta?.countries?.map((c: string) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <Dropdown placeholder="Category" value={category} onChange={onCategory} options={[{ value: '', label: 'Every category' }, ...NARROW_CATEGORIES.filter(c => (meta?.categories?.find((m: any) => m.key === c.value)?.count || 0) > 0).map(c => ({ value: c.value, label: c.plural }))]} />
+          <Dropdown placeholder="Country" searchable value={country} onChange={onCountry} options={[{ value: '', label: 'Every country' }, ...((meta?.countries || []) as string[]).map((c: string) => ({ value: c, label: c }))]} />
         </div>
       </div>
 
@@ -122,13 +115,7 @@ export default function Browse() {
           value={search}
           onChange={e => onSearch(e.target.value)}
         />
-        <select className="select" style={{ width: 'auto' }} value={sort} onChange={e => { setSort(e.target.value as Sort); setPage(1) }}>
-          <option value="prominence">Prominence</option>
-          <option value="name">A–Z</option>
-          <option value="rating_asc">Lowest rated</option>
-          <option value="rating_desc">Highest rated</option>
-          <option value="newest">Newest files</option>
-        </select>
+        <Dropdown placeholder="Sort" value={sort} onChange={v => { setSort(v as Sort); setPage(1) }} align="right" options={[{ value: 'prominence', label: 'Prominence' }, { value: 'name', label: 'A–Z' }, { value: 'rating_asc', label: 'Lowest rated' }, { value: 'rating_desc', label: 'Highest rated' }, { value: 'newest', label: 'Newest files' }]} />
         <button className={`btn${activeFilterCount > 0 ? ' is-active' : ''}`} onClick={() => setShowFilters(!showFilters)}>
           Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
         </button>

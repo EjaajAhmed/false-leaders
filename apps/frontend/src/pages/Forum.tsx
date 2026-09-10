@@ -5,6 +5,7 @@ import { getBoards, getThreads } from '../api/politicians'
 import ThreadRow, { BOARD_LABEL } from '../components/forum/ThreadRow'
 import ThreadComposer from '../components/forum/ThreadComposer'
 import { Empty, Loading } from '../components/States'
+import Dropdown from '../components/Dropdown'
 
 export default function Forum() {
   const [params, setParams] = useSearchParams()
@@ -34,9 +35,7 @@ export default function Forum() {
           ))}
         </div>
         <div className="viewbar__narrow">
-          <select className="select select--quiet" value={sort} onChange={e => set({ sort: e.target.value })} aria-label="Sort">
-            <option value="active">Active</option><option value="new">New</option><option value="top">Top</option>
-          </select>
+          <Dropdown placeholder="Sort" value={sort} onChange={v => set({ sort: v })} align="right" options={[{ value: 'active', label: 'Active' }, { value: 'new', label: 'New' }, { value: 'top', label: 'Top' }]} />
         </div>
       </div>
 

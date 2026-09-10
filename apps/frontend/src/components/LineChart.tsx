@@ -36,7 +36,7 @@ export default function LineChart({ series, baseline, marker, yFormat = v => Str
     return () => ro.disconnect()
   }, [el])
   const W = narrow ? 400 : 640, H = narrow ? 300 : 260
-  const PAD = narrow ? { l: 38, r: 96, t: 16, b: 26 } : { l: 44, r: 128, t: 14, b: 28 }
+  const PAD = narrow ? { l: 38, r: 14, t: 16, b: 26 } : { l: 44, r: 128, t: 14, b: 28 }
   const FS = narrow ? 11 : 9
   const all = series.flatMap(s => s.points)
   if (all.length === 0) return null
@@ -92,12 +92,17 @@ export default function LineChart({ series, baseline, marker, yFormat = v => Str
           if (!pt) return null
           return <rect key={`m${mx}`} x={sx(pt.x) - 4} y={sy(pt.y) - 4} width={8} height={8} style={{ fill: 'var(--accent)' }} />
         })}
-        {ends.map((e, i) => (
+        {!narrow && ends.map((e, i) => (
           <text key={e.s.key} x={W - PAD.r + 8} y={labelY[i]} fontSize={FS} style={{ fill: e.s.highlight ? 'var(--warn)' : 'var(--text)' }} dominantBaseline="middle" fontFamily="var(--font-mono)">
             {e.s.label} {yFormat(e.last.y)}
           </text>
         ))}
       </svg>
+      {narrow && (
+        <div className="chart__legend" aria-hidden="true">
+          {series.map((s, i) => { const e = ends.find(x => x.s.key === s.key); return <span key={s.key}><i style={{ background: s.highlight ? 'var(--accent)' : TONES[Math.min(i, TONES.length - 1)] }} />{s.label}{e ? ` ${yFormat(e.last.y)}` : ''}</span> })}
+        </div>
+      )}
       <figcaption className="section__caption">{caption}</figcaption>
     </figure>
   )

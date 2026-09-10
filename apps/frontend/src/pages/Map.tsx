@@ -43,7 +43,7 @@ export default function MapPage() {
   return (
     <div className="map-page">
       {isLoading && (
-        <div className="loading" style={{ position: 'absolute', top: '1rem', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, background: 'rgba(20,18,15,0.92)', border: '1px solid var(--border-strong)', padding: '0.6rem 1rem' }}>
+        <div className="loading map-loading" style={{ position: 'absolute', top: '1rem', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, background: 'var(--overlay)', border: '1px solid var(--border-strong)', padding: '0.6rem 1rem' }}>
           <span className="spinner" /><span>Decrypting</span>
         </div>
       )}

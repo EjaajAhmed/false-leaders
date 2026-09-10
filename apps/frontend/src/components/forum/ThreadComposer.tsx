@@ -7,6 +7,7 @@ import IdentityToggle from '../IdentityToggle'
 import { useAuth } from '../../context/AuthContext'
 import { usePostAsProle } from '../../lib/identity'
 import { BOARD_LABEL } from './ThreadRow'
+import Dropdown from '../Dropdown'
 
 interface Props { board?: string; leader?: { id: string; name: string } | null; onDone?: () => void }
 
@@ -48,9 +49,7 @@ export default function ThreadComposer({ board = 'general', leader = null, onDon
       <div className="grid-2" style={{ gap: '0.5rem' }}>
         <div className="field">
           <label className="label">Board</label>
-          <select className="select" value={brd} onChange={e => setBrd(e.target.value)}>
-            {Object.entries(BOARD_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
+          <Dropdown className="dd--block" placeholder="Board" value={brd} onChange={setBrd} options={Object.entries(BOARD_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
         </div>
         <div className="field">
           <label className="label">About a leader (optional)</label>

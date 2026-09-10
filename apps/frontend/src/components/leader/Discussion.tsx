@@ -8,7 +8,7 @@ import { Empty, Loading } from '../States'
 /** Forum threads tagged to this leader. */
 export default function Discussion({ leaderId, leaderName }: { leaderId: string; leaderName: string }) {
   const [composing, setComposing] = useState(false)
-  const { data, isLoading } = useQuery({ queryKey: ['threads', 'leader', leaderId], queryFn: () => getThreads({ leader: leaderId, sort: 'active', limit: 20 }) })
+  const { data, isLoading } = useQuery({ queryKey: ['threads', 'leader', leaderId], queryFn: () => getThreads({ leader: leaderId, sort: 'hot', limit: 20 }) })
   return (
     <div>
       <div className="row row--between" style={{ marginBottom: '0.75rem' }}>

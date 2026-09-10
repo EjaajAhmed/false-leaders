@@ -11,6 +11,7 @@ export interface User {
   is_admin?: boolean
   email_verified?: boolean
   theme?: string
+  terms_accepted?: boolean
 }
 
 interface AuthContextType {
@@ -55,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await getMe()
       const next: User = {
         id: me.id, email: me.email, username: me.username,
-        prole_number: me.prole_number, is_admin: !!me.is_admin, email_verified: !!me.email_verified, theme: me.theme,
+        prole_number: me.prole_number, is_admin: !!me.is_admin, email_verified: !!me.email_verified, theme: me.theme, terms_accepted: !!me.terms_accepted,
       }
       loginUser(next, me.token || localStorage.getItem('token')!)
     } catch (err: any) {

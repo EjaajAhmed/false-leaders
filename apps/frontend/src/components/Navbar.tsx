@@ -68,6 +68,7 @@ export default function Navbar() {
         )}
 
         <div className="sidebar__foot">
+          <p className="legal-links legal-links--side"><Link to="/terms">Terms</Link><Link to="/acceptable-use">Use</Link><Link to="/takedown">Takedown</Link><Link to="/contact">Contact</Link></p>
           {user ? (
             <Link to="/profile" className="sidebar__identity">
               <div className="name truncate">@{user.username}</div>

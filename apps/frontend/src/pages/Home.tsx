@@ -93,7 +93,7 @@ export default function Home() {
   const lowest = useQuery({ queryKey: ['leaderboard', 'lowest', 5], queryFn: () => getLeaderboard('lowest', 5) })
   const watched = useQuery({ queryKey: ['leaderboard', 'watched', 5], queryFn: () => getLeaderboard('watched', 5) })
   const featured = useQuery({ queryKey: ['featured'], queryFn: getFeatured })
-  const threads = useQuery({ queryKey: ['threads', 'home'], queryFn: () => getThreads({ sort: 'active', limit: 6 }), refetchInterval: 60000 })
+  const threads = useQuery({ queryKey: ['threads', 'home'], queryFn: () => getThreads({ sort: 'hot', limit: 6 }), refetchInterval: 60000 })
 
   return (
     <div>

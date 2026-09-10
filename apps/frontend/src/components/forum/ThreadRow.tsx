@@ -7,6 +7,7 @@ export default function ThreadRow({ t }: { t: any }) {
   return (
     <Link to={`/forum/${t.id}`} className="thread-row">
       <div className="thread-row__meta">
+        {t.is_system && <span className="badge badge--system">System</span>}
         <span className="badge badge--outline">{BOARD_LABEL[t.board] || t.board}</span>
         {t.pinned && <span className="badge badge--gold">Pinned</span>}
         {t.locked && <span className="badge badge--outline">Locked</span>}
@@ -15,7 +16,7 @@ export default function ThreadRow({ t }: { t: any }) {
       <div className="thread-row__title">{t.title}</div>
       {t.excerpt && <div className="thread-row__excerpt">{t.excerpt}</div>}
       <div className="thread-row__foot">
-        <span>{t.username ? `@${t.username}` : proleTag(t.prole_number)}</span>
+        <span>{t.is_system ? 'FalseLeaders' : t.username ? `@${t.username}` : proleTag(t.prole_number)}</span>
         <span>{t.reply_count} repl{t.reply_count === 1 ? 'y' : 'ies'}</span>
         <span>{t.upvotes} up</span>
         <span>active {timeAgo(t.last_activity)}</span>

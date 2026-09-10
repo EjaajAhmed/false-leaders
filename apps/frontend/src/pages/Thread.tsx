@@ -8,6 +8,9 @@ import { usePostAsProle } from '../lib/identity'
 import IdentityToggle from '../components/IdentityToggle'
 import Upvote from '../components/Upvote'
 import { Loading } from '../components/States'
+import ReportButton from '../components/ReportButton'
+import TermsGate from '../components/TermsGate'
+import { Disclaimer, FirstPostNotice } from '../components/Disclaimer'
 import { BOARD_LABEL } from '../components/forum/ThreadRow'
 import { proleTag, timeAgo, formatDate } from '../lib/format'
 
@@ -39,7 +42,7 @@ export default function Thread() {
   if (isLoading) return <div className="page"><Loading /></div>
   if (isError || !data) return <div className="page page--narrow" style={{ paddingTop: '5rem' }}><p className="eyebrow">404</p><h1 style={{ fontSize: '2.2rem', margin: '0.5rem 0 1rem' }}>No such thread.</h1><Link to="/forum" className="btn">Back to the forum</Link></div>
   const t = data.thread
-  const who = (x: any) => x.username ? <span className="post__name">@{x.username}</span> : <span className="post__prole">{proleTag(x.prole_number)}</span>
+  const who = (x: any) => x.is_system ? <span className="post__name">FalseLeaders</span> : x.username ? <span className="post__name">@{x.username}</span> : <span className="post__prole">{proleTag(x.prole_number)}</span>
   const quote = (seq: number) => { setBody(b => `${b}${b && !b.endsWith('\n') ? '\n' : ''}>>${seq} `); document.getElementById('reply-box')?.focus() }
 
   return (
@@ -48,10 +51,11 @@ export default function Thread() {
         <Link to="/forum">Forum</Link> · <Link to={`/forum?board=${t.board}`}>{BOARD_LABEL[t.board] || t.board}</Link>{t.leader_name && <> · <Link to={`/leaders/${t.politician_id}?tab=discussion`}>{t.leader_name}</Link></>}
       </p>
       <h1 style={{ fontSize: 'clamp(1.6rem, 3.5vw, 2.4rem)', marginBottom: '1rem' }}>{t.title}</h1>
+      {t.previous_daily_id && <p className="small muted" style={{ marginBottom: '1rem' }}>Yesterday: <Link to={`/forum/${t.previous_daily_id}`} className="auth-link">{t.previous_daily_title}</Link></p>}
 
       <div className="post" id="p0" style={{ borderLeft: '3px solid var(--accent)' }}>
         <div className="post__head">
-          <div className="post__who">{who(t)}<span className="post__time" title={formatDate(t.created_at)}>OP · {timeAgo(t.created_at)}</span>{t.pinned && <span className="badge badge--gold">Pinned</span>}{t.locked && <span className="badge badge--outline">Locked</span>}</div>
+          <div className="post__who">{who(t)}<span className="post__time" title={formatDate(t.created_at)}>OP · {timeAgo(t.created_at)}</span>{t.is_system && <span className="badge badge--system">System</span>}{t.pinned && <span className="badge badge--gold">Pinned</span>}{t.locked && <span className="badge badge--outline">Locked</span>}</div>
           <div className="row" style={{ gap: '0.3rem' }}>
             {user?.is_admin && <>
               <button className="btn btn--ghost btn--sm" onClick={() => mod.mutate({ id: t.id, locked: !t.locked })}>{t.locked ? 'Unlock' : 'Lock'}</button>
@@ -61,7 +65,7 @@ export default function Thread() {
           </div>
         </div>
         <Body text={t.body} />
-        <div className="post__foot"><Upvote count={t.upvotes} active={t.user_upvoted} disabled={!verified || t.is_own} onClick={() => upT.mutate(t.id)} />{verified && !t.locked && <button className="btn btn--ghost btn--sm" onClick={() => quote(0)}>Reply</button>}</div>
+        <div className="post__foot"><Upvote count={t.upvotes} active={t.user_upvoted} disabled={!verified || t.is_own} onClick={() => upT.mutate(t.id)} />{verified && !t.locked && <button className="btn btn--ghost btn--sm" onClick={() => quote(0)}>Reply</button>}{!t.is_own && !t.is_system && <ReportButton targetType="thread" targetId={t.id} />}</div>
       </div>
 
       <div className="stack" style={{ marginTop: '0.75rem' }}>
@@ -72,7 +76,7 @@ export default function Thread() {
               {(p.is_own || user?.is_admin) && p.status !== 'removed' && <button className="btn btn--ghost btn--sm btn--danger" onClick={() => delP.mutate(p.id)}>Remove</button>}
             </div>
             <Body text={p.body} />
-            {p.status !== 'removed' && <div className="post__foot"><Upvote count={p.upvotes} active={p.user_upvoted} disabled={!verified || p.is_own} onClick={() => upP.mutate(p.id)} />{verified && !t.locked && <button className="btn btn--ghost btn--sm" onClick={() => quote(p.seq)}>Reply</button>}</div>}
+            {p.status !== 'removed' && <div className="post__foot"><Upvote count={p.upvotes} active={p.user_upvoted} disabled={!verified || p.is_own} onClick={() => upP.mutate(p.id)} />{verified && !t.locked && <button className="btn btn--ghost btn--sm" onClick={() => quote(p.seq)}>Reply</button>}{!p.is_own && <ReportButton targetType="post" targetId={p.id} />}</div>}
           </div>
         ))}
       </div>
@@ -81,8 +85,10 @@ export default function Thread() {
         {!user && <div className="notice notice--plain"><Link to="/login" style={{ borderBottom: '1px solid var(--border-strong)' }}>Sign in</Link> to reply.</div>}
         {user && !verified && <div className="notice">Verify your email to reply.</div>}
         {verified && t.locked && <div className="notice notice--plain">This thread is locked.</div>}
-        {verified && !t.locked && (
+        {verified && !t.locked && !user?.terms_accepted && <TermsGate />}
+        {verified && !t.locked && user?.terms_accepted && (
           <div className="card card--elevated stack">
+            <FirstPostNotice />
             <span className="eyebrow">Reply · use &gt;&gt;3 to reference post #3</span>
             <textarea id="reply-box" className="textarea" rows={4} value={body} onChange={e => setBody(e.target.value)} maxLength={6000} placeholder="Reply" />
             <IdentityToggle anonymous={anon} onChange={setAnon} />
@@ -91,6 +97,7 @@ export default function Thread() {
           </div>
         )}
       </div>
+      <Disclaimer compact />
     </div>
   )
 }

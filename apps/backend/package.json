@@ -7,6 +7,8 @@
     "start": "node dist/index.js",
     "migrate": "tsx src/db/migrate.ts",
     "seed": "tsx src/db/seed.ts",
+    "wipe:forum": "tsx src/db/wipe_forum.ts",
+    "forum:hard-delete": "tsx src/db/hard_delete.ts",
     "enrich": "tsx src/db/enrich.ts",
     "job": "tsx src/db/job.ts",
     "dedupe": "tsx src/db/dedupe.ts",

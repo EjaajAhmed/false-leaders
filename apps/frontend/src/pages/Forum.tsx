@@ -6,17 +6,19 @@ import ThreadRow, { BOARD_LABEL } from '../components/forum/ThreadRow'
 import ThreadComposer from '../components/forum/ThreadComposer'
 import { Empty, Loading } from '../components/States'
 import Dropdown from '../components/Dropdown'
+import { Link } from 'react-router-dom'
+import { Disclaimer } from '../components/Disclaimer'
 
 export default function Forum() {
   const [params, setParams] = useSearchParams()
   const board = params.get('board') || ''
-  const sort = params.get('sort') || 'active'
+  const sort = params.get('sort') || 'hot'
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
   const [composing, setComposing] = useState(false)
   const boards = useQuery({ queryKey: ['boards'], queryFn: getBoards, staleTime: 60000 })
   const threads = useQuery({ queryKey: ['threads', board, sort, q, page], queryFn: () => getThreads({ board: board || undefined, sort, q: q || undefined, page, limit: 25 }), placeholderData: prev => prev, refetchInterval: 60000 })
-  const set = (next: Record<string, string>) => { const o: Record<string, string> = {}; if (next.board ?? board) o.board = next.board ?? board; if ((next.sort ?? sort) !== 'active') o.sort = next.sort ?? sort; setParams(o, { replace: true }); setPage(1) }
+  const set = (next: Record<string, string>) => { const o: Record<string, string> = {}; if (next.board ?? board) o.board = next.board ?? board; if ((next.sort ?? sort) !== 'hot') o.sort = next.sort ?? sort; setParams(o, { replace: true }); setPage(1) }
   const current = boards.data?.find((b: any) => b.key === board)
 
   return (
@@ -35,7 +37,7 @@ export default function Forum() {
           ))}
         </div>
         <div className="viewbar__narrow">
-          <Dropdown placeholder="Sort" value={sort} onChange={v => set({ sort: v })} align="right" options={[{ value: 'active', label: 'Active' }, { value: 'new', label: 'New' }, { value: 'top', label: 'Top' }]} />
+          <Dropdown placeholder="Sort" value={sort} onChange={v => set({ sort: v })} align="right" options={[{ value: 'hot', label: 'Hot' }, { value: 'new', label: 'New' }, { value: 'top', label: 'Top' }, { value: 'active', label: 'Recently active' }]} />
         </div>
       </div>
 
@@ -57,7 +59,9 @@ export default function Forum() {
           <button className="btn btn--sm" disabled={!threads.data.hasMore} onClick={() => setPage(p => p + 1)}>Next</button>
         </div>
       )}
-      <p className="section__caption" style={{ marginTop: '1.5rem' }}>Boards: {Object.values(BOARD_LABEL).join(' · ')}. Threads about a specific leader also appear on that leader's page. Nothing posted here changes a leader's rating. Moderators can lock or remove threads; removed posts stay in place as "[removed]".</p>
+      <p className="section__caption" style={{ marginTop: '1.5rem' }}>Boards: {Object.values(BOARD_LABEL).join(' · ')}. Hot ranks by upvotes and replies, decaying from the last reply, so a thread comes back when news breaks. Nothing posted here changes a leader's rating. Moderators can lock or remove threads; removed posts stay in place as "[removed]".</p>
+      <Disclaimer />
+      <p className="legal-links"><Link to="/terms">Terms</Link><Link to="/acceptable-use">Acceptable use</Link><Link to="/takedown">Takedown</Link><Link to="/contact">Contact</Link></p>
     </div>
   )
 }

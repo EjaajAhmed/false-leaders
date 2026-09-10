@@ -164,3 +164,21 @@ export async function sendWelcomeEmail(to: string, username: string, verificatio
     console.error('Welcome email failed:', err)
   }
 }
+/** Notice-and-takedown submissions go to the abuse contact. Failure to send never blocks the request. */
+export async function sendTakedownNotice(req: { id: string; name: string; email: string; url: string; reason: string; detail?: string }) {
+  const resend = getResend()
+  const to = process.env.ABUSE_EMAIL || 'abuse@falseleaders.com'
+  if (!resend) { console.log(`[EMAIL] Takedown notice ${req.id} skipped — no API key (would go to ${to})`); return }
+  const esc = (s: string) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string))
+  await resend.emails.send({
+    from: FROM, to, reply_to: req.email,
+    subject: `Takedown request ${req.id.slice(0, 8)} · ${req.reason}`,
+    html: `<div style="font-family: sans-serif; max-width: 600px; color: #1a1a1a;">
+      <p><strong>From:</strong> ${esc(req.name)} &lt;${esc(req.email)}&gt;</p>
+      <p><strong>Content:</strong> <a href="${esc(req.url)}">${esc(req.url)}</a></p>
+      <p><strong>Reason:</strong> ${esc(req.reason)}</p>
+      <p style="white-space: pre-wrap;">${esc(req.detail || '')}</p>
+      <p style="color:#888;font-size:12px">Logged as takedown ${esc(req.id)} in the moderation log. Review it at ${APP_URL}/admin#moderation.</p>
+    </div>`,
+  })
+}

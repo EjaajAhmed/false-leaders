@@ -8,6 +8,8 @@ import { useAuth } from '../../context/AuthContext'
 import { usePostAsProle } from '../../lib/identity'
 import { BOARD_LABEL } from './ThreadRow'
 import Dropdown from '../Dropdown'
+import TermsGate from '../TermsGate'
+import { FirstPostNotice } from '../Disclaimer'
 
 interface Props { board?: string; leader?: { id: string; name: string } | null; onDone?: () => void }
 
@@ -38,11 +40,13 @@ export default function ThreadComposer({ board = 'general', leader = null, onDon
 
   if (!user) return <div className="notice notice--plain"><Link to="/login" style={{ borderBottom: '1px solid var(--border-strong)' }}>Sign in</Link> to start a thread. Threads are anonymous by default.</div>
   if (!verified) return <div className="notice">Verify your email to post.</div>
+  if (!user.terms_accepted) return <TermsGate />
 
   const canPost = title.trim().length >= 4 && body.trim().length >= 2 && !create.isPending
 
   return (
     <div className="card card--elevated stack">
+      <FirstPostNotice />
       <span className="eyebrow">New thread{leaderPick ? ` · ${leaderPick.name}` : ''}</span>
       <input className="input" placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} maxLength={160} />
       <textarea className="textarea" rows={5} placeholder={PLACEHOLDER[brd] || 'Say it plainly. Link your sources.'} value={body} onChange={e => setBody(e.target.value)} maxLength={6000} />

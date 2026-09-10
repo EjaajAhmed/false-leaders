@@ -1,6 +1,6 @@
 import client from './client'
 
-export const register = async (data: { email: string; username: string; password: string }) => {
+export const register = async (data: { email: string; username: string; password: string; accept_terms: boolean }) => {
   const res = await client.post('/auth/register', data)
   return res.data
 }
@@ -29,6 +29,8 @@ export const updateNotifPrefs = async (prefs: Record<string, boolean>) => {
   const res = await client.patch('/auth/notif-prefs', prefs)
   return res.data
 }
+
+export const acceptTerms = async () => (await client.post('/auth/accept-terms')).data
 
 export const updateTheme = async (theme: string) => (await client.patch('/auth/theme', { theme })).data
 

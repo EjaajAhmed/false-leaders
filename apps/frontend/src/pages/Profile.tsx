@@ -195,6 +195,10 @@ export default function Profile() {
             <span style={{ fontWeight: 500 }}>Admin</span><span className="eyebrow">Open →</span>
           </Link>
         )}
+        <div className="card">
+          <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>Legal</p>
+          <p className="legal-links"><Link to="/terms">Terms of Service</Link><Link to="/acceptable-use">Acceptable use</Link><Link to="/takedown">Takedown requests</Link><Link to="/contact">Contact</Link></p>
+        </div>
         <Link to="/bookmarks" className="card card--link row row--between">
           <span style={{ fontWeight: 500 }}>Manage grafts</span><span className="eyebrow">Open →</span>
         </Link>

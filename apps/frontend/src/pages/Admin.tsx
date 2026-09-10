@@ -4,6 +4,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getPoliticians, listApprovalPolls, addApprovalPoll, deleteApprovalPoll, getProposalQueue, reviewProposal, getSpikeQueue, reviewSpike, addDocument, scanContradictions, getPromiseQueue, reviewPromise, getContradictionQueue, reviewContradiction } from '../api/politicians'
 import client, { errorMessage } from '../api/client'
+import { getReports, updateReport, getTakedowns, updateTakedown, getModerationLog } from '../api/legal'
+import Dropdown from '../components/Dropdown'
 import AIAnalyzer from '../components/AIAnalyzer'
 import LevelBadge from '../components/LevelBadge'
 import { Empty, Loading } from '../components/States'
@@ -14,6 +16,79 @@ import { ARCHIVED } from '../config'
 const emptyForm = {
   name: '', party: '', region: '', position: '', bio: '', country: '', category: 'politician',
   age: '', latitude: '', longitude: '', photo_url: '', aliases: '', prominence: '',
+}
+
+function ModerationDesk() {
+  const qc = useQueryClient()
+  const [reportStatus, setReportStatus] = useState('open')
+  const reports = useQuery({ queryKey: ['reports', reportStatus], queryFn: () => getReports(reportStatus) })
+  const takedowns = useQuery({ queryKey: ['takedowns'], queryFn: () => getTakedowns('all') })
+  const log = useQuery({ queryKey: ['moderation-log'], queryFn: () => getModerationLog(100) })
+  const invalidate = () => { qc.invalidateQueries({ queryKey: ['reports'] }); qc.invalidateQueries({ queryKey: ['takedowns'] }); qc.invalidateQueries({ queryKey: ['moderation-log'] }); qc.invalidateQueries({ queryKey: ['threads'] }) }
+  const report = useMutation({ mutationFn: updateReport, onSuccess: invalidate, onError: e => alert(errorMessage(e)) })
+  const takedown = useMutation({ mutationFn: updateTakedown, onSuccess: invalidate, onError: e => alert(errorMessage(e)) })
+  const removeTarget = useMutation({
+    mutationFn: async (r: any) => r.target_type === 'thread' ? client.delete(`/forum/threads/${r.target_id}`, { data: { reason: `report ${r.id.slice(0, 8)}: ${r.reason}` } }) : client.delete(`/forum/posts/${r.target_id}`, { data: { reason: `report ${r.id.slice(0, 8)}: ${r.reason}` } }),
+    onSuccess: invalidate, onError: e => alert(errorMessage(e)),
+  })
+  const TD_STATUS = [{ value: 'received', label: 'Received' }, { value: 'in_review', label: 'In review' }, { value: 'actioned', label: 'Actioned' }, { value: 'declined', label: 'Declined' }]
+  return (
+    <div className="card" id="moderation">
+      <div className="section-title"><h2>Moderation</h2><span className="mono tiny dim">{reports.data?.length || 0} reports · {takedowns.data?.filter((t: any) => t.status === 'received').length || 0} new takedowns</span></div>
+      <p className="help" style={{ marginBottom: '1rem' }}>Reports come from members; takedown requests from anyone. Every action here, and every lock, pin, move or removal anywhere, lands in the log below. Removal is a soft delete. The only hard delete is the documented script for legal removal, and it logs the full content first.</p>
+
+      <div className="row row--between" style={{ marginBottom: '0.5rem' }}><h3 style={{ fontSize: '1.05rem' }}>Reports</h3><Dropdown placeholder="Status" value={reportStatus} onChange={setReportStatus} align="right" options={[{ value: 'open', label: 'Open' }, { value: 'resolved', label: 'Resolved' }, { value: 'dismissed', label: 'Dismissed' }, { value: 'all', label: 'All' }]} /></div>
+      {reports.isLoading && <Loading />}
+      {!reports.isLoading && reports.data?.length === 0 && <Empty text="No reports." />}
+      <div className="stack">
+        {reports.data?.map((r: any) => (
+          <div key={r.id} className="post">
+            <div className="post__head">
+              <div className="post__who"><span className="badge badge--outline">{r.target_type}</span><span className="badge badge--gold">{r.reason}</span><span className="post__time">{timeAgo(r.created_at)} · by @{r.reporter}{r.target_status === 'removed' ? ' · target removed' : ''}</span></div>
+              <Link to={`/forum/${r.thread_id}`} className="mono tiny muted">Open →</Link>
+            </div>
+            <p className="post__body small">{r.target_text || '[content no longer available]'}</p>
+            {r.detail && <p className="help" style={{ marginTop: '0.4rem' }}>Reporter: {r.detail}</p>}
+            {r.status === 'open' && (
+              <div className="post__foot">
+                {r.target_status !== 'removed' && <button className="btn btn--sm btn--danger" onClick={() => { if (confirm('Hide this content and resolve the report?')) { removeTarget.mutate(r); report.mutate({ id: r.id, status: 'resolved', note: 'content removed' }) } }}>Remove content</button>}
+                <button className="btn btn--sm" onClick={() => report.mutate({ id: r.id, status: 'resolved', note: 'resolved without removal' })}>Resolve</button>
+                <button className="btn btn--ghost btn--sm" onClick={() => report.mutate({ id: r.id, status: 'dismissed' })}>Dismiss</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="section-title" style={{ marginTop: '1.5rem' }}><h3 style={{ fontSize: '1.05rem' }}>Takedown requests</h3></div>
+      {takedowns.isLoading && <Loading />}
+      {!takedowns.isLoading && takedowns.data?.length === 0 && <Empty text="No takedown requests." />}
+      <div className="stack">
+        {takedowns.data?.map((t: any) => (
+          <div key={t.id} className="post">
+            <div className="post__head">
+              <div className="post__who"><span className="mono tiny dim">{t.id.slice(0, 8)}</span><span className="badge badge--gold">{t.reason}</span><span className="post__time">{timeAgo(t.created_at)} · {t.name} · {t.email}</span></div>
+              <Dropdown placeholder="Status" value={t.status} onChange={v => takedown.mutate({ id: t.id, status: v })} align="right" options={TD_STATUS} />
+            </div>
+            <p className="small"><a href={t.url} target="_blank" rel="noopener noreferrer" className="auth-link">{t.url}</a></p>
+            {t.detail && <p className="post__body small" style={{ marginTop: '0.4rem' }}>{t.detail}</p>}
+            <input className="input" style={{ marginTop: '0.5rem' }} placeholder="Internal note (saved on blur)" defaultValue={t.notes || ''} onBlur={e => { if (e.target.value !== (t.notes || '')) takedown.mutate({ id: t.id, notes: e.target.value }) }} />
+          </div>
+        ))}
+      </div>
+
+      <div className="section-title" style={{ marginTop: '1.5rem' }}><h3 style={{ fontSize: '1.05rem' }}>Moderation log</h3><span className="mono tiny dim">last 100</span></div>
+      {log.isLoading && <Loading />}
+      <div className="stack" style={{ gap: '0.25rem', maxHeight: 420, overflowY: 'auto' }}>
+        {log.data?.map((m: any) => (
+          <div key={m.id} className="row row--between mono tiny" style={{ padding: '0.35rem 0.5rem', borderBottom: '1px solid var(--border)', gap: '0.75rem' }}>
+            <span className="truncate"><span style={{ color: 'var(--text)' }}>{m.action}</span> · {m.target_type}{m.target_id ? ` ${String(m.target_id).slice(0, 8)}` : ''}{m.reason ? ` · ${m.reason}` : ''}</span>
+            <span className="dim" style={{ flexShrink: 0 }}>{m.actor ? `@${m.actor}` : 'system'} · {timeAgo(m.created_at)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 function SpikeQueue() {
@@ -296,13 +371,14 @@ export default function Admin() {
         <p className="eyebrow">Restricted</p>
         <h1>Admin</h1>
         <div className="chips" style={{ marginTop: '0.75rem' }}>
-          {[['#spikes', 'Spike captions'], ...(ARCHIVED.promises ? [] : [['#promises', 'Promises']]), ...(ARCHIVED.controversies ? [] : [['#proposals', 'Proposals']]), ['#approval', 'Approval polls'], ['#leader-form', 'Leaders'], ['#broadcast', 'Broadcast']].map(([href, label]) => (
+          {[['#moderation', 'Moderation'], ['#spikes', 'Spike captions'], ...(ARCHIVED.promises ? [] : [['#promises', 'Promises']]), ...(ARCHIVED.controversies ? [] : [['#proposals', 'Proposals']]), ['#approval', 'Approval polls'], ['#leader-form', 'Leaders'], ['#broadcast', 'Broadcast']].map(([href, label]) => (
             <a key={href} href={href} className="chip">{label}</a>
           ))}
         </div>
       </div>
 
       <div className="stack" style={{ gap: '1.5rem' }}>
+        <ModerationDesk />
         <SpikeQueue />
         {!ARCHIVED.promises && <PromiseDesk leaders={all} />}
         {!ARCHIVED.controversies && <ProposalQueue />}

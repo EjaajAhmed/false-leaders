@@ -27,6 +27,8 @@ import { leaderPromiseRoutes, promiseAdminRoutes } from './routes/promises'
 import { forumRoutes } from './routes/forum'
 import { ratingRoutes } from './routes/ratings'
 import { approvalRoutes, approvalAdminRoutes } from './routes/approval'
+import { legalRoutes, moderationAdminRoutes } from './routes/legal'
+import { startForumSchedules } from './services/forum'
 import { NIGHTLY_ORDER } from './services/nightly'
 import { startScheduler } from './services/jobs'
 
@@ -107,6 +109,8 @@ server.register(forumRoutes, { prefix: '/forum' })
 server.register(ratingRoutes, { prefix: '/politicians' })
 server.register(approvalRoutes, { prefix: '/politicians' })
 server.register(approvalAdminRoutes, { prefix: '/admin' })
+server.register(legalRoutes, { prefix: '/legal' })
+server.register(moderationAdminRoutes, { prefix: '/admin' })
 server.register(verdictsRoutes, { prefix: '/verdicts' })
 server.register(leaksRoutes, { prefix: '/leaks' })
 server.register(proposalsRoutes, { prefix: '/controversy-proposals' })
@@ -129,6 +133,7 @@ const start = async () => {
     await server.listen({ port: Number(process.env.PORT) || 8080, host: '0.0.0.0' })
     console.log(`Server running on port ${process.env.PORT || 8080}`)
     startScheduler(NIGHTLY_ORDER)
+    startForumSchedules()
   } catch (err) {
     server.log.error(err)
     process.exit(1)

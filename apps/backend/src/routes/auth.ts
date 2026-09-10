@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt'
 import crypto from 'crypto'
 import { authenticate } from '../middleware/auth'
 import { sendWelcomeEmail } from '../services/email'
+import { TERMS_VERSION } from '../services/legal'
 
 function publicUser(row: any) {
   return {
@@ -14,6 +15,7 @@ function publicUser(row: any) {
     is_admin: !!row.is_admin,
     email_verified: !!row.email_verified,
     theme: row.theme || '1984',
+    terms_accepted: row.terms_version === TERMS_VERSION,
   }
 }
 
@@ -29,8 +31,9 @@ function signToken(server: any, row: any) {
 
 export async function authRoutes(server: FastifyInstance) {
   server.post('/register', async (request, reply) => {
-    const { email, username, password } = request.body as any
+    const { email, username, password, accept_terms } = request.body as any
     if (!email || !username || !password) return reply.status(400).send({ error: 'All fields required.' })
+    if (accept_terms !== true) return reply.status(400).send({ error: 'You need to accept the Terms of Service and Acceptable Use Policy to register.' })
     if (String(password).length < 8) return reply.status(400).send({ error: 'Password must be at least 8 characters.' })
     if (!/^[a-zA-Z0-9_.-]{3,24}$/.test(String(username))) {
       return reply.status(400).send({ error: 'Username: 3-24 characters, letters, numbers, _ . - only.' })
@@ -42,9 +45,9 @@ export async function authRoutes(server: FastifyInstance) {
 
     try {
       const { rows } = await db.query(
-        `INSERT INTO users (email, username, password_hash, email_verified, verification_token, verification_token_expires)
-         VALUES ($1, $2, $3, false, $4, $5) RETURNING id, email, username, prole_number`,
-        [String(email).trim().toLowerCase(), username, password_hash, verification_token, expires]
+        `INSERT INTO users (email, username, password_hash, email_verified, verification_token, verification_token_expires, terms_version, terms_accepted_at)
+         VALUES ($1, $2, $3, false, $4, $5, $6, NOW()) RETURNING id, email, username, prole_number`,
+        [String(email).trim().toLowerCase(), username, password_hash, verification_token, expires, TERMS_VERSION]
       )
       await sendWelcomeEmail(rows[0].email, username, verification_token)
       return reply.status(201).send({ pending: true, email: rows[0].email, prole_number: rows[0].prole_number })
@@ -57,6 +60,7 @@ export async function authRoutes(server: FastifyInstance) {
   server.post('/login', async (request, reply) => {
     const { email, password } = request.body as any
     const { rows } = await db.query('SELECT * FROM users WHERE email = $1', [String(email || '').trim().toLowerCase()])
+    if (rows[0]?.is_system) return reply.status(403).send({ error: 'That account cannot sign in.' })
     if (rows.length === 0) return reply.status(401).send({ error: 'Invalid credentials.' })
 
     const valid = await bcrypt.compare(String(password || ''), rows[0].password_hash)
@@ -114,7 +118,7 @@ export async function authRoutes(server: FastifyInstance) {
   server.get('/me', { onRequest: [authenticate] }, async (request, reply) => {
     const user = (request as any).user
     const { rows } = await db.query(
-      `SELECT id, email, username, prole_number, is_admin, email_verified, created_at, theme,
+      `SELECT id, email, username, prole_number, is_admin, email_verified, created_at, theme, terms_version,
               email_notifications, notif_comment_replies, notif_politician_updates, notif_app_news
        FROM users WHERE id = $1`,
       [user.id]
@@ -122,7 +126,7 @@ export async function authRoutes(server: FastifyInstance) {
     if (rows.length === 0) return reply.status(401).send({ error: 'Access denied.' })
     const row = rows[0]
     // Re-issue a token so stale sessions pick up prole_number / verification / admin changes.
-    return { ...row, is_admin: !!row.is_admin, email_verified: !!row.email_verified, token: signToken(server, row) }
+    return { ...row, is_admin: !!row.is_admin, email_verified: !!row.email_verified, terms_accepted: row.terms_version === TERMS_VERSION, token: signToken(server, row) }
   })
 
   // Own activity: verdicts, leaks (as Prole), bookmarks
@@ -157,6 +161,12 @@ export async function authRoutes(server: FastifyInstance) {
       ),
     ])
     return { ratings: verdicts, threads: leaks, bookmarks, proposals }
+  })
+
+  server.post('/accept-terms', { onRequest: [authenticate] }, async (request) => {
+    const user = (request as any).user
+    await db.query('UPDATE users SET terms_version = $1, terms_accepted_at = NOW() WHERE id = $2', [TERMS_VERSION, user.id])
+    return { terms_accepted: true, terms_version: TERMS_VERSION }
   })
 
   server.patch('/theme', { onRequest: [authenticate] }, async (request, reply) => {

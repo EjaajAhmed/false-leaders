@@ -24,6 +24,7 @@ import Register from './pages/Register'
 import Verified from './pages/Verified'
 import PendingVerification from './pages/PendingVerification'
 import MobileAuthLanding from './pages/MobileAuthLanding'
+import { Terms, AcceptableUse, Takedown, Contact } from './pages/Legal'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -90,6 +91,10 @@ function App() {
             <Route path="/bookmarks" element={<Bookmarks />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/acceptable-use" element={<AcceptableUse />} />
+            <Route path="/takedown" element={<Takedown />} />
+            <Route path="/contact" element={<Contact />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>

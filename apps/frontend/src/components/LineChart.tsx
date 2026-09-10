@@ -19,7 +19,7 @@ interface Props {
 
 import { useCallback, useEffect, useState } from 'react'
 
-const TONES = ['rgba(240,227,190,0.95)', 'rgba(240,227,190,0.6)', 'rgba(240,227,190,0.38)', 'rgba(240,227,190,0.22)']
+const TONES = ['color-mix(in srgb, var(--text) 95%, transparent)', 'color-mix(in srgb, var(--text) 60%, transparent)', 'color-mix(in srgb, var(--text) 38%, transparent)', 'color-mix(in srgb, var(--text) 22%, transparent)']
 
 /** Monochrome line chart. Red is reserved for the highlighted series. Direct labels, no legend needed. */
 export default function LineChart({ series, baseline, marker, yFormat = v => String(Math.round(v)), xFormat = x => String(x), marks = [], caption, ariaLabel }: Props) {
@@ -65,35 +65,35 @@ export default function LineChart({ series, baseline, marker, yFormat = v => Str
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={ariaLabel}>
         {ticks.map((t, i) => (
           <g key={i}>
-            <line x1={PAD.l} x2={W - PAD.r} y1={sy(t)} y2={sy(t)} stroke="rgba(240,227,190,0.1)" strokeWidth="1" />
-            <text x={PAD.l - 6} y={sy(t)} fontSize={FS} fill="#A89D83" textAnchor="end" dominantBaseline="middle" fontFamily="JetBrains Mono, monospace">{yFormat(t)}</text>
+            <line x1={PAD.l} x2={W - PAD.r} y1={sy(t)} y2={sy(t)} style={{ stroke: 'color-mix(in srgb, var(--text) 10%, transparent)' }} strokeWidth="1" />
+            <text x={PAD.l - 6} y={sy(t)} fontSize={FS} style={{ fill: 'var(--muted)' }} textAnchor="end" dominantBaseline="middle" fontFamily="var(--font-mono)">{yFormat(t)}</text>
           </g>
         ))}
         {baseline != null && (
-          <line x1={PAD.l} x2={W - PAD.r} y1={sy(baseline)} y2={sy(baseline)} stroke="rgba(240,227,190,0.45)" strokeWidth="1" strokeDasharray="3 4" />
+          <line x1={PAD.l} x2={W - PAD.r} y1={sy(baseline)} y2={sy(baseline)} style={{ stroke: 'color-mix(in srgb, var(--text) 45%, transparent)' }} strokeWidth="1" strokeDasharray="3 4" />
         )}
         {marker && marker.x >= xMin && marker.x <= xMax && (
           <g>
-            <line x1={sx(marker.x)} x2={sx(marker.x)} y1={PAD.t} y2={H - PAD.b} stroke="#8E2020" strokeWidth="1" />
-            <text x={sx(marker.x) + 4} y={PAD.t + 9} fontSize={FS - 0.5} fill="#8E2020" fontFamily="JetBrains Mono, monospace" letterSpacing="1">{marker.label.toUpperCase()}</text>
+            <line x1={sx(marker.x)} x2={sx(marker.x)} y1={PAD.t} y2={H - PAD.b} style={{ stroke: 'var(--accent)' }} strokeWidth="1" />
+            <text x={sx(marker.x) + 4} y={PAD.t + 9} fontSize={FS - 0.5} style={{ fill: 'var(--accent)' }} fontFamily="var(--font-mono)" letterSpacing="1">{marker.label.toUpperCase()}</text>
           </g>
         )}
         {xTicks.map(x => (
-          <text key={x} x={sx(x)} y={H - 8} fontSize={FS} fill="#A89D83" textAnchor="middle" fontFamily="JetBrains Mono, monospace">{xFormat(x)}</text>
+          <text key={x} x={sx(x)} y={H - 8} fontSize={FS} style={{ fill: 'var(--muted)' }} textAnchor="middle" fontFamily="var(--font-mono)">{xFormat(x)}</text>
         ))}
         {series.map(s => {
-          const color = s.highlight ? '#8E2020' : TONES[Math.min(toneIdx++, TONES.length - 1)]
+          const color = s.highlight ? 'var(--accent)' : TONES[Math.min(toneIdx++, TONES.length - 1)]
           const d = s.points.map((p, i) => `${i ? 'L' : 'M'}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`).join(' ')
-          return <path key={s.key} d={d} fill="none" stroke={color} strokeWidth={s.highlight ? 2.2 : 1.6} strokeLinejoin="round" />
+          return <path key={s.key} d={d} fill="none" style={{ stroke: color }} strokeWidth={s.highlight ? 2.2 : 1.6} strokeLinejoin="round" />
         })}
         {marks.map(mx => {
           const hs = series.find(s => s.highlight) || series[0]
           const pt = hs?.points.find(p => p.x === mx)
           if (!pt) return null
-          return <rect key={`m${mx}`} x={sx(pt.x) - 4} y={sy(pt.y) - 4} width={8} height={8} fill="#8E2020" />
+          return <rect key={`m${mx}`} x={sx(pt.x) - 4} y={sy(pt.y) - 4} width={8} height={8} style={{ fill: 'var(--accent)' }} />
         })}
         {ends.map((e, i) => (
-          <text key={e.s.key} x={W - PAD.r + 8} y={labelY[i]} fontSize={FS} fill={e.s.highlight ? '#c8684e' : '#F0E3BE'} dominantBaseline="middle" fontFamily="JetBrains Mono, monospace">
+          <text key={e.s.key} x={W - PAD.r + 8} y={labelY[i]} fontSize={FS} style={{ fill: e.s.highlight ? 'var(--warn)' : 'var(--text)' }} dominantBaseline="middle" fontFamily="var(--font-mono)">
             {e.s.label} {yFormat(e.last.y)}
           </text>
         ))}

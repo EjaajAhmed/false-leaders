@@ -30,6 +30,8 @@ export const updateNotifPrefs = async (prefs: Record<string, boolean>) => {
   return res.data
 }
 
+export const updateTheme = async (theme: string) => (await client.patch('/auth/theme', { theme })).data
+
 export const resendVerification = async () => {
   const res = await client.post('/auth/resend-verification')
   return res.data

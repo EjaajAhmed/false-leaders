@@ -49,7 +49,7 @@ export default function RatingRing({ value, size = 'md', label, sublabel }: Prop
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: size === 'sm' ? 0 : '0.5rem' }}>
       <svg width={dim} height={dim} viewBox={`0 0 ${dim} ${dim}`} style={{ display: 'block' }} aria-label={label ? `${label} ${target ?? 'unrated'}` : undefined}>
-        <circle cx={dim / 2} cy={dim / 2} r={r} fill="none" stroke="#1f1f1f" strokeWidth={stroke} />
+        <circle cx={dim / 2} cy={dim / 2} r={r} fill="none" style={{ stroke: 'var(--track)' }} strokeWidth={stroke} />
         <circle
           cx={dim / 2} cy={dim / 2} r={r} fill="none"
           stroke={color} strokeWidth={stroke} strokeLinecap="butt"

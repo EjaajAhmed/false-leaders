@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { db } from '../db/client'
 
 // score_change and verdict_shift events belong to the retired TruthScore and are kept in the table but no longer served.
-const TYPES = ['leak', 'controversy', 'controversy_escalated', 'thread', 'rating_public']
+const TYPES = ['controversy', 'controversy_escalated', 'thread', 'rating_public']
 
 export async function feedRoutes(server: FastifyInstance) {
   server.get('/recent', async (request) => {
@@ -12,7 +12,9 @@ export async function feedRoutes(server: FastifyInstance) {
     let where = "WHERE type NOT IN ('score_change', 'verdict_shift')"
     let i = 1
 
-    if (type && TYPES.includes(type)) {
+    if (type === 'thread') {
+      where += ` AND type IN ('thread', 'leak')` // older leak events were threads too
+    } else if (type && TYPES.includes(type)) {
       where += ` AND type = $${i}`; params.push(type); i++
     } else if (type === 'controversy') {
       where += ` AND type IN ('controversy', 'controversy_escalated')`

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { cssVar, useTheme } from '../lib/theme'
 import L from 'leaflet'
 import { useState } from 'react'
 import { getMapLeaders, getPoliticiansMeta } from '../api/politicians'
@@ -10,22 +11,20 @@ import RatingRing from '../components/RatingRing'
 import { categoryLabel, leaderMeta } from '../lib/format'
 import 'leaflet/dist/leaflet.css'
 
-const COLORS = {
-  clean: '#2d6a2d', watch: '#c9a84c', warn: '#8b4513', condemned: '#8b1a1a',
-}
+
 function markerColor(score: number | null) {
-  if (score == null) return '#4a4640'
-  if (score >= 75) return COLORS.clean
-  if (score >= 50) return COLORS.watch
-  if (score >= 25) return COLORS.warn
-  return COLORS.condemned
+  if (score == null) return cssVar('--rating-0')
+  if (score >= 75) return cssVar('--rating-4')
+  if (score >= 50) return cssVar('--rating-3')
+  if (score >= 25) return cssVar('--rating-2')
+  return cssVar('--rating-1')
 }
 
 function createIcon(score: number | null) {
   const color = markerColor(score)
   return L.divIcon({
     className: '',
-    html: `<div style="width:14px;height:14px;background:${color};border:1px solid #0a0a0a;outline:1px solid ${color};transform:rotate(45deg)"></div>`,
+    html: `<div style="width:14px;height:14px;background:${color};border:1px solid ${cssVar('--surface')};outline:1px solid ${color};transform:rotate(45deg)"></div>`,
     iconSize: [14, 14],
     iconAnchor: [7, 7],
     popupAnchor: [0, -10],
@@ -33,6 +32,7 @@ function createIcon(score: number | null) {
 }
 
 export default function MapPage() {
+  const theme = useTheme()
   const [view, setView] = useState<ViewKey>('main')
   const [country, setCountry] = useState('')
   const { data, isLoading } = useQuery({ queryKey: ['politicians-map', view, country], queryFn: () => getMapLeaders({ view: country ? 'all' : view, country: country || undefined }), placeholderData: prev => prev })
@@ -66,7 +66,7 @@ export default function MapPage() {
 
       <div className="map-legend map-legend--bottom" style={{ top: 'auto', bottom: '1.5rem' }}>
         <div className="eyebrow">Community rating</div>
-        {[['Trusted · 75–100', COLORS.clean], ['Divided · 50–74', COLORS.watch], ['Distrusted · 25–49', COLORS.warn], ['Condemned · 0–24', COLORS.condemned], ['Unrated', '#4a4640']].map(([label, color]) => (
+        {[['Trusted · 75–100', 'var(--rating-4)'], ['Divided · 50–74', 'var(--rating-3)'], ['Distrusted · 25–49', 'var(--rating-2)'], ['Condemned · 0–24', 'var(--rating-1)'], ['Unrated', 'var(--rating-0)']].map(([label, color]) => (
           <div key={label} className="map-legend__item"><span className="map-legend__swatch" style={{ background: color }} />{label}</div>
         ))}
       </div>
@@ -74,7 +74,8 @@ export default function MapPage() {
       <MapContainer center={[25, 10]} zoom={2} minZoom={2} worldCopyJump style={{ height: '100%', width: '100%' }}>
         <TileLayer
           attribution='Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Esri, DeLorme, NAVTEQ'
-          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+          key={theme}
+          url={theme === 'samizdat' ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}' : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'}
           maxZoom={16}
         />
         <TileLayer
@@ -82,7 +83,7 @@ export default function MapPage() {
           maxZoom={16}
         />
         {withCoords.map((p: any) => (
-          <Marker key={p.id} position={[Number(p.latitude), Number(p.longitude)]} icon={createIcon(p.rating_avg == null ? null : Number(p.rating_avg))}>
+          <Marker key={`${p.id}-${theme}`} position={[Number(p.latitude), Number(p.longitude)]} icon={createIcon(p.rating_avg == null ? null : Number(p.rating_avg))}>
             <Popup minWidth={220} maxWidth={280}>
               <div className="row row--between" style={{ alignItems: 'flex-start', gap: '0.75rem' }}>
                 {p.photo_url && <img className="photo photo--popup" src={p.photo_url} alt="" />}
@@ -93,7 +94,7 @@ export default function MapPage() {
                 </div>
                 <RatingRing value={p.rating_avg == null ? null : Number(p.rating_avg)} size="sm" />
               </div>
-              {p.bio && <p className="small" style={{ margin: '0.6rem 0', color: '#b9b3a7' }}>{p.bio.length > 110 ? p.bio.slice(0, 110) + '…' : p.bio}</p>}
+              {p.bio && <p className="small" style={{ margin: '0.6rem 0', color: 'var(--muted)' }}>{p.bio.length > 110 ? p.bio.slice(0, 110) + '…' : p.bio}</p>}
               <Link to={`/leaders/${p.id}`} className="btn btn--sm" style={{ marginTop: '0.4rem' }}>Open file</Link>
             </Popup>
           </Marker>

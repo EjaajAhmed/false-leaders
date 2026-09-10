@@ -10,6 +10,7 @@ import { Loading } from '../components/States'
 import { compact, ratingColor } from '../lib/format'
 import { ARCHIVED } from '../config'
 import Stamp from '../components/Stamp'
+import ThemePicker from '../components/ThemePicker'
 
 function useCountUp(target: number, duration = 1800) {
   const [value, setValue] = useState(0)
@@ -61,7 +62,7 @@ function Hero({ leaders }: { leaders: number }) {
           <strong>{count.toLocaleString()}</strong> leaders under watch
         </p>
         <p className="muted" style={{ maxWidth: '52ch', marginTop: '1.25rem', fontSize: '0.95rem' }}>
-          Rate, investigate and judge the people in power. Heads of state, executives, judges, moguls, clerics. Members rate them 0 to 100. The average goes public once enough people have voted. Every leak is anonymous.
+          Rate, investigate and judge the people in power. Heads of state, executives, judges, moguls, clerics. Members rate them 0 to 100. The average goes public once enough people have voted.
         </p>
         <div className="hero__actions">
           <Link to="/browse" className="btn btn--gold">Open the files</Link>
@@ -197,6 +198,11 @@ export default function Home() {
             ))}
           </div>
         </Reveal>
+
+        <div className="home-foot">
+          <span className="mono tiny dim">FalseLeaders · nothing here is verified</span>
+          <ThemePicker compact />
+        </div>
       </div>
     </div>
   )

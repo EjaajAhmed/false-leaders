@@ -15,21 +15,21 @@ export default function NetworkGraph({ name, edges, entityUrl }: { name: string;
     <figure className="chart" style={{ margin: 0 }}>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${name} and ${shown.length} connected entities from OpenSanctions.`}>
         {nodes.map(n => (
-          <line key={`l${n.i}`} x1={cx} y1={cy} x2={n.x} y2={n.y} stroke={n.relation === 'family' ? '#8E2020' : 'rgba(240,227,190,0.35)'} strokeWidth={n.relation === 'family' ? 1.6 : 1} />
+          <line key={`l${n.i}`} x1={cx} y1={cy} x2={n.x} y2={n.y} style={{ stroke: n.relation === 'family' ? 'var(--accent)' : 'color-mix(in srgb, var(--text) 35%, transparent)' }} strokeWidth={n.relation === 'family' ? 1.6 : 1} />
         ))}
         {nodes.map(n => {
           const sanctioned = (n.other_topics || []).includes('sanction')
           const left = n.x < cx - 10, right = n.x > cx + 10
           return (
             <a key={n.i} href={entityUrl(n.other_id)} target="_blank" rel="noopener noreferrer">
-              <rect x={n.x - 5} y={n.y - 5} width={10} height={10} fill={sanctioned ? '#8E2020' : n.other_schema === 'Person' ? '#F0E3BE' : '#A89D83'} />
-              <text x={left ? n.x - 9 : right ? n.x + 9 : n.x} y={n.y < cy - 10 ? n.y - 9 : n.y > cy + 10 ? n.y + 14 : n.y + 4} fontSize="9.5" fill="#F0E3BE" textAnchor={left ? 'end' : right ? 'start' : 'middle'} fontFamily="Inter, sans-serif">{short(n.other_name)}</text>
-              <text x={left ? n.x - 9 : right ? n.x + 9 : n.x} y={n.y < cy - 10 ? n.y - 20 : n.y > cy + 10 ? n.y + 25 : n.y + 15} fontSize="7.5" fill="#A89D83" textAnchor={left ? 'end' : right ? 'start' : 'middle'} fontFamily="JetBrains Mono, monospace" letterSpacing="0.6">{(REL_LABEL[n.relation] || n.relation).toUpperCase()}{n.role ? ` · ${n.role.toUpperCase()}` : ''}</text>
+              <rect x={n.x - 5} y={n.y - 5} width={10} height={10} style={{ fill: sanctioned ? 'var(--accent)' : n.other_schema === 'Person' ? 'var(--text)' : 'var(--muted)' }} />
+              <text x={left ? n.x - 9 : right ? n.x + 9 : n.x} y={n.y < cy - 10 ? n.y - 9 : n.y > cy + 10 ? n.y + 14 : n.y + 4} fontSize="9.5" style={{ fill: 'var(--text)' }} textAnchor={left ? 'end' : right ? 'start' : 'middle'} fontFamily="var(--font-body)">{short(n.other_name)}</text>
+              <text x={left ? n.x - 9 : right ? n.x + 9 : n.x} y={n.y < cy - 10 ? n.y - 20 : n.y > cy + 10 ? n.y + 25 : n.y + 15} fontSize="7.5" style={{ fill: 'var(--muted)' }} textAnchor={left ? 'end' : right ? 'start' : 'middle'} fontFamily="var(--font-mono)" letterSpacing="0.6">{(REL_LABEL[n.relation] || n.relation).toUpperCase()}{n.role ? ` · ${n.role.toUpperCase()}` : ''}</text>
             </a>
           )
         })}
-        <rect x={cx - 9} y={cy - 9} width={18} height={18} fill="#0B0A08" stroke="#F0E3BE" strokeWidth="1.5" />
-        <text x={cx} y={cy + 30} fontSize="11" fill="#F0E3BE" textAnchor="middle" fontFamily="Oswald, sans-serif" fontWeight="600" letterSpacing="0.5">{name.toUpperCase()}</text>
+        <rect x={cx - 9} y={cy - 9} width={18} height={18} style={{ fill: 'var(--surface)', stroke: 'var(--text)' }} strokeWidth="1.5" />
+        <text x={cx} y={cy + 30} fontSize="11" style={{ fill: 'var(--text)' }} textAnchor="middle" fontFamily="var(--font-display)" fontWeight="600" letterSpacing="0.5">{name.toUpperCase()}</text>
       </svg>
       <figcaption className="section__caption">Connections recorded in OpenSanctions source documents. Red squares are themselves sanctioned; red lines are family. A connection is not evidence of wrongdoing by either party. {edges.length > shown.length ? `${edges.length - shown.length} further connections not drawn.` : ''}</figcaption>
     </figure>

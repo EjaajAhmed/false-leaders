@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { getMe } from '../api/auth'
+import { applyTheme, isTheme } from '../lib/theme'
 
 export interface User {
   id: string
@@ -9,6 +10,7 @@ export interface User {
   prole_number?: number | null
   is_admin?: boolean
   email_verified?: boolean
+  theme?: string
 }
 
 interface AuthContextType {
@@ -37,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(t)
     localStorage.setItem('user', JSON.stringify(u))
     localStorage.setItem('token', t)
+    if (isTheme(u.theme)) applyTheme(u.theme)
   }, [])
 
   const logout = useCallback(() => {
@@ -52,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await getMe()
       const next: User = {
         id: me.id, email: me.email, username: me.username,
-        prole_number: me.prole_number, is_admin: !!me.is_admin, email_verified: !!me.email_verified,
+        prole_number: me.prole_number, is_admin: !!me.is_admin, email_verified: !!me.email_verified, theme: me.theme,
       }
       loginUser(next, me.token || localStorage.getItem('token')!)
     } catch (err: any) {

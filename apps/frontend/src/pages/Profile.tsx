@@ -8,6 +8,7 @@ import { Empty, Loading } from '../components/States'
 import { BOARD_LABEL } from '../components/forum/ThreadRow'
 import { proleTag, ratingColor, timeAgo } from '../lib/format'
 import { ARCHIVED } from '../config'
+import ThemePicker from '../components/ThemePicker'
 
 type ActivityTab = 'ratings' | 'threads' | 'proposals' | 'bookmarks'
 
@@ -131,7 +132,7 @@ export default function Profile() {
           <p className="muted small">{user.email}</p>
           <p className="help" style={{ marginTop: '0.75rem' }}>Shown on posts you choose to sign. Used for your bookmarks and grafts.</p>
         </div>
-        <div className="card" style={{ borderColor: 'rgba(201,168,76,0.35)' }}>
+        <div className="card" style={{ borderColor: 'color-mix(in srgb, var(--text) 35%, transparent)' }}>
           <p className="eyebrow eyebrow--gold">Anonymous identity</p>
           <h2 className="mono" style={{ fontSize: '1.6rem', margin: '0.5rem 0 0.25rem', color: 'var(--gold)', fontWeight: 600 }}>{proleTag(user.prole_number)}</h2>
           <p className="muted small">Assigned on registration. Permanent.</p>
@@ -173,6 +174,12 @@ export default function Profile() {
             </div>
           )}
           {usernameMsg && <p className={usernameMsg.ok ? 'notice' : 'error'} style={{ marginTop: '0.75rem' }}>{usernameMsg.text}</p>}
+        </div>
+
+        <div className="card">
+          <p className="eyebrow" style={{ marginBottom: '0.75rem' }}>Appearance</p>
+          <ThemePicker />
+          <p className="help" style={{ marginTop: '0.75rem' }}>Saved to your account and applied wherever you sign in.</p>
         </div>
 
         <div className="card">

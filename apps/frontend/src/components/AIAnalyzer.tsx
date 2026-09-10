@@ -55,14 +55,14 @@ export default function AIAnalyzer({ politicianId, politicianName }: Props) {
   const total = selected.funding.size + selected.influence.size + selected.controversies.size
 
   const item = (g: Group, i: number, content: React.ReactNode) => (
-    <label key={i} className="row" style={{ alignItems: 'flex-start', padding: '0.6rem 0.7rem', border: `1px solid ${selected[g].has(i) ? 'var(--gold)' : 'var(--border)'}`, background: 'var(--bg)', cursor: 'pointer', gap: '0.7rem' }}>
-      <input type="checkbox" checked={selected[g].has(i)} onChange={() => toggle(g, i)} style={{ marginTop: '0.25rem', accentColor: '#c9a84c' }} />
+    <label key={i} className="row" style={{ alignItems: 'flex-start', padding: '0.6rem 0.7rem', border: `1px solid ${selected[g].has(i) ? 'var(--gold)' : 'var(--border)'}`, background: 'var(--surface)', cursor: 'pointer', gap: '0.7rem' }}>
+      <input type="checkbox" checked={selected[g].has(i)} onChange={() => toggle(g, i)} style={{ marginTop: '0.25rem', accentColor: 'var(--text)' }} />
       <div style={{ minWidth: 0, flex: 1 }}>{content}</div>
     </label>
   )
 
   return (
-    <div className="card" style={{ borderColor: 'rgba(201,168,76,0.3)' }}>
+    <div className="card" style={{ borderColor: 'color-mix(in srgb, var(--text) 30%, transparent)' }}>
       <div className="section-title">
         <div><p className="eyebrow eyebrow--gold">Analyst</p><h2>Extract intelligence on {politicianName}</h2></div>
       </div>

@@ -93,7 +93,7 @@ export default function FundingTab({ politicianId }: { politicianId: string }) {
             <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>Sources</p>
             <div className="stack" style={{ gap: '0.4rem' }}>
               {funding.map((f: any) => (
-                <div key={f.id} className="row row--between" style={{ padding: '0.5rem 0.6rem', background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                <div key={f.id} className="row row--between" style={{ padding: '0.5rem 0.6rem', background: 'var(--surface)', border: '1px solid var(--border)' }}>
                   <div style={{ minWidth: 0 }}>
                     <p className="small truncate" style={{ fontWeight: 500 }}>{f.source_name}</p>
                     <p className="mono tiny dim" style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}>{f.source_type}</p>

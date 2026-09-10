@@ -42,7 +42,7 @@ export default function AuthSlideshow({ children, style }: Props) {
         pointerEvents: 'none'
       }} />
       {children && (
-        <div style={{ position: 'relative', zIndex: 1, height: '100%' }}>
+        <div className="scope-classic" style={{ position: 'relative', zIndex: 1, height: '100%' }}>
           {children}
         </div>
       )}

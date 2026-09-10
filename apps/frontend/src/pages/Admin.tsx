@@ -87,7 +87,7 @@ function ApprovalDesk({ leaders }: { leaders: any[] }) {
       {polls.data && polls.data.length > 0 && (
         <div className="stack" style={{ gap: '0.4rem', marginTop: '1.25rem', maxHeight: 360, overflowY: 'auto' }}>
           {polls.data.map((p: any) => (
-            <div key={p.id} className="row row--between" style={{ padding: '0.5rem 0.7rem', border: '1px solid var(--border)', background: 'var(--bg)', gap: '0.75rem' }}>
+            <div key={p.id} className="row row--between" style={{ padding: '0.5rem 0.7rem', border: '1px solid var(--border)', background: 'var(--surface)', gap: '0.75rem' }}>
               <div style={{ minWidth: 0 }}>
                 <p className="small truncate" style={{ fontWeight: 500 }}><Link to={`/leaders/${p.politician_id}`}>{p.leader_name}</Link> <span className="mono">{Math.round(Number(p.approve))}%</span>{p.disapprove != null && <span className="mono dim"> / {Math.round(Number(p.disapprove))}%</span>}</p>
                 <p className="tiny muted truncate">{p.pollster} · {p.fieldwork_end?.slice(0, 10)}{p.sample_size ? ` · n=${p.sample_size}` : ''} · <a href={p.source_url} target="_blank" rel="noopener noreferrer">source</a></p>
@@ -363,7 +363,7 @@ export default function Admin() {
           </div>
           <div className="stack" style={{ gap: '0.4rem', maxHeight: 520, overflowY: 'auto' }}>
             {filtered.map((p: any) => (
-              <div key={p.id} className="row row--between" style={{ padding: '0.55rem 0.7rem', border: '1px solid var(--border)', background: 'var(--bg)' }}>
+              <div key={p.id} className="row row--between" style={{ padding: '0.55rem 0.7rem', border: '1px solid var(--border)', background: 'var(--surface)' }}>
                 <div style={{ minWidth: 0 }}>
                   <p className="small truncate" style={{ fontWeight: 500 }}>{p.name} <span className="mono dim">{p.rating_avg == null ? `— (${p.rating_count ?? 0})` : `${p.rating_avg} (${p.rating_count})`}</span></p>
                   <p className="tiny muted truncate">{[p.position, p.party].filter(Boolean).join(' · ')}</p>

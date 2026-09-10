@@ -6,11 +6,10 @@ import FeedList from '../components/FeedList'
 import { Loading } from '../components/States'
 import { ARCHIVED } from '../config'
 
-type Filter = 'all' | 'rating_public' | 'leak' | 'controversy' | 'thread'
+type Filter = 'all' | 'rating_public' | 'controversy' | 'thread'
 const FILTERS: { key: Filter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'rating_public', label: 'Ratings' },
-  { key: 'leak', label: 'Leaks' },
   { key: 'controversy', label: 'Controversies' },
   { key: 'thread', label: 'Forum' },
 ]
@@ -51,7 +50,7 @@ export default function Feed() {
       <div className="page-head">
         <p className="eyebrow">Live · refreshes every 30s</p>
         <h1>The Wall</h1>
-        <p>{ARCHIVED.controversies ? 'Every new public rating, leak and thread across every leader on file.' : 'Every new public rating, leak, controversy and thread across every leader on file.'}</p>
+        <p>{ARCHIVED.controversies ? 'Every new public rating and every new thread across every leader on file.' : 'Every new public rating, controversy and thread across every leader on file.'}</p>
       </div>
 
       <div className="chips" style={{ marginBottom: '1.25rem' }}>

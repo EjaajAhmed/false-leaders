@@ -119,7 +119,7 @@ export function feedText(e: FeedEvent): FeedText {
       }
     }
     case 'leak':
-      return { before: `${m.who || proleTag(m.prole_number)} filed a leak on `, after: m.title ? `: "${m.title}"` : '', label: 'Leak' }
+      return { before: `${m.who || proleTag(m.prole_number)} opened a thread on `, after: m.title ? `: "${m.title}"` : '', label: 'Forum' }
     case 'controversy': {
       const lvl = String(m.level || 'speculative')
       const head = lvl === 'confirmed' ? 'New controversy confirmed' : `New controversy logged (${lvl})`

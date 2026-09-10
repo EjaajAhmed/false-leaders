@@ -42,21 +42,21 @@ export default function NotificationBell() {
       <button
         onClick={() => setOpen(!open)}
         aria-label="Notifications"
-        style={{ background: 'rgba(10,10,10,0.85)', border: '1px solid var(--border-strong)', padding: '0.45rem', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        style={{ background: 'var(--overlay)', border: '1px solid var(--border-strong)', padding: '0.45rem', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={unread > 0 ? '#c9a84c' : '#8a857b'} strokeWidth="1.6" strokeLinecap="square">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={unread > 0 ? 'var(--text)' : 'var(--muted)'} strokeWidth="1.6" strokeLinecap="square">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
         {unread > 0 && (
-          <span className="mono" style={{ position: 'absolute', top: -6, right: -6, background: 'var(--blood)', color: '#f3e4e4', minWidth: 16, height: 16, padding: '0 4px', fontSize: '0.58rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>
+          <span className="mono" style={{ position: 'absolute', top: -6, right: -6, background: 'var(--accent)', color: 'var(--on-accent)', minWidth: 16, height: 16, padding: '0 4px', fontSize: '0.58rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>
             {unread > 9 ? '9+' : unread}
           </span>
         )}
       </button>
 
       {open && (
-        <div style={{ position: 'absolute', top: '2.4rem', right: 0, width: 320, maxWidth: 'calc(100vw - 1.5rem)', background: 'var(--surface)', border: '1px solid var(--border-strong)', zIndex: 1000 }}>
+        <div style={{ position: 'absolute', top: '2.4rem', right: 0, width: 320, maxWidth: 'calc(100vw - 1.5rem)', background: 'var(--panel)', border: '1px solid var(--border-strong)', zIndex: 1000 }}>
           <div className="row row--between" style={{ padding: '0.65rem 0.9rem', borderBottom: '1px solid var(--border)' }}>
             <span className="eyebrow">Signals {unread > 0 && <span style={{ color: 'var(--gold)' }}>({unread})</span>}</span>
             <div className="row" style={{ gap: '0.75rem' }}>

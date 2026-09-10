@@ -74,7 +74,7 @@ export async function forumRoutes(server: FastifyInstance) {
     )
     const { rows: me } = await db.query('SELECT prole_number FROM users WHERE id = $1', [user.id])
     const who = anon ? `Prole #${me[0]?.prole_number}` : `@${user.username}`
-    if (politician_id) await emitFeedEvent(knd === 'leak' ? 'leak' : 'thread', politician_id, leaderName!, { title: t, thread_id: rows[0].id, who, board: brd, kind: knd, prole_number: anon ? me[0]?.prole_number : undefined })
+    if (politician_id) await emitFeedEvent('thread', politician_id, leaderName!, { title: t, thread_id: rows[0].id, who, board: brd, kind: knd, prole_number: anon ? me[0]?.prole_number : undefined })
     return reply.status(201).send(rows[0])
   })
 

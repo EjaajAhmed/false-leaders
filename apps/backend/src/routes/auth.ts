@@ -13,6 +13,7 @@ function publicUser(row: any) {
     prole_number: row.prole_number,
     is_admin: !!row.is_admin,
     email_verified: !!row.email_verified,
+    theme: row.theme || '1984',
   }
 }
 
@@ -113,7 +114,7 @@ export async function authRoutes(server: FastifyInstance) {
   server.get('/me', { onRequest: [authenticate] }, async (request, reply) => {
     const user = (request as any).user
     const { rows } = await db.query(
-      `SELECT id, email, username, prole_number, is_admin, email_verified, created_at,
+      `SELECT id, email, username, prole_number, is_admin, email_verified, created_at, theme,
               email_notifications, notif_comment_replies, notif_politician_updates, notif_app_news
        FROM users WHERE id = $1`,
       [user.id]
@@ -156,6 +157,14 @@ export async function authRoutes(server: FastifyInstance) {
       ),
     ])
     return { ratings: verdicts, threads: leaks, bookmarks, proposals }
+  })
+
+  server.patch('/theme', { onRequest: [authenticate] }, async (request, reply) => {
+    const user = (request as any).user
+    const { theme } = request.body as any
+    if (!['1984', 'samizdat', 'echelon', 'blackout'].includes(theme)) return reply.status(400).send({ error: 'Unknown theme.' })
+    await db.query('UPDATE users SET theme = $1 WHERE id = $2', [theme, user.id])
+    return { theme }
   })
 
   server.patch('/notif-prefs', { onRequest: [authenticate] }, async (request) => {

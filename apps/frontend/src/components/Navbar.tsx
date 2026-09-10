@@ -4,6 +4,7 @@ import { resendVerification } from '../api/auth'
 import { proleTag } from '../lib/format'
 import Stamp from './Stamp'
 import Logo from './Logo'
+import ThemePicker from './ThemePicker'
 
 const DESKTOP = [
   { to: '/', label: 'Home' },
@@ -68,6 +69,7 @@ export default function Navbar() {
         )}
 
         <div className="sidebar__foot">
+          <ThemePicker compact />
           {user ? (
             <Link to="/profile" className="sidebar__identity">
               <div className="name truncate">@{user.username}</div>

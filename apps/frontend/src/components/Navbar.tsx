@@ -4,7 +4,6 @@ import { resendVerification } from '../api/auth'
 import { proleTag } from '../lib/format'
 import Stamp from './Stamp'
 import Logo from './Logo'
-import ThemePicker from './ThemePicker'
 
 const DESKTOP = [
   { to: '/', label: 'Home' },
@@ -20,7 +19,7 @@ const Icon = {
   browse: <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>,
   feed: <svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10" /></svg>,
   board: <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2" /></svg>,
-  profile: <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></svg>,
+  map: <svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z" /><path d="M9 4v14M15 6v14" /></svg>,
 }
 
 const MOBILE = [
@@ -28,7 +27,7 @@ const MOBILE = [
   { to: '/browse', label: 'Browse', icon: Icon.browse },
   { to: '/forum', label: 'Forum', icon: Icon.feed },
   { to: '/leaderboard', label: 'Ranks', icon: Icon.board },
-  { to: '/profile', label: 'Profile', icon: Icon.profile },
+  { to: '/map', label: 'Map', icon: Icon.map },
 ]
 
 export default function Navbar() {
@@ -69,7 +68,6 @@ export default function Navbar() {
         )}
 
         <div className="sidebar__foot">
-          <ThemePicker compact />
           {user ? (
             <Link to="/profile" className="sidebar__identity">
               <div className="name truncate">@{user.username}</div>
@@ -86,9 +84,8 @@ export default function Navbar() {
 
       <nav className="mobile-nav">
         {MOBILE.map(tab => {
-          const href = tab.to === '/profile' && !user ? '/login' : tab.to
           return (
-            <Link key={tab.to} to={href} className={`mobile-nav__tab${isActive(tab.to) ? ' is-active' : ''}`}>
+            <Link key={tab.to} to={tab.to} className={`mobile-nav__tab${isActive(tab.to) ? ' is-active' : ''}`}>
               {tab.icon}
               <span>{tab.label}</span>
             </Link>

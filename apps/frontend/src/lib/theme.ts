@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react'
 export type ThemeKey = '1984' | 'samizdat' | 'echelon' | 'blackout'
 export const THEMES: { key: ThemeKey; label: string; blurb: string; meta: string }[] = [
   { key: '1984', label: '1984 Classic', blurb: 'Oxblood and warm off-white.', meta: '#14120F' },
-  { key: 'samizdat', label: 'Samizdat', blurb: 'Paper, ink and stamp red.', meta: '#F2EDE0' },
+  { key: 'samizdat', label: 'Samizdat Light', blurb: 'Paper, ink and stamp red.', meta: '#F2EDE0' },
   { key: 'echelon', label: 'Echelon', blurb: 'Phosphor terminal. Mono type throughout.', meta: '#05090A' },
   { key: 'blackout', label: "Blackout '77", blurb: 'Maximum contrast. One signal colour.', meta: '#000000' },
 ]

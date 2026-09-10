@@ -515,7 +515,9 @@ strong { font-weight: 600; }
 .mobile-nav__tab.is-active { color: var(--text); }
 .mobile-nav__tab.is-active::before { content: ''; position: absolute; top: 0; left: 22%; right: 22%; height: 2px; background: var(--accent); }
 
-.topbar { position: fixed; top: 1rem; right: 1.25rem; z-index: 500; display: flex; gap: 0.5rem; }
+.topbar { position: fixed; top: 1rem; right: 1.25rem; z-index: 700; display: flex; gap: 0.5rem; align-items: stretch; }
+.topbar .dd__btn, .topbar__profile, .topbar .bell { height: 100%; }
+.topbar__profile { display: none; }
 
 /* Leader overview layout */
 .overview-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 1.5rem; }
@@ -721,15 +723,20 @@ strong { font-weight: 600; }
 
 /* ───────────── Leaflet dark overrides ───────────── */
 
-.leaflet-container { background: var(--surface); font-family: var(--font-body); }
+.leaflet-container { background: var(--surface) !important; font-family: var(--font-body) !important; }
 /* Esri dark canvas: nudge toward the palette */
 .leaflet-tile-pane { filter: var(--map-filter); }
+/* Leaflet's own stylesheet loads after this one, so these need !important. */
 .leaflet-popup-content-wrapper, .leaflet-popup-tip {
-  background: var(--panel); color: var(--text);
-  border-radius: 0; border: 1px solid var(--border-strong); box-shadow: none;
+  background: var(--panel) !important; color: var(--text) !important;
+  border-radius: 0 !important; border: 1px solid var(--border-strong) !important; box-shadow: 0 12px 30px var(--scrim) !important;
 }
-.leaflet-popup-content { margin: 0.9rem 1rem; line-height: 1.45; }
-.leaflet-popup-close-button { color: var(--muted) !important; }
+.leaflet-popup-tip { border-top: 0 !important; border-left: 0 !important; }
+.leaflet-popup-content { margin: 0.9rem 1rem !important; line-height: 1.45 !important; font-family: var(--font-body); font-size: 0.85rem; }
+.leaflet-popup-content p { margin: 0; }
+.leaflet-popup-close-button { color: var(--muted) !important; font-family: var(--font-mono) !important; font-size: 1rem !important; padding: 6px 8px 0 0 !important; }
+.leaflet-popup-close-button:hover { color: var(--text) !important; background: none !important; }
+.leaflet-container a.leaflet-popup-close-button { width: auto !important; height: auto !important; }
 .leaflet-bar { border-radius: 0 !important; border: 1px solid var(--border-strong) !important; box-shadow: none !important; }
 .leaflet-bar a { background: var(--panel) !important; color: var(--text) !important; border-bottom-color: var(--border-strong) !important; border-radius: 0 !important; }
 .leaflet-bar a:hover { background: var(--elevated) !important; color: var(--text) !important; }
@@ -756,6 +763,10 @@ strong { font-weight: 600; }
   .mobile-nav { display: flex; }
   .app-main { padding-bottom: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom)); }
   .topbar { top: 0.75rem; right: 0.75rem; }
+  .theme-dd__name { display: none; }
+  .topbar__profile { display: inline-flex; align-items: center; justify-content: center; background: var(--overlay); border: 1px solid var(--border-strong); color: var(--muted); padding: 0.35rem 0.55rem; }
+  .topbar__profile.is-active { color: var(--text); border-color: var(--text); }
+  .topbar__profile svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.5; }
   .page { padding: 1.75rem 1rem 3rem; }
   .grid-2, .grid-3, .grid-cards, .evidence-board { grid-template-columns: 1fr; }
   .hero { padding: 3rem 1.25rem; }
@@ -768,6 +779,8 @@ strong { font-weight: 600; }
   .viewbar__narrow { width: 100%; }
   .viewbar__narrow .select--quiet { flex: 1 1 0; max-width: none; min-width: 0; }
   .map-page { height: calc(100dvh - var(--mobile-nav-h) - env(safe-area-inset-bottom)); }
+  .map-page .map-legend:not(.map-legend--bottom) { top: 3.6rem !important; left: 3.5rem !important; max-width: calc(100% - 4.25rem) !important; }
+  .map-page .leaflet-top.leaflet-left .leaflet-control { margin-top: 3.6rem; }
   .map-legend { max-width: calc(100% - 2rem); }
   .map-legend--bottom { bottom: 1rem !important; }
   .page { padding-top: 3.5rem; }
@@ -925,20 +938,39 @@ strong { font-weight: 600; }
 .score-stamp__bar { background: var(--track); }
 
 /* ── Theme picker ── */
-.theme-compact { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.35rem 0.25rem; }
+.theme-swatch { display: grid; grid-template-columns: 1fr 1fr; width: 22px; height: 22px; border: 1px solid var(--border-strong); overflow: hidden; flex-shrink: 0; }
+.theme-swatch i { display: block; min-height: 0; }
+.theme-swatch i:first-child { grid-column: span 2; }
+.theme-swatch[data-theme-preview="1984"] i:first-child { background: #14120F; } .theme-swatch[data-theme-preview="1984"] i:nth-child(2) { background: #F0E3BE; } .theme-swatch[data-theme-preview="1984"] i:nth-child(3) { background: #8E2020; }
+.theme-swatch[data-theme-preview="samizdat"] i:first-child { background: #F2EDE0; } .theme-swatch[data-theme-preview="samizdat"] i:nth-child(2) { background: #17140F; } .theme-swatch[data-theme-preview="samizdat"] i:nth-child(3) { background: #A8321E; }
+.theme-swatch[data-theme-preview="echelon"] i:first-child { background: #05090A; } .theme-swatch[data-theme-preview="echelon"] i:nth-child(2) { background: #6FE39A; } .theme-swatch[data-theme-preview="echelon"] i:nth-child(3) { background: #E0A32E; }
+.theme-swatch[data-theme-preview="blackout"] i:first-child { background: #000000; } .theme-swatch[data-theme-preview="blackout"] i:nth-child(2) { background: #FFFFFF; } .theme-swatch[data-theme-preview="blackout"] i:nth-child(3) { background: #F5D547; }
 .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 0.6rem; }
 .theme-option { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 0.7rem; align-items: center; text-align: left; padding: 0.7rem 0.8rem; background: var(--panel); border: 1px solid var(--border); color: var(--text); }
+.theme-option .theme-swatch { grid-row: span 2; width: 34px; height: 34px; }
 .theme-option:hover { border-color: var(--border-strong); }
 .theme-option.is-active { border-color: var(--text); }
-.theme-option__swatch { grid-row: span 2; display: grid; grid-template-columns: 1fr 1fr; width: 34px; height: 34px; border: 1px solid var(--border-strong); overflow: hidden; }
-.theme-option__swatch i { display: block; }
-.theme-option__swatch i:first-child { grid-column: span 2; height: 17px; }
 .theme-option__name { font-family: var(--font-display); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.9rem; color: var(--heading); }
 .theme-option__blurb { font-size: 0.72rem; color: var(--muted); }
-/* Swatches always show the theme they represent, not the current theme. */
-.theme-option[data-theme-preview="1984"] .theme-option__swatch { background: #14120F; }
-.theme-option[data-theme-preview="1984"] i:first-child { background: #F0E3BE; } .theme-option[data-theme-preview="1984"] i:nth-child(2) { background: #8E2020; } .theme-option[data-theme-preview="1984"] i:nth-child(3) { background: #14120F; }
-.theme-option[data-theme-preview="samizdat"] i:first-child { background: #F2EDE0; } .theme-option[data-theme-preview="samizdat"] i:nth-child(2) { background: #A8321E; } .theme-option[data-theme-preview="samizdat"] i:nth-child(3) { background: #17140F; }
-.theme-option[data-theme-preview="echelon"] i:first-child { background: #05090A; } .theme-option[data-theme-preview="echelon"] i:nth-child(2) { background: #6FE39A; } .theme-option[data-theme-preview="echelon"] i:nth-child(3) { background: #E0A32E; }
-.theme-option[data-theme-preview="blackout"] i:first-child { background: #000000; } .theme-option[data-theme-preview="blackout"] i:nth-child(2) { background: #FFFFFF; } .theme-option[data-theme-preview="blackout"] i:nth-child(3) { background: #F5D547; }
-.home-foot { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem; }
+
+/* ── Dropdown (themed replacement for <select>) ── */
+.dd { position: relative; display: inline-block; max-width: 100%; }
+.dd__btn { display: inline-flex; align-items: center; gap: 0.5rem; max-width: 100%; background: var(--overlay); border: 1px solid var(--border-strong); color: var(--muted); padding: 0.45rem 0.7rem; font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; line-height: 1; }
+.dd__btn:hover, .dd.is-open .dd__btn { color: var(--text); border-color: var(--text); }
+.dd.has-value .dd__btn { color: var(--text); }
+.dd__btn--icon { padding: 0.35rem 0.55rem; }
+.dd__value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dd__caret { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid currentColor; flex-shrink: 0; }
+.dd__menu { position: absolute; top: calc(100% + 4px); min-width: 220px; max-width: min(320px, calc(100vw - 1.5rem)); background: var(--panel); border: 1px solid var(--border-strong); z-index: 1200; box-shadow: 0 12px 30px var(--scrim); }
+.dd__menu--left { left: 0; } .dd__menu--right { right: 0; }
+.dd__head { padding: 0.55rem 0.8rem 0.35rem; border-bottom: 1px solid var(--border); }
+.dd__search { width: 100%; background: var(--surface); border: 0; border-bottom: 1px solid var(--border); color: var(--text); padding: 0.55rem 0.8rem; font-size: 0.85rem; outline: none; }
+.dd__search::placeholder { color: var(--dim); }
+.dd__list { max-height: 300px; overflow-y: auto; padding: 0.25rem 0; }
+.dd__item { display: flex; align-items: center; gap: 0.6rem; width: 100%; text-align: left; padding: 0.5rem 0.8rem; background: none; border: 0; border-left: 3px solid transparent; color: var(--muted); font-size: 0.85rem; }
+.dd__item:hover { background: var(--hover); color: var(--text); }
+.dd__item.is-active { color: var(--text); border-left-color: var(--accent); background: var(--accent-soft); }
+.dd__label { display: flex; flex-direction: column; min-width: 0; }
+.dd__hint { font-size: 0.68rem; color: var(--dim); }
+.dd__empty { padding: 0.75rem 0.8rem; color: var(--dim); font-size: 0.8rem; }
+.theme-dd__name { font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; }

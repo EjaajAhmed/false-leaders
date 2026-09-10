@@ -6,6 +6,8 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import './index.css'
 import Navbar from './components/Navbar'
 import NotificationBell from './components/NotificationBell'
+import ThemePicker from './components/ThemePicker'
+import { Link } from 'react-router-dom'
 import Home from './pages/Home'
 import Browse from './pages/Browse'
 import Leader from './pages/Leader'
@@ -66,11 +68,13 @@ function App() {
       <ScrollToTop />
       <Navbar />
       <div className="app-main">
-        {user && (
-          <div className="topbar">
-            <NotificationBell />
-          </div>
-        )}
+        <div className="topbar">
+          <ThemePicker compact />
+          {user && <NotificationBell />}
+          <Link to={user ? '/profile' : '/login'} className={`topbar__profile${location.pathname.startsWith('/profile') ? ' is-active' : ''}`} aria-label={user ? 'Profile' : 'Sign in'}>
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></svg>
+          </Link>
+        </div>
         {/* Keyed on pathname so every navigation replays the declassify transition */}
         <div key={location.pathname} className="declassify">
           <Routes location={location}>

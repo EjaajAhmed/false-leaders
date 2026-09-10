@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import { cssVar, useTheme } from '../lib/theme'
+import Dropdown from '../components/Dropdown'
 import L from 'leaflet'
 import { useState } from 'react'
 import { getMapLeaders, getPoliticiansMeta } from '../api/politicians'
@@ -47,7 +48,7 @@ export default function MapPage() {
         </div>
       )}
 
-      <div className="map-legend" style={{ left: '3.5rem', right: 'auto', top: '1rem', maxWidth: 'calc(100% - 5rem)', padding: '0.4rem 1rem 0.6rem' }}>
+      <div className="map-legend" style={{ left: '3.5rem', right: 'auto', top: '1rem', maxWidth: 'calc(100% - 16rem)', padding: '0.4rem 1rem 0.6rem' }}>
         <div className="viewbar" style={{ borderBottom: 0, paddingBottom: 0, marginBottom: 0, gap: '0.5rem 1.5rem' }}>
           <div className="viewbar__views" style={{ gap: '1.25rem' }}>
             {VIEWS.filter(v => v.key !== 'all').map(v => (
@@ -55,10 +56,7 @@ export default function MapPage() {
             ))}
           </div>
           <div className="viewbar__narrow">
-            <select className={`select select--quiet${country ? ' is-active' : ''}`} value={country} onChange={e => setCountry(e.target.value)} aria-label="Country">
-              <option value="">Country</option>
-              {meta?.countries?.map((c: string) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <Dropdown placeholder="Country" searchable value={country} onChange={setCountry} options={[{ value: '', label: 'Every country' }, ...((meta?.countries || []) as string[]).map((c: string) => ({ value: c, label: c }))]} />
             <span className="mono tiny dim" style={{ letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{withCoords.length} plotted</span>
           </div>
         </div>

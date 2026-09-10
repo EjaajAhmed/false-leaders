@@ -10,7 +10,6 @@ import { Loading } from '../components/States'
 import { compact, ratingColor } from '../lib/format'
 import { ARCHIVED } from '../config'
 import Stamp from '../components/Stamp'
-import ThemePicker from '../components/ThemePicker'
 
 function useCountUp(target: number, duration = 1800) {
   const [value, setValue] = useState(0)
@@ -199,10 +198,6 @@ export default function Home() {
           </div>
         </Reveal>
 
-        <div className="home-foot">
-          <span className="mono tiny dim">FalseLeaders · nothing here is verified</span>
-          <ThemePicker compact />
-        </div>
       </div>
     </div>
   )

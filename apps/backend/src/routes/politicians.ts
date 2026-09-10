@@ -43,7 +43,6 @@ const CARD_COLUMNS = `
   p.id, p.name, p.party, p.region, p.position, p.country, p.category, p.prominence, p.age, p.bio, p.photo_url,
   p.attention, p.wiki_url, p.aliases, p.rating_avg, p.rating_count, p.latitude, p.longitude, p.created_at,
   (SELECT COUNT(*) FROM controversies c WHERE c.politician_id = p.id)::int AS controversy_count,
-  (SELECT COUNT(*) FROM threads t WHERE t.politician_id = p.id AND t.kind = 'leak' AND t.status = 'active')::int AS leak_count,
   ${RATING_JSON},
   ${TOP_CONTROVERSY_JSON}`
 
@@ -157,7 +156,6 @@ export async function politiciansRoutes(server: FastifyInstance) {
       db.query(
         `SELECT
            (SELECT COUNT(*) FROM controversies WHERE politician_id = $1)::int AS controversies,
-           (SELECT COUNT(*) FROM threads WHERE politician_id = $1 AND kind = 'leak' AND status = 'active')::int AS leaks,
            (SELECT COUNT(*) FROM ratings WHERE politician_id = $1)::int AS ratings,
            (SELECT COUNT(*) FROM threads WHERE politician_id = $1 AND status = 'active')::int AS threads`,
         [id]

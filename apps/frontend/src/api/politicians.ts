@@ -58,7 +58,7 @@ export const getFeed = async (params?: { type?: FeedType | 'controversy'; before
   return res.data as { events: any[]; hasMore: boolean }
 }
 
-export type LeaderboardTab = 'lowest' | 'highest' | 'discussed' | 'leaked' | 'watched'
+export type LeaderboardTab = 'lowest' | 'highest' | 'discussed' | 'watched'
 export const getLeaderboard = async (tab: LeaderboardTab, limit = 25) => {
   const res = await client.get(`/leaderboard/${tab}`, { params: { limit } })
   return res.data

@@ -66,7 +66,7 @@ export default function SourcesDrawer({ leaderId, onClose }: { leaderId: string;
           {ATTRIBUTIONS.map(([name, text]) => (
             <p key={name} className="small" style={{ color: 'var(--muted)', marginBottom: '0.4rem' }}><strong style={{ color: 'var(--text)' }}>{name}.</strong> {text}</p>
           ))}
-          <p className="tiny dim" style={{ marginTop: '0.75rem' }}>Member ratings, leaks and discussion are contributed by members of this site and are not independently verified.</p>
+          <p className="tiny dim" style={{ marginTop: '0.75rem' }}>Member ratings and forum discussion are contributed by members of this site and are not independently verified.</p>
         </div>
       </aside>
     </>

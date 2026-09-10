@@ -18,9 +18,9 @@ import RecordsSection, { recordsHeadline, useRecords } from '../components/leade
 import { PromisesList, ContradictionsList, promisesHeadline, contradictionsHeadline, usePromises } from '../components/leader/PromisesSection'
 import RateSection, { RateBar, focusRateBar, ratingHeadline, useRating } from '../components/leader/RateSection'
 import ApprovalStat from '../components/leader/ApprovalStat'
-import LeaksSection from '../components/leader/LeaksSection'
 import Discussion from '../components/leader/Discussion'
 import { categoryLabel, compact, formatDate, ratingLabel } from '../lib/format'
+import { ARCHIVED } from '../config'
 
 function RatingStamp({ average, count, minVotes, compactMode = false, onClick }: { average: number | null; count: number; minVotes: number; compactMode?: boolean; onClick: () => void }) {
   const unrated = average == null
@@ -97,7 +97,7 @@ export default function Leader() {
   const flags = useFlags(id!)
   const attention = useAttention(id!)
   const records = useRecords(id!)
-  const promises = usePromises(id!)
+  const promises = usePromises(id!, !ARCHIVED.promises)
   const rating = useRating(id!)
   const news = useQuery({ queryKey: ['news', id], queryFn: () => getLeaderNews(id!), staleTime: 10 * 60 * 1000 })
   const sync = useMutation({ mutationFn: () => syncLeader(id!), onSuccess: () => { qc.invalidateQueries({ queryKey: ['politician', id] }); qc.invalidateQueries({ queryKey: ['positions', id] }); qc.invalidateQueries({ queryKey: ['watch', id] }); qc.invalidateQueries({ queryKey: ['sources', id] }) } })
@@ -153,7 +153,6 @@ export default function Leader() {
   const ratingCount = Number(rating.data?.n ?? leader.rating?.n ?? 0)
   const minVotes = Number(rating.data?.min_votes || 5)
   const openRate = focusRateBar
-  const leakCount = Number((leader.stats as any)?.leaks || 0)
   const newsCount = news.data?.items?.length || 0
 
   return (
@@ -214,13 +213,13 @@ export default function Leader() {
         <RecordsSection leaderId={leader.id} />
       </Section>
 
-      <Section id="promises" label="Promises" headline={prm.headline} summary={prm.summary} open={focus === 'promises'}>
+      {!ARCHIVED.promises && <Section id="promises" label="Promises" headline={prm.headline} summary={prm.summary} open={focus === 'promises'}>
         <PromisesList leaderId={leader.id} isAdmin={!!user?.is_admin} />
-      </Section>
+      </Section>}
 
-      <Section id="contradictions" label="Contradictions" headline={ctr.headline} summary={ctr.summary} open={focus === 'contradictions'}>
+      {!ARCHIVED.promises && <Section id="contradictions" label="Contradictions" headline={ctr.headline} summary={ctr.summary} open={focus === 'contradictions'}>
         <ContradictionsList leaderId={leader.id} isAdmin={!!user?.is_admin} />
-      </Section>
+      </Section>}
 
       <Section id="profile" label="Profile" headline={leader.born ? `Born ${year(leader.born)}${leader.country ? ` · ${leader.country}` : ''}` : leader.country || 'Profile'} summary={firstSentence(leader.summary) || leader.bio || 'No summary on file.'} open={focus === 'profile'}>
         {leader.summary ? <p style={{ lineHeight: 1.65, color: 'var(--muted)' }}>{leader.summary}</p> : <Redacted label="No summary on file" />}
@@ -234,10 +233,6 @@ export default function Leader() {
 
       <Section id="rating" label="Ratings · distribution" headline={rate.headline} summary={rate.summary} open={focus === 'rating' || focus === 'verdicts'} defaultOpen={focus === 'rating' || focus === 'verdicts'}>
         <RateSection leaderId={leader.id} leaderName={leader.name} />
-      </Section>
-
-      <Section id="leaks" label="Leaks" headline={`${leakCount} leak${leakCount === 1 ? '' : 's'}`} summary="Anonymous, unverified threads from members on the Leaks board. Leaks never affect the rating." open={focus === 'leaks'}>
-        <LeaksSection leaderId={leader.id} leaderName={leader.name} />
       </Section>
 
       <Section id="news" label="Coverage" headline={newsCount ? `${newsCount} headline${newsCount === 1 ? '' : 's'} · 30 days` : 'No indexed coverage'} summary={newsCount ? 'Recent English-language headlines indexed by GDELT. Presence in the news is not a judgement.' : 'GDELT has not indexed English-language coverage in the last 30 days, or the index is temporarily unavailable.'} open={focus === 'news'}>

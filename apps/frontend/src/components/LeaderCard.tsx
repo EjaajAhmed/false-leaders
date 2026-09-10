@@ -24,7 +24,7 @@ export default function LeaderCard({ leader }: { leader: Leader }) {
           <div className="leader-card__controversy truncate">
             {avg != null ? <><span className="mono" style={{ color: 'var(--text)' }}>{avg}</span> · {n} rating{n === 1 ? '' : 's'}</> : <span className="dim">{n ? `Unrated · ${n} rating${n === 1 ? '' : 's'} so far` : 'Unrated · be the first'}</span>}
           </div>
-          <span className="mono tiny dim" style={{ flexShrink: 0 }} title="Wikipedia page views, last 30 days">{Number(leader.attention) > 0 ? `${compact(leader.attention)} watching` : `${leader.leak_count ?? 0} leak${(leader.leak_count ?? 0) === 1 ? '' : 's'}`}</span>
+          <span className="mono tiny dim" style={{ flexShrink: 0 }} title="Wikipedia page views, last 30 days">{Number(leader.attention) > 0 ? `${compact(leader.attention)} watching` : 'no view data'}</span>
         </div>
       </div>
     </Link>

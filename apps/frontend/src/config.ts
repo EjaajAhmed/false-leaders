@@ -1,9 +1,11 @@
-// Feature archive. Controversies, funding and influence are kept in the codebase
-// and database but hidden from the product until they can be properly evidenced.
+// Feature archive. These features are kept in the codebase and database but hidden
+// from the product until they can be properly evidenced or resourced.
 export const ARCHIVED = {
   controversies: true,
   funding: true,
   influence: true,
+  /** Promise tracker and contradiction finder (Gemini draft-first). Archived 2026-09-10. */
+  promises: true,
 } as const
 
 export type ViewKey = 'main' | 'world_leader' | 'figures' | 'politician' | 'all'

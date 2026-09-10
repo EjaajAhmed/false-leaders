@@ -52,14 +52,13 @@ export interface Leader {
   longitude?: number | string | null
   created_at?: string
   controversy_count?: number
-  leak_count?: number
   rating?: RatingSummary | null
   top_controversy?: { id?: string; title: string; level: Level } | null
 }
 
 export interface LeaderDetail extends Leader {
   rating: RatingSummary & { bins?: number[]; min_votes?: number }
-  stats: { controversies?: number; ratings: number; leaks: number; threads: number }
+  stats: { controversies?: number; ratings: number; threads: number }
 }
 
 export interface FeedEvent {

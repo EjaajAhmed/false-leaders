@@ -41,17 +41,4 @@ export async function leaderboardRoutes(server: FastifyInstance) {
       .map(r => ({ ...r, activity: r.comments_week + r.verdicts_week }))
       .filter(r => r.activity > 0)
   })
-
-  server.get('/leaked', async (request) => {
-    const limit = Math.min(100, Number((request.query as any).limit) || 25)
-    const { rows } = await db.query(
-      `SELECT ${LEADER_COLS},
-              (SELECT COUNT(*) FROM threads t WHERE t.politician_id = p.id AND t.kind = 'leak' AND t.status = 'active')::int AS leak_count
-       FROM politicians p
-       ORDER BY leak_count DESC, p.name ASC
-       LIMIT $1`,
-      [limit]
-    )
-    return rows.filter(r => r.leak_count > 0)
-  })
 }

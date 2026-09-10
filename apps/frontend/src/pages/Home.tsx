@@ -187,7 +187,6 @@ export default function Home() {
               ...(ARCHIVED.controversies ? [] : [['Controversies', stats.data?.controversies]]),
               ['Ratings', stats.data?.ratings],
               ['Threads', stats.data?.threads],
-              ['Leaks', stats.data?.leaks],
               ['Members', stats.data?.proles],
             ].map(([label, v]) => (
               <div key={String(label)} className="stat">

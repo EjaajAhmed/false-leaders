@@ -296,7 +296,7 @@ export default function Admin() {
         <p className="eyebrow">Restricted</p>
         <h1>Admin</h1>
         <div className="chips" style={{ marginTop: '0.75rem' }}>
-          {[['#spikes', 'Spike captions'], ['#promises', 'Promises'], ...(ARCHIVED.controversies ? [] : [['#proposals', 'Proposals']]), ['#approval', 'Approval polls'], ['#leader-form', 'Leaders'], ['#broadcast', 'Broadcast']].map(([href, label]) => (
+          {[['#spikes', 'Spike captions'], ...(ARCHIVED.promises ? [] : [['#promises', 'Promises']]), ...(ARCHIVED.controversies ? [] : [['#proposals', 'Proposals']]), ['#approval', 'Approval polls'], ['#leader-form', 'Leaders'], ['#broadcast', 'Broadcast']].map(([href, label]) => (
             <a key={href} href={href} className="chip">{label}</a>
           ))}
         </div>
@@ -304,7 +304,7 @@ export default function Admin() {
 
       <div className="stack" style={{ gap: '1.5rem' }}>
         <SpikeQueue />
-        <PromiseDesk leaders={all} />
+        {!ARCHIVED.promises && <PromiseDesk leaders={all} />}
         {!ARCHIVED.controversies && <ProposalQueue />}
 
         <ApprovalDesk leaders={all} />

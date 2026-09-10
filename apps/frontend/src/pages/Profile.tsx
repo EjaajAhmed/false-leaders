@@ -136,13 +136,13 @@ export default function Profile() {
           <p className="eyebrow eyebrow--gold">Anonymous identity</p>
           <h2 className="mono" style={{ fontSize: '1.6rem', margin: '0.5rem 0 0.25rem', color: 'var(--gold)', fontWeight: 600 }}>{proleTag(user.prole_number)}</h2>
           <p className="muted small">Assigned on registration. Permanent.</p>
-          <p className="help" style={{ marginTop: '0.75rem' }}>Never linked to your username in public. Leaks, and anything you choose to post anonymously, carry this number. Ratings are never shown with either.</p>
+          <p className="help" style={{ marginTop: '0.75rem' }}>Never linked to your username in public. Anything you choose to post anonymously carries this number. Ratings are never shown with either.</p>
         </div>
       </div>
 
       {!user.email_verified && (
         <div className="notice" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-          <span>Unverified. Ratings, leaks and discussion are locked.</span>
+          <span>Unverified. Ratings and the forum are locked.</span>
           <button className="btn btn--sm" onClick={() => resendVerification().then(() => alert('Sent.'))}>Resend email</button>
         </div>
       )}

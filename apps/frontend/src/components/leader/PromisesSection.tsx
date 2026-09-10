@@ -3,8 +3,8 @@ import { getLeaderPromises } from '../../api/politicians'
 import { Redacted, Skeleton } from '../Redaction'
 import { formatDate } from '../../lib/format'
 
-export function usePromises(leaderId: string) {
-  return useQuery({ queryKey: ['promises', leaderId], queryFn: () => getLeaderPromises(leaderId), staleTime: 10 * 60 * 1000 })
+export function usePromises(leaderId: string, enabled = true) {
+  return useQuery({ queryKey: ['promises', leaderId], queryFn: () => getLeaderPromises(leaderId), staleTime: 10 * 60 * 1000 , enabled })
 }
 
 const STATUS_BADGE: Record<string, string> = { kept: 'badge--clean', broken: 'badge--confirmed', pending: 'badge--outline', unclear: 'badge--unclear' }

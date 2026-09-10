@@ -45,7 +45,7 @@ export default function Thread() {
   return (
     <div className="page page--narrow" style={{ maxWidth: 860 }}>
       <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>
-        <Link to="/forum">Forum</Link> · <Link to={`/forum?board=${t.board}`}>{BOARD_LABEL[t.board] || t.board}</Link>{t.leader_name && <> · <Link to={`/leaders/${t.politician_id}?tab=${t.board === 'leaks' ? 'leaks' : 'discussion'}`}>{t.leader_name}</Link></>}
+        <Link to="/forum">Forum</Link> · <Link to={`/forum?board=${t.board}`}>{BOARD_LABEL[t.board] || t.board}</Link>{t.leader_name && <> · <Link to={`/leaders/${t.politician_id}?tab=discussion`}>{t.leader_name}</Link></>}
       </p>
       <h1 style={{ fontSize: 'clamp(1.6rem, 3.5vw, 2.4rem)', marginBottom: '1rem' }}>{t.title}</h1>
 

@@ -10,7 +10,6 @@ const TABS: { key: LeaderboardTab; label: string; blurb: string; empty: string }
   { key: 'lowest', label: 'Lowest Rated', blurb: 'Lowest community rating among leaders with enough votes to publish one.', empty: 'Nobody has enough ratings to rank yet. Rate someone.' },
   { key: 'highest', label: 'Highest Rated', blurb: 'Highest community rating among leaders with enough votes to publish one.', empty: 'Nobody has enough ratings to rank yet. Rate someone.' },
   { key: 'discussed', label: 'Most Discussed', blurb: 'Most threads, replies and ratings this week.', empty: 'Nobody is talking. Yet.' },
-  { key: 'leaked', label: 'Most Leaked', blurb: 'Most leak threads, all time.', empty: 'No leaks on file. That doesn\'t mean there\'s nothing to find.' },
 ]
 
 export default function Leaderboard() {
@@ -24,7 +23,6 @@ export default function Leaderboard() {
       case 'lowest':
       case 'highest': return <><div className="lb-row__value" style={{ color: ratingColor(Number(p.rating_avg)) }}>{p.rating_avg}</div><div className="lb-row__sub">{p.rating_count} ratings</div></>
       case 'discussed': return <><div className="lb-row__value">{p.activity}</div><div className="lb-row__sub">{p.comments_week} posts · {p.verdicts_week} ratings</div></>
-      case 'leaked': return <><div className="lb-row__value">{p.leak_count}</div><div className="lb-row__sub">leaks</div></>
       case 'watched': return <><div className="lb-row__value">{compact(p.attention)}</div><div className="lb-row__sub">views · 30d</div></>
     }
   }

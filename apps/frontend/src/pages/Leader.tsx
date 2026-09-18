@@ -157,7 +157,7 @@ export default function Leader() {
   const ratingCount = Number(rating.data?.n ?? leader.rating?.n ?? 0)
   const minVotes = Number(rating.data?.min_votes || 5)
   const openRate = focusRateBar
-  const rateLabel = rating.data?.mine != null ? `Your rating · ${rating.data.mine}` : 'File a rating'
+  const rateLabel = rating.data?.mine != null ? `Your rating · ${rating.data.mine}` : 'Rate this leader'
   const newsCount = news.data?.items?.length || 0
 
   return (

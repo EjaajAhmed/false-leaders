@@ -82,7 +82,7 @@ export function RateBar({ leaderId, leaderName }: { leaderId: string; leaderName
         {!user && (
           <>
             <p className="rate-bar__gate">One rating per account, 0 to 100, changeable any time.</p>
-            <div className="row row--wrap"><Link to="/login" className="btn btn--gold btn--lg">Sign in to file a rating</Link><Link to="/register" className="btn btn--lg">Register</Link></div>
+            <div className="row row--wrap"><Link to="/login" className="btn btn--gold btn--lg">Sign in to rate</Link><Link to="/register" className="btn btn--lg">Register</Link></div>
           </>
         )}
         {user && !verified && <p className="rate-bar__gate">Verify your email to rate.</p>}
@@ -96,9 +96,9 @@ export function RateBar({ leaderId, leaderName }: { leaderId: string; leaderName
             {error && <div className="error">{error}</div>}
             <div className="row row--wrap">
               <button className="btn btn--gold btn--lg" disabled={submit.isPending || (mine != null && !touched)} onClick={() => submit.mutate({ politician_id: leaderId, score: value })}>
-                {submit.isPending ? 'Filing' : mine != null ? 'Update rating' : 'File rating'}
+                {submit.isPending ? 'Saving' : mine != null ? 'Update rating' : 'Submit rating'}
               </button>
-              {done && <span className="mono tiny" style={{ color: 'var(--gold)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Filed.</span>}
+              {done && <span className="mono tiny" style={{ color: 'var(--gold)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Rating saved.</span>}
               {average == null && n > 0 && !done && <span className="mono tiny dim">{min - n} more rating{min - n === 1 ? '' : 's'} until the average is public</span>}
             </div>
           </>

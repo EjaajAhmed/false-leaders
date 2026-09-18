@@ -14,7 +14,7 @@ export default function ThreadRow({ t }: { t: any }) {
         {t.leader_name && <span className="mono tiny" style={{ color: 'var(--text)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{t.leader_name}</span>}
       </div>
       <div className="thread-row__title">{t.title}</div>
-      {t.excerpt && <div className="thread-row__excerpt">{t.excerpt}</div>}
+      {t.excerpt && <div className="thread-row__excerpt">{t.daily_date ? t.excerpt.replace(/\s*Yesterday's thread is linked above\.?/, '') : t.excerpt}</div>}
       <div className="thread-row__foot">
         <span>{t.is_system ? 'FalseLeaders' : t.username ? `@${t.username}` : proleTag(t.prole_number)}</span>
         <span>{t.reply_count} repl{t.reply_count === 1 ? 'y' : 'ies'}</span>

@@ -20,6 +20,19 @@ export async function leaderboardRoutes(server: FastifyInstance) {
   server.get('/highest', rated('DESC'))
   server.get('/condemned', rated('ASC')) // legacy alias
 
+  server.get('/watched', async (request) => {
+    const limit = Math.min(100, Number((request.query as any).limit) || 25)
+    const { rows } = await db.query(
+      `SELECT ${LEADER_COLS}, p.attention
+       FROM politicians p
+       WHERE p.attention > 0 AND p.wikidata_id IS NOT NULL
+       ORDER BY p.attention DESC, p.name ASC
+       LIMIT $1`,
+      [limit]
+    )
+    return rows
+  })
+
   server.get('/discussed', async (request) => {
     const limit = Math.min(100, Number((request.query as any).limit) || 25)
     const { rows } = await db.query(

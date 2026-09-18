@@ -134,7 +134,9 @@ export default function Leader() {
   }
 
   const political = POLITICAL.has(String(leader.category))
-  const office = political && leader.current_office ? leader.current_office : leader.position
+  // Wikidata office labels arrive lower-case ("member of the House of Commons").
+  const rawOffice = political && leader.current_office ? leader.current_office : leader.position
+  const office = rawOffice ? rawOffice.charAt(0).toUpperCase() + rawOffice.slice(1) : rawOffice
   const termStart = year(leader.term_start)
   const termEnd = year(leader.term_end)
   const termText = political && termStart ? (termEnd ? `${termStart}–${termEnd}` : `since ${termStart}`) : null
@@ -145,6 +147,8 @@ export default function Leader() {
   const med = mediaHeadline(media.data)
   const flg = flagsHeadline(flags.data)
   const att = attentionHeadline(attention.data)
+  // Same figure as the Attention section, so the header and the section never disagree.
+  const views30d = Number(attention.data?.total_30d ?? leader.attention ?? 0)
   const rec = recordsHeadline(records.data)
   const prm = promisesHeadline(promises.data)
   const ctr = contradictionsHeadline(promises.data)
@@ -153,13 +157,17 @@ export default function Leader() {
   const ratingCount = Number(rating.data?.n ?? leader.rating?.n ?? 0)
   const minVotes = Number(rating.data?.min_votes || 5)
   const openRate = focusRateBar
+  const rateLabel = rating.data?.mine != null ? `Your rating · ${rating.data.mine}` : 'File a rating'
   const newsCount = news.data?.items?.length || 0
 
   return (
     <div className="page page--narrow" style={{ maxWidth: 860 }}>
       <div className={`sticky-score${sticky ? ' is-visible' : ''}`} aria-hidden={!sticky}>
         <div className="sticky-score__name truncate">{leader.name}</div>
-        <RatingStamp average={avg} count={ratingCount} minVotes={minVotes} compactMode onClick={openRate} />
+        <div className="row" style={{ gap: '1rem', flexShrink: 0 }}>
+          <RatingStamp average={avg} count={ratingCount} minVotes={minVotes} compactMode onClick={openRate} />
+          <button className="btn btn--gold btn--sm" tabIndex={sticky ? 0 : -1} onClick={openRate}>{rateLabel}</button>
+        </div>
       </div>
 
       <header className="dossier-head" ref={headRef}>
@@ -169,9 +177,10 @@ export default function Leader() {
           <h1 className="dossier-head__name">{leader.name}</h1>
           <p className="dossier-head__office">{former ? 'Former ' : ''}{office || 'Office unlisted'}{termText ? <span className="muted"> · {termText}</span> : null}</p>
           <p className="dossier-head__meta">
-            {[leader.party && leader.party !== 'Independent' ? leader.party : null, leader.born ? `born ${formatDate(leader.born)}` : leader.age ? `age ${leader.age}` : null, Number(leader.attention) > 0 ? `${compact(leader.attention)} Wikipedia views in 30 days` : null].filter(Boolean).join(' · ')}
+            {[leader.party && leader.party !== 'Independent' ? leader.party : null, leader.born ? `born ${formatDate(leader.born)}` : leader.age ? `age ${leader.age}` : null, views30d > 0 ? `${compact(views30d)} Wikipedia views in 30 days` : null].filter(Boolean).join(' · ')}
           </p>
           <div className="row row--wrap" style={{ marginTop: '0.9rem', gap: '0.5rem' }}>
+            <button className="btn btn--gold btn--sm" onClick={openRate}>{rateLabel}</button>
             <button className="btn btn--sm" onClick={() => setPanel('sources')}>Sources</button>
             <SaveButton leaderId={leader.id} />
             {user?.is_admin && <button className="btn btn--ghost btn--sm" onClick={() => sync.mutate()} disabled={sync.isPending}>{sync.isPending ? 'Syncing' : 'Sync data'}</button>}

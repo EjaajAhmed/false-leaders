@@ -43,6 +43,7 @@ export default function Thread() {
   if (isError || !data) return <div className="page page--narrow" style={{ paddingTop: '5rem' }}><p className="eyebrow">404</p><h1 style={{ fontSize: '2.2rem', margin: '0.5rem 0 1rem' }}>No such thread.</h1><Link to="/forum" className="btn">Back to the forum</Link></div>
   const t = data.thread
   const who = (x: any) => x.is_system ? <span className="post__name">FalseLeaders</span> : x.username ? <span className="post__name">@{x.username}</span> : <span className="post__prole">{proleTag(x.prole_number)}</span>
+  const submitReply = () => { if (!body.trim() || post.isPending) return; const m = body.match(/>>(\d+)/); post.mutate({ thread_id: t.id, body: body.trim(), is_anonymous: anon, reply_to: m ? Number(m[1]) : undefined }) }
   const quote = (seq: number) => { setBody(b => `${b}${b && !b.endsWith('\n') ? '\n' : ''}>>${seq} `); document.getElementById('reply-box')?.focus() }
 
   return (
@@ -73,7 +74,7 @@ export default function Thread() {
           <div key={p.id} className="post" id={`p${p.seq}`} style={{ opacity: p.status === 'removed' ? 0.5 : 1 }}>
             <div className="post__head">
               <div className="post__who"><span className="mono tiny dim">#{p.seq}</span>{p.status !== 'removed' && who(p)}<span className="post__time" title={formatDate(p.created_at)}>{timeAgo(p.created_at)}</span>{p.reply_to != null && <a href={`#p${p.reply_to}`} className="mono tiny muted">→ #{p.reply_to}</a>}</div>
-              {(p.is_own || user?.is_admin) && p.status !== 'removed' && <button className="btn btn--ghost btn--sm btn--danger" onClick={() => delP.mutate(p.id)}>Remove</button>}
+              {(p.is_own || user?.is_admin) && p.status !== 'removed' && <button className="btn btn--ghost btn--sm btn--danger" onClick={() => { if (confirm('Remove this post?')) delP.mutate(p.id) }}>Remove</button>}
             </div>
             <Body text={p.body} />
             {p.status !== 'removed' && <div className="post__foot"><Upvote count={p.upvotes} active={p.user_upvoted} disabled={!verified || p.is_own} onClick={() => upP.mutate(p.id)} />{verified && !t.locked && <button className="btn btn--ghost btn--sm" onClick={() => quote(p.seq)}>Reply</button>}{!p.is_own && <ReportButton targetType="post" targetId={p.id} />}</div>}
@@ -90,10 +91,10 @@ export default function Thread() {
           <div className="card card--elevated stack">
             <FirstPostNotice />
             <span className="eyebrow">Reply · use &gt;&gt;3 to reference post #3</span>
-            <textarea id="reply-box" className="textarea" rows={4} value={body} onChange={e => setBody(e.target.value)} maxLength={6000} placeholder="Reply" />
+            <textarea id="reply-box" className="textarea" rows={4} value={body} onChange={e => setBody(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitReply() }} maxLength={6000} placeholder="Reply" />
             <IdentityToggle anonymous={anon} onChange={setAnon} />
             {error && <div className="error">{error}</div>}
-            <div><button className="btn btn--gold" disabled={!body.trim() || post.isPending} onClick={() => { const m = body.match(/>>(\d+)/); post.mutate({ thread_id: t.id, body: body.trim(), is_anonymous: anon, reply_to: m ? Number(m[1]) : undefined }) }}>{post.isPending ? 'Posting' : 'Post reply'}</button></div>
+            <div className="row" style={{ gap: '0.75rem' }}><button className="btn btn--gold" disabled={!body.trim() || post.isPending} onClick={submitReply}>{post.isPending ? 'Posting' : 'Post reply'}</button><span className="mono tiny dim">Ctrl/⌘ + Enter</span></div>
           </div>
         )}
       </div>

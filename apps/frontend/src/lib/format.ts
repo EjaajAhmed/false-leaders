@@ -68,7 +68,7 @@ export function timeAgo(date: string | Date): string {
 }
 
 export function formatDate(date: string | Date): string {
-  return new Date(date).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: '2-digit' })
+  return new Date(date).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 export function compact(n: number | string | null | undefined): string {
@@ -77,7 +77,8 @@ export function compact(n: number | string | null | undefined): string {
   if (v >= 1e12) return `${(v / 1e12).toFixed(1).replace(/\.0$/, '')}T`
   if (v >= 1e9) return `${(v / 1e9).toFixed(1).replace(/\.0$/, '')}B`
   if (v >= 1e6) return `${(v / 1e6).toFixed(1).replace(/\.0$/, '')}M`
-  if (v >= 1e3) return `${Math.round(v / 1e3)}K`
+  if (v >= 1e4) return `${Math.round(v / 1e3)}K`
+  if (v >= 1e3) return `${(v / 1e3).toFixed(1).replace(/\.0$/, '')}K`
   return String(Math.round(v))
 }
 

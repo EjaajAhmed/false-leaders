@@ -26,9 +26,12 @@ const MAX_TITLE = 160, MAX_BODY = 6000
 // Identity as shown to other members: never user_id, never both names.
 const IDENT = (alias: string) => `CASE WHEN ${alias}.is_anonymous THEN NULL ELSE u.username END AS username, CASE WHEN ${alias}.is_anonymous THEN u.prole_number ELSE NULL END AS prole_number`
 
+// Past daily threads nobody replied to stay reachable through the "Yesterday" chain and search, but are kept out of lists and counts.
+const STALE_DAILY = (alias: string) => `(${alias}.daily_date IS NOT NULL AND NOT ${alias}.pinned AND ${alias}.reply_count = 0)`
+
 export async function forumRoutes(server: FastifyInstance) {
   server.get('/boards', async () => {
-    const { rows } = await db.query(`SELECT board, COUNT(*)::int AS threads, MAX(last_activity) AS last_activity FROM threads WHERE status = 'active' GROUP BY board`)
+    const { rows } = await db.query(`SELECT board, COUNT(*)::int AS threads, MAX(last_activity) AS last_activity FROM threads t WHERE status = 'active' AND NOT ${STALE_DAILY('t')} GROUP BY board`)
     return BOARDS.map(b => ({ ...b, threads: rows.find(r => r.board === b.key)?.threads || 0, last_activity: rows.find(r => r.board === b.key)?.last_activity || null }))
   })
 
@@ -42,6 +45,7 @@ export async function forumRoutes(server: FastifyInstance) {
     if (leader) { params.push(leader); where += ` AND t.politician_id = $${params.length}` }
     if (kind && ['discussion', 'leak'].includes(kind)) { params.push(kind); where += ` AND t.kind = $${params.length}` }
     if (q) { params.push(`%${q}%`); where += ` AND (t.title ILIKE $${params.length} OR t.body ILIKE $${params.length})` }
+    else where += ` AND NOT ${STALE_DAILY('t')}`
     const order = sort === 'new' ? 't.created_at DESC' : sort === 'top' ? 't.upvotes DESC, t.last_activity DESC' : sort === 'active' ? 't.pinned DESC, t.last_activity DESC' : 't.pinned DESC, t.hot_score DESC, t.last_activity DESC'
     const viewerIdx = viewer ? (params.push(viewer.id), params.length) : null
     params.push(limitNum, (pageNum - 1) * limitNum)

@@ -80,7 +80,10 @@ export function RateBar({ leaderId, leaderName }: { leaderId: string; leaderName
           {mine != null && <button className="btn btn--ghost btn--sm btn--danger" onClick={() => withdraw.mutate()} disabled={withdraw.isPending}>Withdraw</button>}
         </div>
         {!user && (
-          <p className="rate-bar__gate"><Link to="/login">Sign in</Link> to rate. One rating per account, 0 to 100, changeable any time.</p>
+          <>
+            <p className="rate-bar__gate">One rating per account, 0 to 100, changeable any time.</p>
+            <div className="row row--wrap"><Link to="/login" className="btn btn--gold btn--lg">Sign in to file a rating</Link><Link to="/register" className="btn btn--lg">Register</Link></div>
+          </>
         )}
         {user && !verified && <p className="rate-bar__gate">Verify your email to rate.</p>}
         {verified && (
@@ -92,7 +95,7 @@ export function RateBar({ leaderId, leaderName }: { leaderId: string; leaderName
             </div>
             {error && <div className="error">{error}</div>}
             <div className="row row--wrap">
-              <button className="btn btn--gold" disabled={submit.isPending || (mine != null && !touched)} onClick={() => submit.mutate({ politician_id: leaderId, score: value })}>
+              <button className="btn btn--gold btn--lg" disabled={submit.isPending || (mine != null && !touched)} onClick={() => submit.mutate({ politician_id: leaderId, score: value })}>
                 {submit.isPending ? 'Filing' : mine != null ? 'Update rating' : 'File rating'}
               </button>
               {done && <span className="mono tiny" style={{ color: 'var(--gold)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Filed.</span>}

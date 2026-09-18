@@ -8,8 +8,8 @@ export async function homeRoutes(server: FastifyInstance) {
         (SELECT COUNT(*) FROM politicians)::int AS leaders,
         (SELECT COUNT(*) FROM controversies)::int AS controversies,
         (SELECT COUNT(*) FROM ratings)::int AS ratings,
-        (SELECT COUNT(*) FROM threads WHERE status = 'active')::int AS threads,
-        (SELECT COUNT(*) FROM users)::int AS proles
+        (SELECT COUNT(*) FROM threads WHERE status = 'active' AND NOT is_system)::int AS threads,
+        (SELECT COUNT(*) FROM users WHERE NOT is_system)::int AS proles
     `)
     return rows[0]
   })
@@ -27,7 +27,7 @@ export async function homeRoutes(server: FastifyInstance) {
         (SELECT COUNT(*) FROM feed_events f WHERE f.leader_id = p.id AND f.created_at > NOW() - INTERVAL '7 days')::int AS activity
       FROM politicians p
       ORDER BY activity DESC, p.attention DESC, p.prominence DESC
-      LIMIT 8
+      LIMIT 6
     `)
     return rows
   })

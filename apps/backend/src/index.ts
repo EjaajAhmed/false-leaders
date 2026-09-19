@@ -85,10 +85,27 @@ server.register(rateLimit, {
 server.decorate('authenticate', authenticate)
 server.decorate('requireVerified', requireVerified)
 
+// Postgres errors caused by the request itself (a malformed id, a reference to something that does not exist,
+// an out-of-range number) are the client's 4xx, not a 500.
+const PG_CLIENT_ERRORS: Record<string, [number, string]> = {
+  '22P02': [404, 'Not found.'], '23503': [404, 'Not found.'], '22003': [400, 'A number in the request is out of range.'],
+  '2201W': [400, 'Invalid limit.'], '2201X': [400, 'Invalid offset.'], '22007': [400, 'Invalid date.'], '22008': [400, 'Invalid date.'],
+}
 server.setErrorHandler((error: any, _request, reply) => {
+  const pg = PG_CLIENT_ERRORS[error.code]
+  if (pg) return reply.status(pg[0]).send({ error: pg[1] })
   server.log.error(error)
   const status = error.statusCode && error.statusCode >= 400 ? error.statusCode : 500
   reply.status(status).send({ error: status === 500 ? 'Something broke.' : (error.message || 'Request failed.') })
+})
+server.setNotFoundHandler((_request, reply) => { reply.status(404).send({ error: 'Not found.' }) })
+
+// Comments, verdicts, votes and leaks were replaced by the forum and the community rating. Their data stays readable
+// where a page still needs it, but nothing can be written: those routes skip the terms gate, cooldowns and moderation log.
+const RETIRED_WRITES = [/^\/comments(\/|$)/, /^\/verdicts(\/|$)/, /^\/votes(\/|$)/, /^\/leaks(\/|$)/, /^\/politicians\/[^/]+\/(leaks|verdicts)(\/|$)/]
+server.addHook('onRequest', async (request, reply) => {
+  if (request.method === 'GET' || request.method === 'OPTIONS' || request.method === 'HEAD') return
+  if (RETIRED_WRITES.some(r => r.test(request.url.split('?')[0]))) return reply.status(410).send({ error: 'This feature has been retired. Use the forum.' })
 })
 
 server.register(authRoutes, { prefix: '/auth' })

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLoginHref } from '../../lib/hooks'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, Link } from 'react-router-dom'
 import { createThread, getPoliticians } from '../../api/politicians'
@@ -20,6 +21,7 @@ const PLACEHOLDER: Record<string, string> = {
 
 export default function ThreadComposer({ board = 'general', leader = null, onDone }: Props) {
   const { user } = useAuth()
+  const loginHref = useLoginHref()
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [title, setTitle] = useState('')
@@ -38,7 +40,7 @@ export default function ThreadComposer({ board = 'general', leader = null, onDon
     onError: e => setError(errorMessage(e)),
   })
 
-  if (!user) return <div className="notice notice--plain"><Link to="/login" style={{ borderBottom: '1px solid var(--border-strong)' }}>Sign in</Link> to start a thread. Threads are anonymous by default.</div>
+  if (!user) return <div className="notice notice--plain"><Link to={loginHref} style={{ borderBottom: '1px solid var(--border-strong)' }}>Sign in</Link> to start a thread. Threads are anonymous by default.</div>
   if (!verified) return <div className="notice">Verify your email to post.</div>
   if (!user.terms_accepted) return <TermsGate />
 

@@ -8,6 +8,7 @@ import { sendTakedownNotice } from '../services/email'
 const recentByIp = new Map<string, number[]>()
 const limited = (ip: string, max = 3, windowMs = 3600 * 1000) => {
   const now = Date.now()
+  if (recentByIp.size > 5000) for (const [k, v] of recentByIp) if (!v.some(t => now - t < windowMs)) recentByIp.delete(k)
   const hits = (recentByIp.get(ip) || []).filter(t => now - t < windowMs)
   if (hits.length >= max) return true
   hits.push(now); recentByIp.set(ip, hits)
@@ -21,8 +22,8 @@ export async function legalRoutes(server: FastifyInstance) {
   /** Notice-and-takedown. Open to anyone; rate-limited per IP; logged; emailed to the abuse contact. */
   server.post('/takedown', async (request, reply) => {
     const b = request.body as any
-    const name = String(b?.name || '').trim(), email = String(b?.email || '').trim().toLowerCase(), url = String(b?.url || '').trim()
-    const reason = String(b?.reason || '').trim(), detail = String(b?.detail || '').trim().slice(0, 4000)
+    const name = String(b?.name || '').trim().slice(0, 200), email = String(b?.email || '').trim().toLowerCase().slice(0, 254), url = String(b?.url || '').trim().slice(0, 2000)
+    const reason = String(b?.reason || '').trim().slice(0, 200), detail = String(b?.detail || '').trim().slice(0, 4000)
     if (!name || !email || !url || !reason) return reply.status(400).send({ error: 'Name, email, the address of the content and a reason are required.' })
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return reply.status(400).send({ error: 'That email address does not look valid.' })
     if (!/^https?:\/\//.test(url)) return reply.status(400).send({ error: 'The content address must be a full link starting with http.' })

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useTitle } from '../lib/hooks'
+import { ErrorBox } from '../components/States'
 import { useQuery } from '@tanstack/react-query'
 import { getFeed } from '../api/politicians'
 import type { FeedEvent } from '../types'
@@ -15,6 +17,7 @@ const FILTERS: { key: Filter; label: string }[] = [
 ]
 
 export default function Feed() {
+  useTitle('The Wall')
   const [filter, setFilter] = useState<Filter>('all')
   const [older, setOlder] = useState<FeedEvent[]>([])
   const [olderHasMore, setOlderHasMore] = useState(true)
@@ -59,7 +62,7 @@ export default function Feed() {
         ))}
       </div>
 
-      {latest.isLoading ? <Loading /> : <FeedList events={events} />}
+      {latest.isLoading ? <Loading /> : latest.isError && !latest.data ? <ErrorBox message="Could not load the Wall." onRetry={() => latest.refetch()} /> : <FeedList events={events} />}
 
       {hasMore && events.length > 0 && (
         <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>

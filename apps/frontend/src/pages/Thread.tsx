@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLoginHref, useTitle } from '../lib/hooks'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getThread, createPost, upvoteThread, upvotePost, removePost, removeThread, moderateThread } from '../api/politicians'
@@ -23,6 +24,7 @@ function Body({ text }: { text: string }) {
 export default function Thread() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
+  const loginHref = useLoginHref()
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [body, setBody] = useState('')
@@ -30,7 +32,7 @@ export default function Thread() {
   const [error, setError] = useState('')
   const verified = !!user?.email_verified
 
-  const { data, isLoading, isError } = useQuery({ queryKey: ['thread', id], queryFn: () => getThread(id!), refetchInterval: 45000 })
+  const { data, isLoading, isError, error: loadError, refetch } = useQuery({ queryKey: ['thread', id], queryFn: () => getThread(id!), refetchInterval: 45000 })
   const invalidate = () => { qc.invalidateQueries({ queryKey: ['thread', id] }); qc.invalidateQueries({ queryKey: ['threads'] }) }
   const post = useMutation({ mutationFn: createPost, onSuccess: () => { invalidate(); setBody(''); setError('') }, onError: e => setError(errorMessage(e)) })
   const upT = useMutation({ mutationFn: upvoteThread, onSuccess: invalidate })
@@ -39,8 +41,18 @@ export default function Thread() {
   const delT = useMutation({ mutationFn: removeThread, onSuccess: () => navigate('/forum') })
   const mod = useMutation({ mutationFn: moderateThread, onSuccess: invalidate })
 
+  useTitle(data?.thread?.title)
   if (isLoading) return <div className="page"><Loading /></div>
-  if (isError || !data) return <div className="page page--narrow" style={{ paddingTop: '5rem' }}><p className="eyebrow">404</p><h1 style={{ fontSize: '2.2rem', margin: '0.5rem 0 1rem' }}>No such thread.</h1><Link to="/forum" className="btn">Back to the forum</Link></div>
+  if (!data) {
+    const missing = !isError || (loadError as any)?.response?.status === 404
+    return (
+      <div className="page page--narrow" style={{ paddingTop: '5rem' }}>
+        <p className="eyebrow">{missing ? '404' : 'Connection problem'}</p>
+        <h1 style={{ fontSize: '2.2rem', margin: '0.5rem 0 1rem' }}>{missing ? 'No such thread.' : 'Could not load this thread.'}</h1>
+        <div className="row">{!missing && <button className="btn btn--gold" onClick={() => refetch()}>Try again</button>}<Link to="/forum" className="btn">Back to the forum</Link></div>
+      </div>
+    )
+  }
   const t = data.thread
   const who = (x: any) => x.is_system ? <span className="post__name">FalseLeaders</span> : x.username ? <span className="post__name">@{x.username}</span> : <span className="post__prole">{proleTag(x.prole_number)}</span>
   const submitReply = () => { if (!body.trim() || post.isPending) return; const m = body.match(/>>(\d+)/); post.mutate({ thread_id: t.id, body: body.trim(), is_anonymous: anon, reply_to: m ? Number(m[1]) : undefined }) }
@@ -83,7 +95,7 @@ export default function Thread() {
       </div>
 
       <div style={{ marginTop: '1.5rem' }}>
-        {!user && <div className="notice notice--plain"><Link to="/login" style={{ borderBottom: '1px solid var(--border-strong)' }}>Sign in</Link> to reply.</div>}
+        {!user && <div className="notice notice--plain"><Link to={loginHref} style={{ borderBottom: '1px solid var(--border-strong)' }}>Sign in</Link> to reply.</div>}
         {user && !verified && <div className="notice">Verify your email to reply.</div>}
         {verified && t.locked && <div className="notice notice--plain">This thread is locked.</div>}
         {verified && !t.locked && !user?.terms_accepted && <TermsGate />}

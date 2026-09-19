@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ErrorBox } from '../components/States'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getStats, getFeed, getLeaderboard, getFeatured, getThreads } from '../api/politicians'
@@ -110,7 +111,7 @@ export default function Home() {
               </div>
               <Link to="/feed" className="eyebrow">All events →</Link>
             </div>
-            {feed.isLoading ? <Loading /> : <FeedList events={feed.data?.events || []} />}
+            {feed.isLoading ? <Loading /> : feed.isError && !feed.data ? <ErrorBox message="Could not load the Wall." onRetry={() => feed.refetch()} /> : <FeedList events={feed.data?.events || []} />}
           </Reveal>
 
           <Reveal delay={120}>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { nextAfterLogin, useTitle } from '../lib/hooks'
 import { login } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
 import AuthShell, { PasswordField } from '../components/AuthShell'
@@ -11,6 +12,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const { loginUser } = useAuth()
   const navigate = useNavigate()
+  const { search } = useLocation()
+  useTitle('Sign in')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -19,7 +22,7 @@ export default function Login() {
     try {
       const data = await login({ email, password })
       loginUser(data.user, data.token)
-      navigate('/')
+      navigate(nextAfterLogin(search), { replace: true })
     } catch (err: any) {
       setError(err.response?.data?.error || 'Sign in failed.')
     } finally {
@@ -28,7 +31,7 @@ export default function Login() {
   }
 
   return (
-    <AuthShell eyebrow="Clearance" title="Sign in." lead={<>No account yet? <Link to="/register" className="auth-link">Register</Link>.</>}>
+    <AuthShell eyebrow="Clearance" title="Sign in." lead={<>No account yet? <Link to={`/register${search}`} className="auth-link">Register</Link>.</>}>
       <form onSubmit={handleSubmit} className="stack" style={{ gap: '1rem' }}>
         <div className="field">
           <label className="label" htmlFor="auth-email">Email</label>

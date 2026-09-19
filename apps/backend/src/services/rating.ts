@@ -20,7 +20,9 @@ export async function ratingAggregate(politicianId: string): Promise<RatingAggre
      FROM ratings WHERE politician_id = $1`, [politicianId]
   )
   const r = rows[0]
-  return { n: r.n, average: r.n >= RATING_MIN_VOTES ? r.average : null, bins: [r.b0, r.b1, r.b2, r.b3], min_votes: RATING_MIN_VOTES }
+  // Below the threshold the spread is withheld too: with one or two votes a histogram is as good as the votes themselves.
+  const open = r.n >= RATING_MIN_VOTES
+  return { n: r.n, average: open ? r.average : null, bins: open ? [r.b0, r.b1, r.b2, r.b3] : [0, 0, 0, 0], min_votes: RATING_MIN_VOTES }
 }
 
 /** Recompute the denormalised rating columns after a rating changes. */

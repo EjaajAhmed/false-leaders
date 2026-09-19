@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useTitle } from '../lib/hooks'
+import { useLoginHref } from '../lib/hooks'
 import type { DragEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { getBookmarks, getGrafts, createGraft, deleteGraft, moveBookmark, removeBookmark } from '../api/politicians'
 import { useAuth } from '../context/AuthContext'
-import { Empty } from '../components/States'
+import { Empty, ErrorBox, Loading } from '../components/States'
 
 export default function Bookmarks() {
   const { user } = useAuth()
@@ -17,7 +19,8 @@ export default function Bookmarks() {
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
 
-  const { data: bookmarks } = useQuery({ queryKey: ['bookmarks'], queryFn: getBookmarks, enabled: !!user })
+  useTitle('Bookmarks')
+  const { data: bookmarks, isLoading, isError, refetch } = useQuery({ queryKey: ['bookmarks'], queryFn: getBookmarks, enabled: !!user })
   const { data: grafts } = useQuery({ queryKey: ['grafts'], queryFn: getGrafts, enabled: !!user })
 
   const invalidate = () => { qc.invalidateQueries({ queryKey: ['grafts'] }); qc.invalidateQueries({ queryKey: ['bookmarks'] }) }
@@ -26,7 +29,8 @@ export default function Bookmarks() {
   const move = useMutation({ mutationFn: moveBookmark, onSuccess: invalidate })
   const remove = useMutation({ mutationFn: removeBookmark, onSuccess: invalidate })
 
-  useEffect(() => { if (!user) navigate('/login') }, [user, navigate])
+  const loginHref = useLoginHref()
+  useEffect(() => { if (!user) navigate(loginHref, { replace: true }) }, [user, navigate, loginHref])
   if (!user) return null
 
   const onDragStart = (e: DragEvent, id: string) => { setDraggingId(id); e.dataTransfer.effectAllowed = 'move' }
@@ -89,7 +93,9 @@ export default function Bookmarks() {
               <p className="muted small">{grafts.find((g: any) => g.id === selected)?.description}</p>
             </div>
           )}
-          {shown.length === 0 && <Empty text={selected === 'unsorted' ? 'Nothing unsorted.' : 'Nothing saved here. Everyone is worth watching.'} />}
+          {isLoading && <Loading />}
+          {isError && !bookmarks && <ErrorBox message="Could not load your bookmarks." onRetry={() => refetch()} />}
+          {!isLoading && !isError && shown.length === 0 && <Empty text={selected === 'unsorted' ? 'Nothing unsorted.' : 'Nothing saved here. Everyone is worth watching.'} />}
           <div className="stack" style={{ gap: '0.5rem' }}>
             {shown.map((b: any) => (
               <div key={b.id} draggable onDragStart={e => onDragStart(e, b.id)} onDragEnd={() => { setDraggingId(null); setDragOver(null) }}

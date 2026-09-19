@@ -20,6 +20,10 @@ export default function Section({ id, label, headline, summary, children, defaul
   const [isOpen, setOpen] = useState(defaultOpen)
   const ref = useRef<HTMLElement>(null)
   const bodyId = useId()
+  const touched = useRef(false)
+
+  // defaultOpen often depends on data that lands after first render (sanctions flags); follow it until the reader toggles.
+  useEffect(() => { if (defaultOpen && !touched.current) setOpen(true) }, [defaultOpen])
 
   useEffect(() => {
     if (open) {
@@ -31,7 +35,7 @@ export default function Section({ id, label, headline, summary, children, defaul
 
   return (
     <section className="section" id={id} ref={ref}>
-      <button type="button" className="section__head" aria-expanded={isOpen} aria-controls={bodyId} onClick={() => setOpen(o => !o)}>
+      <button type="button" className="section__head" aria-expanded={isOpen} aria-controls={bodyId} onClick={() => { touched.current = true; setOpen(o => !o) }}>
         <div style={{ minWidth: 0 }}>
           <div className="eyebrow">{label}</div>
           <div className="section__headline">{headline}</div>

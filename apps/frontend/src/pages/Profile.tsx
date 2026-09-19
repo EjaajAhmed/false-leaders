@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useTitle } from '../lib/hooks'
+import { useLoginHref } from '../lib/hooks'
 import { useNavigate, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
@@ -13,6 +15,7 @@ import ThemePicker from '../components/ThemePicker'
 type ActivityTab = 'ratings' | 'threads' | 'proposals' | 'bookmarks'
 
 export default function Profile() {
+  useTitle('Profile')
   const { user, loginUser, logout } = useAuth()
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -22,7 +25,8 @@ export default function Profile() {
   const [showUsername, setShowUsername] = useState(false)
   const [confirmLogout, setConfirmLogout] = useState(false)
 
-  useEffect(() => { if (!user) navigate('/login') }, [user, navigate])
+  const loginHref = useLoginHref()
+  useEffect(() => { if (!user) navigate(loginHref, { replace: true }) }, [user, navigate, loginHref])
 
   const me = useQuery({ queryKey: ['me'], queryFn: getMe, enabled: !!user })
   const activity = useQuery({ queryKey: ['me-activity'], queryFn: getMyActivity, enabled: !!user })

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLoginHref } from '../../lib/hooks'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRating, setRating, clearRating } from '../../api/politicians'
@@ -43,6 +44,7 @@ export function focusRateBar() {
  */
 export function RateBar({ leaderId, leaderName }: { leaderId: string; leaderName: string }) {
   const { user } = useAuth()
+  const loginHref = useLoginHref()
   const qc = useQueryClient()
   const verified = !!user?.email_verified
   const { data } = useRating(leaderId)
@@ -82,7 +84,7 @@ export function RateBar({ leaderId, leaderName }: { leaderId: string; leaderName
         {!user && (
           <>
             <p className="rate-bar__gate">One rating per account, 0 to 100, changeable any time.</p>
-            <div className="row row--wrap"><Link to="/login" className="btn btn--gold btn--lg">Sign in to rate</Link><Link to="/register" className="btn btn--lg">Register</Link></div>
+            <div className="row row--wrap"><Link to={loginHref} className="btn btn--gold btn--lg">Sign in to rate</Link><Link to="/register" className="btn btn--lg">Register</Link></div>
           </>
         )}
         {user && !verified && <p className="rate-bar__gate">Verify your email to rate.</p>}
@@ -129,7 +131,7 @@ export default function RateSection({ leaderId, leaderName }: { leaderId: string
   return (
     <div className="card">
       <div className="row row--between" style={{ marginBottom: '0.6rem' }}><span className="eyebrow">Distribution of member ratings</span><span className="mono tiny dim">{n} total</span></div>
-      {isLoading ? <Loading /> : n ? <Histogram bins={data.bins || [0, 0, 0, 0]} /> : <p className="small dim">No ratings yet. The first one sets the tone.</p>}
+      {isLoading ? <Loading /> : data?.average != null ? <Histogram bins={data.bins || [0, 0, 0, 0]} /> : n ? <p className="small dim">The spread is shown once the average is public.</p> : <p className="small dim">No ratings yet. The first one sets the tone.</p>}
       {data?.average == null && n > 0 && <p className="help" style={{ marginTop: '0.6rem' }}>The average is withheld until {min} members have rated. {min - n} more to go.</p>}
       <p className="help" style={{ marginTop: '0.6rem' }}>Ratings are private to each account: nobody sees who rated {leaderName} what, only the average and the spread. Argue your rating in the Discussion section below.</p>
     </div>

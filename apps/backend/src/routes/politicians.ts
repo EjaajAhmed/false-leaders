@@ -80,8 +80,8 @@ export async function politiciansRoutes(server: FastifyInstance) {
     if (viewSql) where += ` AND ${viewSql}`
     if (min_age) { where += ` AND p.age >= $${i}`; params.push(Number(min_age)); i++ }
     if (max_age) { where += ` AND p.age <= $${i}`; params.push(Number(max_age)); i++ }
-    if (min_rating) { where += ` AND p.rating_avg >= $${i}`; params.push(Number(min_rating)); i++ }
-    if (max_rating) { where += ` AND p.rating_avg <= $${i}`; params.push(Number(max_rating)); i++ }
+    if (min_rating && Number.isFinite(Number(min_rating))) { where += ` AND p.rating_avg >= $${i}`; params.push(Number(min_rating)); i++ }
+    if (max_rating && Number.isFinite(Number(max_rating))) { where += ` AND p.rating_avg <= $${i}`; params.push(Number(max_rating)); i++ }
 
     const orderBy = {
       name: 'p.name ASC',

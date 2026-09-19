@@ -38,7 +38,7 @@ export async function forumRoutes(server: FastifyInstance) {
   server.get('/threads', { onRequest: [optionalAuth] }, async (request) => {
     const { board, leader, sort, page, limit, q, kind } = request.query as any
     const viewer = (request as any).user
-    const pageNum = Math.max(1, Number(page) || 1), limitNum = Math.min(50, Number(limit) || 25)
+    const pageNum = Math.max(1, Math.floor(Number(page)) || 1), limitNum = Math.min(50, Math.max(1, Math.floor(Number(limit)) || 25))
     const params: any[] = []
     let where = `WHERE t.status = 'active'`
     if (board && BOARD_KEYS.includes(board)) { params.push(board); where += ` AND t.board = $${params.length}` }

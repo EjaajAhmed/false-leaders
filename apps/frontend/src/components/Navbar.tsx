@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useLoginHref } from '../lib/hooks'
 import { useAuth } from '../context/AuthContext'
 import { resendVerification } from '../api/auth'
 import { proleTag } from '../lib/format'
@@ -32,6 +33,7 @@ const MOBILE = [
 
 export default function Navbar() {
   const { user } = useAuth()
+  const loginHref = useLoginHref()
   const location = useLocation()
   const isActive = (to: string) => to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
 
@@ -76,7 +78,7 @@ export default function Navbar() {
             </Link>
           ) : (
             <>
-              <Link to="/login" className="btn btn--ghost btn--sm">Sign in</Link>
+              <Link to={loginHref} className="btn btn--ghost btn--sm">Sign in</Link>
               <Link to="/register" className="btn btn--gold btn--sm">Register</Link>
             </>
           )}

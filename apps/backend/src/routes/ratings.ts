@@ -20,8 +20,8 @@ export async function ratingRoutes(server: FastifyInstance) {
   server.post('/:id/rating', { onRequest: [requireVerified] }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const user = (request as any).user
-    const score = Number((request.body as any)?.score)
-    if (!Number.isInteger(score) || score < 0 || score > 100) return reply.status(400).send({ error: 'Rating must be a whole number from 0 to 100.' })
+    const score = (request.body as any)?.score
+    if (typeof score !== 'number' || !Number.isInteger(score) || score < 0 || score > 100) return reply.status(400).send({ error: 'Rating must be a whole number from 0 to 100.' })
     const { rows: leader } = await db.query('SELECT id FROM politicians WHERE id = $1', [id])
     if (!leader.length) return reply.status(404).send({ error: 'No such leader.' })
     await db.query(

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { useTitle } from '../lib/hooks'
+import { useLoginHref } from '../lib/hooks'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -306,6 +308,7 @@ function ProposalQueue() {
 }
 
 export default function Admin() {
+  useTitle('Admin')
   const { user } = useAuth()
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -316,7 +319,8 @@ export default function Admin() {
   const [broadcastMessage, setBroadcastMessage] = useState('')
   const [saveError, setSaveError] = useState('')
 
-  useEffect(() => { if (!user) navigate('/login') }, [user, navigate])
+  const loginHref = useLoginHref()
+  useEffect(() => { if (!user) navigate(loginHref, { replace: true }) }, [user, navigate, loginHref])
 
   const { data } = useQuery({ queryKey: ['politicians-admin'], queryFn: () => getPoliticians({ limit: 1000, include_unlinked: '1' } as any), enabled: !!user?.is_admin })
 

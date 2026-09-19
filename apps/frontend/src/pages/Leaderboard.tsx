@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTitle } from '../lib/hooks'
 import { Link, useSearchParams } from 'react-router-dom'
 import { getLeaderboard } from '../api/politicians'
 import type { LeaderboardTab } from '../api/politicians'
-import { Empty, Loading } from '../components/States'
+import { Empty, ErrorBox, Loading } from '../components/States'
 import { compact, ratingColor } from '../lib/format'
 
 const TABS: { key: LeaderboardTab; label: string; blurb: string; empty: string }[] = [
@@ -16,7 +17,8 @@ export default function Leaderboard() {
   const [params, setParams] = useSearchParams()
   const current = (TABS.find(t => t.key === params.get('tab'))?.key || 'watched') as LeaderboardTab
   const tab = TABS.find(t => t.key === current)!
-  const { data, isLoading } = useQuery({ queryKey: ['leaderboard', current, 25], queryFn: () => getLeaderboard(current, 25) })
+  useTitle(`${tab.label} · Leaderboard`)
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['leaderboard', current, 25], queryFn: () => getLeaderboard(current, 25) })
 
   const value = (p: any) => {
     switch (current) {
@@ -42,7 +44,8 @@ export default function Leaderboard() {
       </div>
 
       {isLoading && <Loading />}
-      {!isLoading && (!data || data.length === 0) && <Empty text={tab.empty} />}
+      {isError && !data && <ErrorBox message="Could not load the leaderboard." onRetry={() => refetch()} />}
+      {!isLoading && !isError && (!data || data.length === 0) && <Empty text={tab.empty} />}
       <div>
         {data?.map((p: any, i: number) => (
           <Link key={p.id} to={`/leaders/${p.id}`} className="lb-row">

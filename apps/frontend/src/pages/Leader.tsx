@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTitle } from '../lib/hooks'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getPolitician, getGrafts, addBookmark, removeBookmark, checkBookmark, syncLeader, getLeaderNews } from '../api/politicians'
@@ -89,7 +90,8 @@ export default function Leader() {
   const headRef = useRef<HTMLElement>(null)
   const closePanel = useCallback(() => setPanel(null), [])
 
-  const { data: leader, isLoading, isError } = useQuery<LeaderDetail>({ queryKey: ['politician', id], queryFn: () => getPolitician(id!) })
+  const { data: leader, isLoading, isError, error, refetch } = useQuery<LeaderDetail>({ queryKey: ['politician', id], queryFn: () => getPolitician(id!) })
+  useTitle(leader?.name)
   const positions = usePositions(id!)
   const watch = useWatch(id!)
   const governance = useGovernance(id!)
@@ -111,12 +113,13 @@ export default function Leader() {
   }, [leader?.id])
 
   if (isLoading) return <div className="page"><Loading /></div>
-  if (isError || !leader) {
+  if (!leader) {
+    const missing = !isError || (error as any)?.response?.status === 404
     return (
       <div className="page page--narrow" style={{ paddingTop: '5rem' }}>
-        <p className="eyebrow">404</p>
-        <h1 style={{ fontSize: '2.2rem', margin: '0.5rem 0 1rem' }}>No such file.</h1>
-        <Link to="/browse" className="btn">Back to browse</Link>
+        <p className="eyebrow">{missing ? '404' : 'Connection problem'}</p>
+        <h1 style={{ fontSize: '2.2rem', margin: '0.5rem 0 1rem' }}>{missing ? 'No such file.' : 'Could not load this file.'}</h1>
+        <div className="row">{!missing && <button className="btn btn--gold" onClick={() => refetch()}>Try again</button>}<Link to="/browse" className="btn">Back to browse</Link></div>
       </div>
     )
   }

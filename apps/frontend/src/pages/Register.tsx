@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useTitle } from '../lib/hooks'
 import { useNavigate, Link } from 'react-router-dom'
 import { register } from '../api/auth'
 import AuthShell, { PasswordField } from '../components/AuthShell'
 
 export default function Register() {
+  useTitle('Register')
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')

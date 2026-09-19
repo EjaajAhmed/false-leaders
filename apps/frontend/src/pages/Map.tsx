@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTitle } from '../lib/hooks'
 import { Link } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import { cssVar, useTheme } from '../lib/theme'
@@ -33,6 +34,7 @@ function createIcon(score: number | null) {
 }
 
 export default function MapPage() {
+  useTitle('Map')
   const theme = useTheme()
   const [view, setView] = useState<ViewKey>('main')
   const [country, setCountry] = useState('')
@@ -77,7 +79,8 @@ export default function MapPage() {
           maxZoom={16}
         />
         <TileLayer
-          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+          key={`labels-${theme}`}
+          url={`https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/${theme === 'samizdat' ? 'World_Light_Gray_Reference' : 'World_Dark_Gray_Reference'}/MapServer/tile/{z}/{y}/{x}`}
           maxZoom={16}
         />
         {withCoords.map((p: any) => (

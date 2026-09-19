@@ -5,7 +5,7 @@ const LEADER_COLS = 'p.id, p.name, p.party, p.region, p.position, p.country, p.c
 
 export async function leaderboardRoutes(server: FastifyInstance) {
   const rated = (dir: 'ASC' | 'DESC') => async (request: any) => {
-    const limit = Math.min(100, Number(request.query.limit) || 25)
+    const limit = Math.min(100, Math.max(1, Math.floor(Number(request.query.limit)) || 25))
     const { rows } = await db.query(
       `SELECT ${LEADER_COLS}
        FROM politicians p
@@ -21,7 +21,7 @@ export async function leaderboardRoutes(server: FastifyInstance) {
   server.get('/condemned', rated('ASC')) // legacy alias
 
   server.get('/watched', async (request) => {
-    const limit = Math.min(100, Number((request.query as any).limit) || 25)
+    const limit = Math.min(100, Math.max(1, Math.floor(Number((request.query as any).limit)) || 25))
     const { rows } = await db.query(
       `SELECT ${LEADER_COLS}, p.attention
        FROM politicians p
@@ -34,7 +34,7 @@ export async function leaderboardRoutes(server: FastifyInstance) {
   })
 
   server.get('/discussed', async (request) => {
-    const limit = Math.min(100, Number((request.query as any).limit) || 25)
+    const limit = Math.min(100, Math.max(1, Math.floor(Number((request.query as any).limit)) || 25))
     const { rows } = await db.query(
       `SELECT ${LEADER_COLS},
               ((SELECT COUNT(*) FROM threads t WHERE t.politician_id = p.id AND t.status = 'active' AND t.created_at > NOW() - INTERVAL '7 days')

@@ -1,15 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { getPoliticians, getPoliticiansMeta } from '../api/politicians'
 import LeaderCard from '../components/LeaderCard'
-import { Empty, Loading } from '../components/States'
+import { Empty, ErrorBox, Loading } from '../components/States'
+import { useDebounced, useTitle } from '../lib/hooks'
 import Dropdown from '../components/Dropdown'
 import { CATEGORIES } from '../lib/format'
 import { VIEWS } from '../config'
 import type { ViewKey } from '../config'
 
 type Sort = 'prominence' | 'name' | 'rating_asc' | 'rating_desc' | 'newest'
+const SORTS: Sort[] = ['prominence', 'name', 'rating_asc', 'rating_desc', 'newest']
 
 // Primary views shown in the bar. Specific categories and countries narrow across everyone on file.
 const PRIMARY = VIEWS.filter(v => v.key !== 'all')
@@ -21,33 +23,34 @@ export default function Browse() {
   const [category, setCategory] = useState(params.get('category') || '')
   const [country, setCountry] = useState(params.get('country') || '')
   const [view, setView] = useState<ViewKey>((PRIMARY.find(v => v.key === params.get('view'))?.key || 'main') as ViewKey)
-  const [party, setParty] = useState('')
-  const [position, setPosition] = useState('')
-  const [minAge, setMinAge] = useState('')
-  const [maxAge, setMaxAge] = useState('')
-  const [minTruth, setMinTruth] = useState('')
-  const [maxTruth, setMaxTruth] = useState('')
-  const [sort, setSort] = useState<Sort>('prominence')
-  const [showFilters, setShowFilters] = useState(false)
-  const [page, setPage] = useState(1)
+  const [party, setParty] = useState(params.get('party') || '')
+  const [position, setPosition] = useState(params.get('position') || '')
+  const [minAge, setMinAge] = useState(params.get('min_age') || '')
+  const [maxAge, setMaxAge] = useState(params.get('max_age') || '')
+  const [minTruth, setMinTruth] = useState(params.get('min_rating') || '')
+  const [maxTruth, setMaxTruth] = useState(params.get('max_rating') || '')
+  const [sort, setSort] = useState<Sort>((SORTS.includes(params.get('sort') as Sort) ? params.get('sort') : 'prominence') as Sort)
+  const [showFilters, setShowFilters] = useState(() => ['party', 'position', 'min_age', 'max_age', 'min_rating', 'max_rating'].some(k => params.get(k)))
+  const [page, setPage] = useState(Math.max(1, Number(params.get('page')) || 1))
+  const q = useDebounced(search, 300)
+  useTitle('Browse')
 
   // Any narrowing (search, category, country) searches everyone on file rather than the current view.
   const narrowed = !!(search || category || country)
   const activeFilterCount = [party, position, minAge, maxAge, minTruth, maxTruth].filter(Boolean).length
 
-  const sync = (next: { q?: string; category?: string; country?: string; view?: ViewKey }) => {
-    const q = next.q ?? search
-    const c = next.category ?? category
-    const co = next.country ?? country
-    const v = next.view ?? view
+  // Everything that shapes the list lives in the URL, so Back from a leader page returns to the same page and filters.
+  useEffect(() => {
     const out: Record<string, string> = {}
-    if (q) out.q = q
-    if (c) out.category = c
-    if (co) out.country = co
-    if (v !== 'main') out.view = v
-    setParams(out, { replace: true })
-    setPage(1)
-  }
+    const put = (k: string, v: string) => { if (v) out[k] = v }
+    put('q', search); put('category', category); put('country', country); if (view !== 'main') out.view = view
+    put('party', party); put('position', position); put('min_age', minAge); put('max_age', maxAge); put('min_rating', minTruth); put('max_rating', maxTruth)
+    if (sort !== 'prominence') out.sort = sort
+    if (page > 1) out.page = String(page)
+    // Only navigate when something actually changed, so this can never feed itself.
+    if (new URLSearchParams(out).toString() !== params.toString()) setParams(out, { replace: true })
+  }, [search, category, country, view, party, position, minAge, maxAge, minTruth, maxTruth, sort, page]) // eslint-disable-line react-hooks/exhaustive-deps
+  const sync = (_next?: unknown) => setPage(1)
   const onSearch = (v: string) => { setSearch(v); sync({ q: v }) }
   const onCategory = (c: string) => { setCategory(c); sync({ category: c }) }
   const onCountry = (c: string) => { setCountry(c); sync({ country: c }) }
@@ -57,10 +60,10 @@ export default function Browse() {
 
   const { data: meta } = useQuery({ queryKey: ['politicians-meta'], queryFn: getPoliticiansMeta })
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['politicians', search, view, category, country, party, position, minAge, maxAge, minTruth, maxTruth, sort, page],
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['politicians', q, view, category, country, party, position, minAge, maxAge, minTruth, maxTruth, sort, page],
     queryFn: () => getPoliticians({
-      search: search || undefined,
+      search: q || undefined,
       category: category || undefined,
       country: country || undefined,
       view: narrowed ? undefined : view,
@@ -112,6 +115,7 @@ export default function Browse() {
           className="input"
           style={{ flex: 1, minWidth: 200 }}
           placeholder="Search everyone on file"
+          aria-label="Search everyone on file"
           value={search}
           onChange={e => onSearch(e.target.value)}
         />
@@ -162,7 +166,8 @@ export default function Browse() {
       )}
 
       {isLoading && <Loading />}
-      {!isLoading && leaders.length === 0 && (
+      {isError && !data && <ErrorBox message="Could not load the files." onRetry={() => refetch()} />}
+      {!isLoading && !isError && leaders.length === 0 && (
         <Empty text={search ? `Nothing on file for "${search}". Either they're clean, or nobody's looked yet.` : 'Nothing on file.'} />
       )}
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTitle } from '../lib/hooks'
 import { Link, useLocation } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { getLegalInfo, submitTakedown } from '../api/legal'
@@ -33,6 +34,7 @@ function LegalNav() {
 function useInfo() { return useQuery({ queryKey: ['legal-info'], queryFn: getLegalInfo, staleTime: 10 * 60 * 1000 }) }
 
 export function Terms() {
+  useTitle('Terms of Service')
   const info = useInfo()
   return (
     <div className="page page--narrow legal">
@@ -61,6 +63,7 @@ export function Terms() {
 }
 
 export function AcceptableUse() {
+  useTitle('Acceptable Use Policy')
   return (
     <div className="page page--narrow legal">
       <div className="page-head"><p className="eyebrow">Legal</p><h1>Acceptable Use Policy</h1><p>What you can and cannot post on the forum.</p></div>
@@ -98,6 +101,7 @@ const TAKEDOWN_REASONS = [
 ]
 
 export function Takedown() {
+  useTitle('Takedown requests')
   const info = useInfo()
   const [form, setForm] = useState({ name: '', email: '', url: '', reason: '', detail: '' })
   const [error, setError] = useState('')
@@ -132,6 +136,7 @@ export function Takedown() {
 }
 
 export function Contact() {
+  useTitle('Contact')
   const info = useInfo()
   return (
     <div className="page page--narrow legal">

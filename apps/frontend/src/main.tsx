@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+import { useLoginHref } from './lib/hooks'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, useLocation, Navigate, useParams } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -48,6 +49,7 @@ function ScrollToTop() {
 
 function App() {
   const { user } = useAuth()
+  const loginHref = useLoginHref()
   const location = useLocation()
   const isAuthPage = ['/login', '/register', '/pending-verification', '/welcome'].includes(location.pathname)
     || location.pathname.startsWith('/verified')
@@ -72,7 +74,7 @@ function App() {
         <div className="topbar">
           <ThemePicker compact />
           {user && <NotificationBell />}
-          <Link to={user ? '/profile' : '/login'} className={`topbar__profile${location.pathname.startsWith('/profile') ? ' is-active' : ''}`} aria-label={user ? 'Profile' : 'Sign in'}>
+          <Link to={user ? '/profile' : loginHref} className={`topbar__profile${location.pathname.startsWith('/profile') ? ' is-active' : ''}`} aria-label={user ? 'Profile' : 'Sign in'}>
             <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></svg>
           </Link>
         </div>

@@ -76,7 +76,7 @@ export function RateBar({ leaderId, leaderName }: { leaderId: string; leaderName
       </div>
       <div className="rate-bar__form">
         <div className="row row--between">
-          <span className="eyebrow">{mine != null ? 'Your rating · change it any time' : `Rate ${leaderName}`}</span>
+          <span className="rate-bar__title">{mine != null ? 'Your rating' : `Rate ${leaderName}`}</span>
           {mine != null && <button className="btn btn--ghost btn--sm btn--danger" onClick={() => withdraw.mutate()} disabled={withdraw.isPending}>Withdraw</button>}
         </div>
         {!user && (

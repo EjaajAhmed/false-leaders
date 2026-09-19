@@ -921,7 +921,8 @@ strong { font-weight: 600; }
 
 /* ── Rate bar (under the leader header) ── */
 /* The one card that asks for action: a lifted fill, a text-coloured outline and the accent edge, so it reads in every theme. */
-.rate-bar { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1.5rem 2rem; align-items: center; padding: 1.4rem 1.6rem; margin: 0.25rem 0 1.25rem; border: 1px solid color-mix(in srgb, var(--text) 55%, var(--surface)); border-left: 6px solid var(--accent); background: color-mix(in srgb, var(--text) 9%, var(--surface)); }
+.rate-bar { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1.5rem 2rem; align-items: center; padding: 1.4rem 1.6rem; margin: 0.25rem 0 1.25rem; border: 2px solid color-mix(in srgb, var(--text) 80%, var(--surface)); border-left: 10px solid var(--accent); background: color-mix(in srgb, var(--text) 13%, var(--surface)); }
+.rate-bar__title { font-family: var(--font-display); font-weight: 700; font-size: 1.5rem; line-height: 1.05; letter-spacing: 0.02em; text-transform: uppercase; color: var(--heading); }
 .rate-bar__stat { display: flex; align-items: center; justify-content: center; }
 .rate-bar__form { display: grid; gap: 0.75rem; min-width: 0; }
 .rate-bar__gate { color: var(--text); font-size: 0.9rem; }
@@ -937,7 +938,7 @@ strong { font-weight: 600; }
 .range::-moz-range-thumb { width: 26px; height: 26px; background: var(--accent); border: 2px solid var(--text); border-radius: 0; cursor: pointer; }
 .range:focus-visible { outline: 2px solid var(--text); outline-offset: 4px; }
 @media (max-width: 768px) {
-  .rate-bar { grid-template-columns: 1fr; gap: 1rem; padding: 1rem; border-left-width: 1px; border-left-color: color-mix(in srgb, var(--text) 55%, var(--surface)); border-top: 5px solid var(--accent); }
+  .rate-bar { grid-template-columns: 1fr; gap: 1rem; padding: 1rem; border-left-width: 2px; border-left-color: color-mix(in srgb, var(--text) 80%, var(--surface)); border-top: 8px solid var(--accent); }
   .rate-bar__stat { justify-content: flex-start; }
   .rate-bar .rate__value { font-size: 2.6rem; }
   .rate-bar .btn--lg { width: 100%; }

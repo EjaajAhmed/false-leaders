@@ -14,13 +14,11 @@ export const LICENSE = 'OpenSanctions, CC BY-NC 4.0 (source records carry their 
 export const entityUrl = (id: string) => `https://www.opensanctions.org/entities/${encodeURIComponent(id)}/`
 
 /**
- * Only listings from these authorities are marked as scored (recognised). Several states sanction foreign officials as
- * retaliation (Russia, China, Belarus, Iran, Venezuela and others list Western politicians); those listings are
- * shown with their issuing authority but not scored. Dataset codes are OpenSanctions' own.
+ * Legacy: the retired TruthScore only deducted for listings by these authorities, and `flags.scored` still records
+ * that. Nothing reads it for display or rating any more: every issuing government is shown on equal terms.
  */
 const EU_MEMBERS = ['at', 'be', 'bg', 'hr', 'cy', 'cz', 'dk', 'ee', 'fi', 'fr', 'de', 'gr', 'hu', 'ie', 'it', 'lv', 'lt', 'lu', 'mt', 'nl', 'pl', 'pt', 'ro', 'sk', 'si', 'es', 'se']
 export const SCORED_DATASET_PREFIXES = ['un_', 'eu_', ...EU_MEMBERS.map(c => `${c}_`), 'us_', 'gb_', 'ca_', 'au_', 'ch_', 'jp_', 'nz_', 'kr_', 'no_']
-export const SCORED_AUTHORITY_LABEL = 'the UN, the EU and its member states, the US, UK, Canada, Australia, Switzerland, Japan, New Zealand, South Korea and Norway'
 export const isScoredDataset = (datasets: string[]) => datasets.some(d => SCORED_DATASET_PREFIXES.some(p => d.startsWith(p)))
 
 async function streamLines(url: string, onLine: (line: string) => void): Promise<number> {
@@ -223,8 +221,8 @@ async function isoMap(): Promise<Record<string, string>> {
 export async function getFlags(politicianId: string) {
   const [{ rows: p }, { rows: flags }, { rows: edges }] = await Promise.all([
     db.query('SELECT opensanctions_id, opensanctions_checked_at FROM politicians WHERE id = $1', [politicianId]),
-    db.query(`SELECT kind, entity_id, authority, program, reason, start_date::text, listing_date::text, dataset, match_tier, source_url, scored, fetched_at FROM flags WHERE politician_id = $1 ORDER BY kind, scored DESC, listing_date DESC NULLS LAST`, [politicianId]),
+    db.query(`SELECT kind, entity_id, authority, program, reason, start_date::text, listing_date::text, dataset, match_tier, source_url, scored, fetched_at FROM flags WHERE politician_id = $1 ORDER BY kind, listing_date DESC NULLS LAST, authority`, [politicianId]),
     db.query(`SELECT relation, role, other_id, other_name, other_schema, other_topics, source_url FROM network_edges WHERE politician_id = $1 ORDER BY relation, other_name LIMIT 60`, [politicianId]),
   ])
-  return { opensanctions_id: p[0]?.opensanctions_id || null, checked_at: p[0]?.opensanctions_checked_at || null, flags, edges, scored_authorities: SCORED_AUTHORITY_LABEL }
+  return { opensanctions_id: p[0]?.opensanctions_id || null, checked_at: p[0]?.opensanctions_checked_at || null, flags, edges }
 }

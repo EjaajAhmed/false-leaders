@@ -8,6 +8,14 @@ export function useFlags(leaderId: string) {
   return useQuery({ queryKey: ['flags', leaderId], queryFn: () => getLeaderFlags(leaderId), staleTime: 60 * 60 * 1000 })
 }
 
+/** Issuing country or body from the OpenSanctions dataset code ("ru_mfa_sanctions" -> "Russia"). */
+const regionNames = typeof Intl !== 'undefined' && 'DisplayNames' in Intl ? new Intl.DisplayNames(['en'], { type: 'region' }) : null
+function issuer(dataset?: string | null): string | null {
+  const code = (dataset || '').split('_')[0]
+  if (!/^[a-z]{2}$/.test(code)) return null
+  try { const n = regionNames?.of(code.toUpperCase()); return n && n !== code.toUpperCase() ? n : null } catch { return null }
+}
+
 const entityUrl = (id: string) => `https://www.opensanctions.org/entities/${encodeURIComponent(id)}/`
 
 export function flagsHeadline(f: any) {
@@ -16,21 +24,13 @@ export function flagsHeadline(f: any) {
   const sanctions = flags.filter(x => x.kind === 'sanction')
   const crime = flags.filter(x => x.kind === 'crime')
   const pep = flags.some(x => x.kind === 'pep')
-  const scored = sanctions.filter(x => x.scored)
-  const unscored = sanctions.filter(x => !x.scored)
-  const authorities = new Set(scored.map(x => x.authority || x.dataset).filter(Boolean))
-  const otherAuth = new Set(unscored.map(x => x.authority || x.dataset).filter(Boolean))
+  // Every issuing government or body is treated alike: no list of "recognised" authorities.
+  const authorities = new Set(sanctions.map(x => issuer(x.dataset) || x.authority || x.dataset).filter(Boolean))
   const checked = f.checked_at ? `checked ${formatDate(f.checked_at)}` : 'not yet checked'
-  if (scored.length) {
+  if (sanctions.length) {
     return {
       headline: `Sanctioned · ${authorities.size} authorit${authorities.size === 1 ? 'y' : 'ies'}`,
-      summary: `${scored.length} listing${scored.length === 1 ? '' : 's'} by ${[...authorities].slice(0, 4).join(', ')}${authorities.size > 4 ? ' and others' : ''}${unscored.length ? `, plus ${unscored.length} by other states outside the recognised set` : ''}. ${f.edges?.length ? `${f.edges.length} connected entities on record. ` : ''}Listings are decisions of the issuing governments, not court findings. OpenSanctions ${checked}.`,
-    }
-  }
-  if (unscored.length) {
-    return {
-      headline: `Listed by ${[...otherAuth].slice(0, 2).join(' and ') || 'other states'} · not a recognised authority`,
-      summary: `${unscored.length} listing${unscored.length === 1 ? '' : 's'} by governments outside the recognised set (${f.scored_authorities}). Several states list foreign officials as retaliation, so these are shown for completeness only. OpenSanctions ${checked}.`,
+      summary: `${sanctions.length} listing${sanctions.length === 1 ? '' : 's'} by ${[...authorities].slice(0, 4).join(', ')}${authorities.size > 4 ? ' and others' : ''}. ${f.edges?.length ? `${f.edges.length} connected entities on record. ` : ''}A listing is a political decision of the government or body that issued it, not a court finding, and states often list each other's officials. OpenSanctions ${checked}.`,
     }
   }
   if (crime.length) return { headline: 'Flagged in crime-related lists', summary: `${crime.length} record${crime.length === 1 ? '' : 's'} with a crime-related topic in OpenSanctions. Details and sources below. OpenSanctions ${checked}.` }
@@ -57,14 +57,13 @@ export default function FlagsSection({ leaderId, name }: { leaderId: string; nam
       )}
       {sanctions.length > 0 && (
         <table className="datatable" style={{ marginTop: 0 }}>
-          <thead><tr><th>Authority</th><th>Programme</th><th>Listed</th><th>Recognised</th><th>Source</th></tr></thead>
+          <thead><tr><th>Authority</th><th>Programme</th><th>Listed</th><th>Source</th></tr></thead>
           <tbody>
             {sanctions.map((s, i) => (
               <tr key={i}>
-                <td>{s.authority || s.dataset || '—'}{s.reason ? <div className="tiny muted" style={{ marginTop: '0.2rem', maxWidth: '40ch' }}>{s.reason.slice(0, 220)}{s.reason.length > 220 ? '…' : ''}</div> : null}</td>
+                <td>{s.authority || s.dataset || '—'}{issuer(s.dataset) && !(s.authority || '').includes(issuer(s.dataset)!) ? <span className="muted"> · {issuer(s.dataset)}</span> : null}{s.reason ? <div className="tiny muted" style={{ marginTop: '0.2rem', maxWidth: '40ch' }}>{s.reason.slice(0, 220)}{s.reason.length > 220 ? '…' : ''}</div> : null}</td>
                 <td className="small">{s.program || '—'}</td>
                 <td className="mono small">{s.listing_date || s.start_date || '—'}</td>
-                <td className="mono tiny" title={s.scored ? 'Listed by a recognised sanctions authority' : 'Listed only by a state outside the recognised set'}>{s.scored ? 'yes' : 'no'}</td>
                 <td><a href={s.source_url} target="_blank" rel="noopener noreferrer" className="mono tiny" style={{ borderBottom: '1px solid var(--border-strong)' }}>Open</a></td>
               </tr>
             ))}
@@ -83,7 +82,7 @@ export default function FlagsSection({ leaderId, name }: { leaderId: string; nam
       )}
       {edges.length > 0 && <NetworkGraph name={name} edges={edges} entityUrl={entityUrl} />}
       <p className="section__caption">
-        Source: <a href={f.opensanctions_id ? entityUrl(f.opensanctions_id) : 'https://www.opensanctions.org/'} target="_blank" rel="noopener noreferrer" style={{ borderBottom: '1px solid var(--border-strong)' }}>OpenSanctions</a> (CC BY-NC 4.0, aggregating official sanctions lists and PEP data), {f.checked_at ? `checked ${formatDate(f.checked_at)}` : 'not yet checked'}. Matches are by Wikidata identifier where available, otherwise by name and birth date; the match tier is recorded with each flag. Listings by {f.scored_authorities} are marked as recognised; others are shown for completeness. Nothing here changes the community rating.
+        Source: <a href={f.opensanctions_id ? entityUrl(f.opensanctions_id) : 'https://www.opensanctions.org/'} target="_blank" rel="noopener noreferrer" style={{ borderBottom: '1px solid var(--border-strong)' }}>OpenSanctions</a> (CC BY-NC 4.0, aggregating official sanctions lists and PEP data), {f.checked_at ? `checked ${formatDate(f.checked_at)}` : 'not yet checked'}. Matches are by Wikidata identifier where available, otherwise by name and birth date; the match tier is recorded with each flag. Every listing is shown with the authority that issued it, whichever government that is; FalseLeaders does not rank issuers. Nothing here changes the community rating.
       </p>
     </div>
   )

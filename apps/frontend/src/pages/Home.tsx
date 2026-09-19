@@ -55,16 +55,17 @@ function Hero({ leaders }: { leaders: number }) {
     <section className="hero noise">
       <div className="hero__inner" ref={inner}>
         <div className="hero__rule" />
-        <p className="eyebrow eyebrow--gold" style={{ marginTop: '1.25rem' }}>FalseLeaders · Civic intelligence</p>
+        <p className="eyebrow eyebrow--gold" style={{ marginTop: '1.25rem' }}>FalseLeaders · <span style={{ whiteSpace: 'nowrap' }}>Civic intelligence</span> · <span style={{ whiteSpace: 'nowrap' }}>Open forum</span></p>
         <h1 className="hero__title"><Stamp /></h1>
         <p className="hero__counter">
           <strong>{count.toLocaleString()}</strong> leaders under watch
         </p>
         <p className="muted" style={{ maxWidth: '52ch', marginTop: '1.25rem', fontSize: '0.95rem' }}>
-          Rate, investigate and judge the people in power. Heads of state, executives, judges, moguls, clerics. Members rate them 0 to 100. The average goes public once enough people have voted.
+          Rate, investigate and judge the people in power. Heads of state, executives, judges, moguls, clerics. Members rate them 0 to 100. The average goes public once enough people have voted. Argue it out in the forum, anonymous by default.
         </p>
         <div className="hero__actions">
-          <Link to="/browse" className="btn btn--gold">Open the files</Link>
+          <Link to="/forum" className="btn btn--gold">Enter the forum</Link>
+          <Link to="/browse" className="btn">Open the files</Link>
           <Link to="/feed" className="btn">Read the Wall</Link>
         </div>
       </div>

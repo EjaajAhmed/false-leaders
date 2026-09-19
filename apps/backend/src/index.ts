@@ -4,6 +4,9 @@ import dns from 'dns'
 dns.setDefaultResultOrder('ipv4first')
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import rateLimit from '@fastify/rate-limit'
+import { authenticate, requireVerified } from './middleware/auth'
+import { SESSION_TTL } from './services/session'
 import jwt from '@fastify/jwt'
 import { politiciansRoutes } from './routes/politicians'
 import { commentsRoutes } from './routes/comments'
@@ -32,7 +35,8 @@ import { startForumSchedules } from './services/forum'
 import { NIGHTLY_ORDER } from './services/nightly'
 import { startScheduler } from './services/jobs'
 
-const server = Fastify({ logger: true })
+// Railway terminates TLS in front of the app; trustProxy makes request.ip the client, which the rate limits key on.
+const server = Fastify({ logger: true, trustProxy: true })
 
 server.register(cors, {
   origin: (origin, cb) => {
@@ -66,28 +70,20 @@ server.addContentTypeParser('application/json', { parseAs: 'string' }, (_req, bo
   }
 })
 
+if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is not set; refusing to start with a guessable secret.')
 server.register(jwt, {
-  secret: process.env.JWT_SECRET || 'changeme'
+  secret: process.env.JWT_SECRET,
+  sign: { expiresIn: SESSION_TTL },
 })
 
-server.decorate('authenticate', async function(request: any, reply: any) {
-  try {
-    await request.jwtVerify()
-  } catch (err) {
-    reply.status(401).send({ error: 'Access denied.' })
-  }
+// Off by default; routes opt in with config.rateLimit (auth endpoints). A generous global ceiling stops scraping loops.
+server.register(rateLimit, {
+  global: true, max: 600, timeWindow: '1 minute',
+  errorResponseBuilder: (_req, ctx) => ({ statusCode: 429, message: `Too many requests. Try again in ${ctx.after}.` }),
 })
 
-server.decorate('requireVerified', async function(request: any, reply: any) {
-  try {
-    await request.jwtVerify()
-    if (!request.user.email_verified) {
-      return reply.status(403).send({ error: 'Verify your email first.' })
-    }
-  } catch (err) {
-    reply.status(401).send({ error: 'Access denied.' })
-  }
-})
+server.decorate('authenticate', authenticate)
+server.decorate('requireVerified', requireVerified)
 
 server.setErrorHandler((error: any, _request, reply) => {
   server.log.error(error)

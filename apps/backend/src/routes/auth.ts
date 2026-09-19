@@ -26,13 +26,27 @@ function signToken(server: any, row: any) {
     prole_number: row.prole_number,
     is_admin: !!row.is_admin,
     email_verified: !!row.email_verified,
+    tv: row.token_version ?? 0,
   })
 }
 
+// Failed sign-ins per targeted email, on top of the per-IP limit, so one account cannot be guessed at from many addresses.
+const failures = new Map<string, { n: number; reset: number }>()
+const FAIL_MAX = 8, FAIL_WINDOW = 15 * 60 * 1000
+function tooManyFailures(email: string) { const f = failures.get(email); return !!f && f.reset > Date.now() && f.n >= FAIL_MAX }
+function recordFailure(email: string) {
+  const now = Date.now()
+  if (failures.size > 5000) for (const [k, v] of failures) if (v.reset <= now) failures.delete(k)
+  const f = failures.get(email)
+  if (!f || f.reset <= now) failures.set(email, { n: 1, reset: now + FAIL_WINDOW }); else f.n++
+}
+
 export async function authRoutes(server: FastifyInstance) {
-  server.post('/register', async (request, reply) => {
+  server.post('/register', { config: { rateLimit: { max: 5, timeWindow: '1 hour' } } }, async (request, reply) => {
     const { email, username, password, accept_terms } = request.body as any
     if (!email || !username || !password) return reply.status(400).send({ error: 'All fields required.' })
+    if (String(email).length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) return reply.status(400).send({ error: 'Enter a valid email address.' })
+    if (String(password).length > 72) return reply.status(400).send({ error: 'Password must be 72 characters or fewer.' })
     if (accept_terms !== true) return reply.status(400).send({ error: 'You need to accept the Terms of Service and Acceptable Use Policy to register.' })
     if (String(password).length < 8) return reply.status(400).send({ error: 'Password must be at least 8 characters.' })
     if (!/^[a-zA-Z0-9_.-]{3,24}$/.test(String(username))) {
@@ -57,19 +71,23 @@ export async function authRoutes(server: FastifyInstance) {
     }
   })
 
-  server.post('/login', async (request, reply) => {
+  server.post('/login', { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } }, async (request, reply) => {
     const { email, password } = request.body as any
-    const { rows } = await db.query('SELECT * FROM users WHERE email = $1', [String(email || '').trim().toLowerCase()])
+    const key = String(email || '').trim().toLowerCase()
+    if (tooManyFailures(key)) return reply.status(429).send({ error: 'Too many failed sign-ins for this account. Try again in 15 minutes.' })
+    const { rows } = await db.query('SELECT * FROM users WHERE email = $1', [key])
     if (rows[0]?.is_system) return reply.status(403).send({ error: 'That account cannot sign in.' })
-    if (rows.length === 0) return reply.status(401).send({ error: 'Invalid credentials.' })
+    if (rows.length === 0) { recordFailure(key); return reply.status(401).send({ error: 'Invalid credentials.' }) }
+    if (rows[0].suspended_at) return reply.status(403).send({ error: 'This account is suspended.' })
 
     const valid = await bcrypt.compare(String(password || ''), rows[0].password_hash)
-    if (!valid) return reply.status(401).send({ error: 'Invalid credentials.' })
+    if (!valid) { recordFailure(key); return reply.status(401).send({ error: 'Invalid credentials.' }) }
+    failures.delete(key)
 
     return { user: publicUser(rows[0]), token: signToken(server, rows[0]) }
   })
 
-  server.get('/verify/:token', async (request, reply) => {
+  server.get('/verify/:token', { config: { rateLimit: { max: 20, timeWindow: '1 hour' } } }, async (request, reply) => {
     const { token } = request.params as { token: string }
     const { rows } = await db.query(
       `SELECT * FROM users WHERE verification_token = $1 AND verification_token_expires > NOW()`,
@@ -85,8 +103,9 @@ export async function authRoutes(server: FastifyInstance) {
     return reply.redirect(`${process.env.FRONTEND_URL}/verified?token=${jwtToken}&username=${encodeURIComponent(rows[0].username)}`)
   })
 
-  server.post('/resend-verification', { onRequest: [authenticate] }, async (request) => {
+  server.post('/resend-verification', { onRequest: [authenticate], config: { rateLimit: { max: 3, timeWindow: '1 hour', keyGenerator: (req: any) => `resend:${req.user?.id || req.ip}` } } }, async (request, reply) => {
     const user = (request as any).user
+    if (user.email_verified) return reply.status(400).send({ error: 'This email is already verified.' })
     const verification_token = crypto.randomBytes(32).toString('hex')
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000)
     const { rows } = await db.query(
@@ -118,7 +137,7 @@ export async function authRoutes(server: FastifyInstance) {
   server.get('/me', { onRequest: [authenticate] }, async (request, reply) => {
     const user = (request as any).user
     const { rows } = await db.query(
-      `SELECT id, email, username, prole_number, is_admin, email_verified, created_at, theme, terms_version,
+      `SELECT id, email, username, prole_number, is_admin, email_verified, created_at, theme, terms_version, token_version,
               email_notifications, notif_comment_replies, notif_politician_updates, notif_app_news
        FROM users WHERE id = $1`,
       [user.id]
@@ -126,7 +145,8 @@ export async function authRoutes(server: FastifyInstance) {
     if (rows.length === 0) return reply.status(401).send({ error: 'Access denied.' })
     const row = rows[0]
     // Re-issue a token so stale sessions pick up prole_number / verification / admin changes.
-    return { ...row, is_admin: !!row.is_admin, email_verified: !!row.email_verified, terms_accepted: row.terms_version === TERMS_VERSION, token: signToken(server, row) }
+    const { token_version: _tv, ...safe } = row
+    return { ...safe, is_admin: !!row.is_admin, email_verified: !!row.email_verified, terms_accepted: row.terms_version === TERMS_VERSION, token: signToken(server, row) }
   })
 
   // Own activity: verdicts, leaks (as Prole), bookmarks
@@ -161,6 +181,12 @@ export async function authRoutes(server: FastifyInstance) {
       ),
     ])
     return { ratings: verdicts, threads: leaks, bookmarks, proposals }
+  })
+
+  // Signs out every device: tokens issued before this carry the old token_version.
+  server.post('/sign-out-everywhere', { onRequest: [authenticate] }, async (request) => {
+    await db.query('UPDATE users SET token_version = token_version + 1 WHERE id = $1', [(request as any).user.id])
+    return { success: true }
   })
 
   server.post('/accept-terms', { onRequest: [authenticate] }, async (request) => {

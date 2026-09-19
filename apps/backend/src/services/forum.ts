@@ -50,6 +50,7 @@ export async function hardDeleteThread(threadId: string, actorId: string | null,
   if (!rows.length) return false
   const { rows: posts } = await db.query('SELECT id, user_id, seq, body, created_at FROM thread_posts WHERE thread_id = $1', [threadId])
   await logModeration('hard_delete', 'thread', threadId, actorId, reason, { thread: rows[0], posts }, null)
+  await db.query(`DELETE FROM feed_events WHERE type = 'thread' AND meta->>'thread_id' = $1`, [threadId])
   await db.query('DELETE FROM threads WHERE id = $1', [threadId])
   return true
 }

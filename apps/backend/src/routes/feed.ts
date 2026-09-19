@@ -9,7 +9,9 @@ export async function feedRoutes(server: FastifyInstance) {
     const { type, before, limit } = request.query as any
     const limitNum = Math.min(100, Math.max(1, Number(limit) || 30))
     const params: any[] = []
-    let where = "WHERE type NOT IN ('score_change', 'verdict_shift')"
+    // A thread event is only served while its thread is live: removal and hard deletion take the title off the Wall too.
+    let where = `WHERE type NOT IN ('score_change', 'verdict_shift')
+      AND NOT (type = 'thread' AND NOT EXISTS (SELECT 1 FROM threads t WHERE t.id::text = meta->>'thread_id' AND t.status = 'active'))`
     let i = 1
 
     if (type === 'thread') {

@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 
 const KEY = 'fl_post_as'
 
+/** Anonymous unless the member has explicitly chosen to post as @username: the site promises "anonymous by default". */
 function read(): boolean {
-  try { return localStorage.getItem(KEY) === 'prole' } catch { return false }
+  try { return localStorage.getItem(KEY) !== 'user' } catch { return true }
 }
 
 /** Persisted preference: post anonymously (as Prole) or as @username. */
